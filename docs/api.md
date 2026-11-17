@@ -21,6 +21,7 @@ Browser requests must originate from the same HTTPS origin; no CORS access is gr
 | POST | `/api/v1/audio/step` | `{"direction":"Up"}` | 200 accepted + requested-key feedback |
 | POST | `/api/v1/media` | `{"action":"PlayPause"}` | 200 `{"accepted":true}` |
 | POST | `/api/v1/display/off` | None or `{}` | 200 `{"accepted":true}` |
+| PUT | `/api/v1/bluetooth` | {"enabled":true} | 200 accepted + feedback |
 | POST | `/api/v1/power` | `{"action":"Hibernate","delaySeconds":1800,"confirmed":true}` | 202 pending action object |
 | DELETE | `/api/v1/power/{id}` | None | 200 `{"canceled":true}` or 404 |
 
@@ -64,6 +65,7 @@ Volume is an integer from 0 to 100. Missing required command properties, malform
     "hibernate": true
   },
   "audio": {"volume": 35, "muted": false},
+  "bluetooth": {"available":true,"canControl":true,"state":"On","message":null},
   "scheduler": {
     "pending": {"id": "a-guid", "action": "Hibernate", "dueAt": "2026-11-17T15:30:00+00:00"},
     "lastError": null
@@ -85,6 +87,36 @@ Volume is an integer from 0 to 100. Missing required command properties, malform
 
 Use the returned ID for cancellation. An old timer ID cannot cancel a newer action. Cancellation is unavailable after dispatch starts. Closing the client does not cancel the action; exiting the Windows process does.
 
+## Audio outputs, approved shortcuts, and individual monitors
+
+All routes below require the usual bearer authentication, Host/Origin checks, limits, and same-origin rules.
+
+| Method | Route | Request / result |
+| --- | --- | --- |
+| GET | /api/v1/audio/outputs | Array of {id,name,isDefault}; active render outputs only |
+| PUT | /api/v1/audio/output | {id:string}; accepted + feedback |
+| GET | /api/v1/shortcuts | Array of {id,name,kind}; kind App or Website, no targets |
+| POST | /api/v1/shortcuts/{id}/launch | Empty object; accepted + feedback |
+| GET | /api/v1/monitors | Array of monitor status below |
+| PUT | /api/v1/monitors/brightness | {id:string,brightness:integer}; range 0–100, accepted + feedback |
+| PUT | /api/v1/monitors/power | {id:string,enabled:boolean}; accepted + feedback |
+
+Audio output selection sets Windows defaults for playback and communications. It reports Succeeded only when the selected output is read back as the multimedia default. Disconnected IDs are rejected. Apps with explicit output routing may not follow system defaults.
+
+Only the local PC can approve or remove shortcuts. There is no API for adding targets or passing launch arguments. Launch resolves the ID against the current saved approval list. Unknown/removed IDs return 400; a successful Windows open request reports Requested, not proof that an app finished opening. Do not automatically retry launches.
+
+Monitor status: {id,name,brightness,canSetBrightness,canSetPower,isOn,message}. Brightness is a percentage or null; isOn is true, false, or null when unknown. Capability flags gate the controls. A monitor may become unreachable while off and need a physical power button. Missing/stale IDs and malformed values return 400; unsupported controls return 422. Brightness/power responses report Requested, with actual values available from a fresh GET.
+
+Fetch device lists on connection, after relevant actions, or when the user requests refresh. Avoid repeatedly querying monitor hardware in the status polling loop. The Windows monitor adapter caches reads briefly and serializes hardware operations.
+
+## Bluetooth radio control
+
+PUT requires an explicit boolean enabled value. It applies the desired state to all Bluetooth radios, leaving Wi-Fi unchanged. Repeating the same desired state is safe. Turning Bluetooth off disconnects its peripherals; the web remote asks for confirmation first. Requests require normal bearer authentication.
+
+Status includes bluetooth even when no adapter is present. State is On, Off, Mixed, Disabled, or Unavailable. canControl indicates that adapters are present and not hardware/system disabled; Windows can still deny change permission. message explains unavailable states. Permission is requested on the PC only when a change is needed, and Windows may show a consent prompt.
+
+Feedback is Succeeded only when a read-back matches the desired state; accepted transitions not yet reflected in state report Requested. With multiple radios, a failure can leave a partial change: read status before deciding what to do next. Missing adapters, blocked radios, or denied access return 422 and command failures remain visible in desktop activity.
+
 ## Errors
 
 Application errors use `{"error":"Human-readable message"}`. Framework-level malformed-request, origin/host, or rate-limit failures may have an empty body; clients must handle the HTTP status independently.
@@ -96,11 +128,17 @@ Application errors use `{"error":"Human-readable message"}`. Framework-level mal
 | 403 | Foreign Origin |
 | 404 | No matching pending timer/route |
 | 409 | Existing pending action or another operation conflict |
-| 422 | Unsupported power state |
+| 422 | Unsupported power state or unavailable/denied Bluetooth control |
 | 429 | Rate limit exceeded |
 | 500 | Windows operation/internal error |
 
 On a network timeout, a command may already have been accepted. Read status before retrying a timer request. Volume/mute set explicit state and are idempotent; media commands are not. No general idempotency-key mechanism is implemented yet.
+
+## Planned protocol changes
+
+QR enrollment, stable PC discovery/identity metadata, and mobile multi-PC profiles are not implemented protocol additions. Existing bearer credentials already persist until revoked. Define and test enrollment and identity lifecycle separately; see [mobile connections](mobile-connections.md).
+
+Monitoring is explicitly deferred. This contract does not promise a metrics endpoint; the proposed future bridge is recorded in [monitoring integration](monitoring-integration.md).
 
 ## Flutter and Bluetooth
 

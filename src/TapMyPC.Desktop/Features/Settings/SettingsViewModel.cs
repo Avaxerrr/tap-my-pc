@@ -9,6 +9,10 @@ using System.Windows.Threading;
 using Microsoft.AspNetCore.Builder;
 using TapMyPC.Api;
 using TapMyPC.Core.Devices;
+using TapMyPC.Core.Bluetooth;
+using TapMyPC.Core.Audio;
+using TapMyPC.Core.Display;
+using TapMyPC.Core.Shortcuts;
 using TapMyPC.Core.Feedback;
 using TapMyPC.Core.Networking;
 using TapMyPC.Core.Timers;
@@ -19,6 +23,10 @@ namespace TapMyPC.Desktop.Features.Settings;
 public sealed class SettingsViewModel : INotifyPropertyChanged
 {
     private readonly IDeviceController device;
+    private readonly IBluetoothController? bluetooth;
+    private readonly IAudioOutputController? outputs;
+    private readonly ShortcutCatalog? shortcuts;
+    private readonly IMonitorController? monitors;
     private readonly LocalSettings settings;
     private readonly PairingService pairing;
     private readonly PowerScheduler scheduler;
@@ -40,9 +48,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private bool showNotifications;
     private bool isChangingHost;
 
-    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler)
+    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null)
     {
         this.device = device;
+        this.bluetooth = bluetooth;
+        this.outputs = outputs; this.shortcuts = shortcuts; this.monitors = monitors;
+        ShortcutSettings = shortcuts is null ? null : new ShortcutsViewModel(shortcuts);
         this.settings = settings;
         this.pairing = pairing;
         this.scheduler = scheduler;
@@ -96,6 +107,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         Tick();
     }
 
+    public ShortcutsViewModel? ShortcutSettings { get; }
     public ObservableCollection<NetworkAddress> NetworkChoices { get; } = [];
     public ObservableCollection<PairedClient> Devices { get; } = [];
     public ObservableCollection<ActionNotice> Activity { get; } = [];
@@ -189,7 +201,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
                 Message = "Starting the secure host…";
                 certificate?.Dispose();
                 certificate = HostCertificate.GetOrCreate(ip);
-                server = await ApiHost.StartAsync(ip, number, certificate, device, pairing, scheduler);
+                server = await ApiHost.StartAsync(ip, number, certificate, device, pairing, scheduler, bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors);
                 remoteUrl = $"https://{ip}:{number}";
                 fingerprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
                 SavePreferences();

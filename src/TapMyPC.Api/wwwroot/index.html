@@ -13,6 +13,8 @@
     <aside id="live-action" hidden aria-live="polite"><div><strong id="live-action-title"></strong><span id="live-action-time"></span></div><button id="cancel-live-action">Cancel</button></aside>
     <section class="card"><div class="section-heading"><div><span class="eyebrow">01 / SOUND</span><h2>Set the mood.</h2></div><span id="volume-value" class="large-value">—</span></div>
       <label for="volume">Master volume</label><input type="range" id="volume" min="0" max="100" value="0"><div class="row"><button id="volume-down" aria-label="Volume down">− Volume</button><button id="mute">Mute</button><button id="volume-up" aria-label="Volume up">+ Volume</button></div>
+      <label for="audio-output">Audio output</label><div class="row output-row"><select id="audio-output" aria-label="Audio output"><option value="">Loading outputs…</option></select><button id="apply-output">Use output</button></div>
+      <p id="output-note" class="device-note">Switches the Windows default output. Apps using a specific device may keep using it.</p>
       <div class="row media"><button data-media="Previous" aria-label="Previous track">⏮</button><button data-media="PlayPause" aria-label="Play or pause">Play / pause</button><button data-media="Next" aria-label="Next track">⏭</button></div>
     </section>
     <section class="card"><span class="eyebrow">02 / WIND DOWN</span><h2>Call it a night.</h2><div class="grid"><button id="display-off">◐<span>Monitors off</span></button><button data-power="Lock">▣<span>Lock PC</span></button><button data-power="Sleep">☾<span>Sleep</span></button><button data-power="Hibernate">◌<span>Hibernate</span></button></div></section>
@@ -20,6 +22,13 @@
       <div id="pending" hidden><p id="pending-label"></p><button id="cancel-timer">Cancel pending action</button></div>
       <div class="row power-row"><button data-power="Shutdown" class="danger">Shut down</button><button data-power="Restart">Restart</button></div>
     </section>
+    <section class="card"><div class="section-heading"><div><span class="eyebrow">04 / DEVICES</span><h2>Bluetooth.</h2></div><span id="bluetooth-state" class="badge" role="status">Checking…</span></div>
+      <p id="bluetooth-detail">Control the PC's Bluetooth. Turning it off disconnects Bluetooth headphones, mice, and keyboards.</p>
+      <div class="row"><button id="bluetooth-on">Turn on</button><button id="bluetooth-off">Turn off</button></div>
+    </section>
+    <div class="device-toolbar"><span class="eyebrow">DEVICES &amp; SHORTCUTS</span><button id="refresh-devices" class="text-button">Refresh devices</button></div>
+    <section class="card"><span class="eyebrow">05 / DISPLAYS</span><h2>Your monitors.</h2><div id="monitor-list"><p>Loading monitor controls…</p></div></section>
+    <section class="card"><span class="eyebrow">06 / SHORTCUTS</span><h2>One tap away.</h2><p id="shortcut-empty">Add approved apps and websites in the PC app, then refresh devices here.</p><div id="shortcut-list" class="shortcut-grid"></div></section>
     <footer><span id="pc-name">Your PC</span><button id="disconnect" class="text-button">Forget this connection</button></footer>
   </div>
   <dialog id="confirm-dialog"><form method="dialog"><span class="eyebrow">POWER CONTROL</span><h2 id="confirm-title">Confirm action</h2><p id="confirm-description"></p><div class="row"><button value="cancel">Keep PC on</button><button value="confirm" class="primary">Confirm</button></div></form></dialog>

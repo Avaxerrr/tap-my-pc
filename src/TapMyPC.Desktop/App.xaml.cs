@@ -5,6 +5,11 @@ using TapMyPC.Desktop.Features.Settings;
 using TapMyPC.Desktop.Features.Feedback;
 using TapMyPC.Desktop.Tray;
 using TapMyPC.Windows;
+using TapMyPC.Windows.Bluetooth;
+using TapMyPC.Windows.Audio;
+using TapMyPC.Windows.Display;
+using TapMyPC.Windows.Shortcuts;
+using TapMyPC.Core.Shortcuts;
 using TapMyPC.Windows.Settings;
 
 namespace TapMyPC.Desktop;
@@ -29,7 +34,9 @@ public partial class App : Application
             var device = new WindowsDeviceController();
             var pairing = new PairingService(settings, TimeProvider.System);
             var scheduler = new PowerScheduler(device, TimeProvider.System);
-            settingsViewModel = new SettingsViewModel(device, settings, pairing, scheduler);
+            settingsViewModel = new SettingsViewModel(device, settings, pairing, scheduler,
+                new WindowsBluetoothController(action => Dispatcher.InvokeAsync(action).Task.Unwrap()),
+                new WindowsAudioOutputs(), new ShortcutCatalog(settings, new WindowsShortcutLauncher(), scheduler.Activity), new WindowsMonitorController());
             feedback = new FeedbackPresenter(scheduler, () => settingsViewModel.ShowNotifications, Dispatcher);
             MainWindow = new MainWindow { DataContext = settingsViewModel };
             tray = new TrayIcon(ShowSettings, ExitAsync);

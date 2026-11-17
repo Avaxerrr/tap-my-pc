@@ -435,6 +435,31 @@
                 VerticalAlignment="Center" />
             </Grid>
           </Border>
+          <Expander Header="App &amp; website shortcuts" Foreground="#A8BCB0" Margin="0,22,0,0">
+            <StackPanel DataContext="{Binding ShortcutSettings}" Margin="0,16,0,0">
+              <TextBlock Text="Approve the apps and websites your phone can open." Foreground="#9BAFA6" FontSize="12" />
+              <TextBlock Text="Shortcut name" Style="{StaticResource Label}" Margin="0,12,0,6" />
+              <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" />
+              <Button Content="Choose application or .lnk…" Command="{Binding AddApp}" HorizontalAlignment="Left" Margin="0,10,0,12" />
+              <TextBlock Text="Website address (http:// or https://)" Style="{StaticResource Label}" Margin="0,0,0,6" />
+              <TextBox Text="{Binding WebsiteUrl, UpdateSourceTrigger=PropertyChanged}" MaxLength="2048" />
+              <Button Content="Add website" Command="{Binding AddWebsite}" HorizontalAlignment="Left" Margin="0,10,0,12" />
+              <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" Background="#10191A"
+                       Foreground="#EEF3EE" BorderBrush="#394A45" MinHeight="50" MaxHeight="160"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel Margin="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Target}" Foreground="#9BAFA6" FontSize="11" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Button Content="Remove selected shortcut" Command="{Binding Remove}" HorizontalAlignment="Left" Margin="0,10,0,0" />
+              <TextBlock Text="{Binding Status}" Foreground="#9BAFA6" FontSize="12" Margin="0,10,0,0" />
+            </StackPanel>
+          </Expander>
           <Expander
             Header="Advanced settings"
             Foreground="#A8BCB0"

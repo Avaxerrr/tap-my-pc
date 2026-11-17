@@ -29,6 +29,7 @@ src/
     Tray/
   TapMyPC.Core/
     Audio/
+    Bluetooth/
     Media/
     Display/
     Power/
@@ -37,6 +38,7 @@ src/
     Devices/
   TapMyPC.Windows/
     Audio/
+    Bluetooth/
     Media/
     Display/
     Power/
@@ -77,6 +79,12 @@ Desktop wires implementations and hosts the API through application startup/shut
 - Dispose listeners and background work during application exit.
 - Do not add a separate Windows service unless a concrete requirement justifies it. Interactive-session controls need particular care if that changes.
 
+Bluetooth radio control uses a separate Core interface and asynchronous command handler. Windows implements it with WinRT radio APIs, filters exclusively for Bluetooth adapters, and requests change permission on the WPF Dispatcher only when needed. The status endpoint reads radio state without requesting permission. This feature uses the existing Wi-Fi API; Bluetooth as a command transport remains deferred.
+
+Audio output and per-monitor controls have dedicated Core interfaces with Windows implementations. HardwareCommands validates selections/ranges and publishes shared activity. The API serves device lists separately from the two-second status poll; the phone refreshes them on connection, after relevant commands, or on request. Monitor I/O runs off the UI thread, serializes changes, briefly caches reads, and always releases native physical-monitor handles. Built-in brightness uses WMI where available; external displays use DDC/CI.
+
+ShortcutCatalog owns the locally approved list. Only the PC settings UI can add/remove entries, persisted through LocalSettings. Remote clients receive names, kinds, and opaque IDs, then request launch by ID. The Windows launcher resolves the approved target and uses Windows shell launching without remotely supplied command lines or arguments. App paths and website URLs are not exposed in remote list responses.
+
 ## API and Flutter transition
 
 - Start with a documented, versioned API under `/api/v1`.
@@ -93,6 +101,12 @@ Implemented routes and DTOs are documented in [API contract](api.md). The web re
 ## Local-network access
 
 Pairing and authenticated commands are required. Validate inputs, limit exposed operations to supported commands, and keep credentials out of logs. Kestrel serves HTTPS using a certificate held in the current user's Personal certificate store; it does not add a root trust entry. Normal launch leaves the host stopped and automatically selects an active private IPv4 address, preferring an adapter with a gateway and then Wi-Fi. The listener still binds only one address. Localhost and manual overrides are under Advanced settings. Legacy address-only settings migrate to Automatic once; versioned explicit debug overrides are preserved. Origin/Host checks, request limits, and per-IP rate limiting constrain the API. See [setup](setup.md) for the initial certificate identity check and phone trust limitations.
+
+## Planned mobile and monitoring changes
+
+The current manual browser pairing and per-address certificates remain implemented behavior. QR enrollment, protected mobile storage, stable PC identity, discovery, multi-PC profiles, and remembered host startup are future work. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
+
+Monitoring is deferred. The proposed bridge keeps PC Stats Tray and its website standalone, reads local cached snapshots, and serves them through TapMyPC. No monitoring dependency or elevated network host is introduced now. See [monitoring integration](monitoring-integration.md).
 
 ## Action feedback and presentation
 

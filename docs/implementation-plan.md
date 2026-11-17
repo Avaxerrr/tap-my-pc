@@ -10,6 +10,8 @@ The next usability pass is implemented: automatic network-address selection with
 
 Automated HTTPS and headless browser tests use simulated controls. The user subsequently confirmed phone connectivity over Wi-Fi after selecting the Wi-Fi listen address. Certificate trust, tray interaction, startup registration, and disruptive native controls still need further manual verification when the user is no longer gaming. The agent did not start or expose the real host during the initial verification.
 
+Bluetooth radio status and explicit on/off commands are now implemented over Wi-Fi, with Windows permission handling, compact PC feedback, and simulated tests. This does not implement Bluetooth as a transport. Shutdown already exists as both a direct confirmed action and a scheduled timer. Bedtime presets are deferred at the user's request.
+
 ## Phase 1: Foundation and first remote command
 
 1. Select a supported .NET SDK and establish the solution boundaries described in [architecture](architecture.md).
@@ -30,18 +32,23 @@ Verify unauthorized requests are rejected, invalid input is handled, and the lis
 
 Verify timers continue after browser disconnection and cancellation prevents the scheduled action. Use focused automated tests for scheduling, validation, and authentication behavior. Verify Windows effects manually where appropriate; do not run disruptive power actions as unattended tests on the development PC.
 
-## Phase 3: Presets and selected additions
+## Phase 3: Selected additions
 
-Add Bedtime presets, followed by audio output switching and approved app shortcuts as needed. Agree on preset failure behavior and timer persistence requirements before implementing them.
+Implemented audio output switching, locally approved app/website shortcuts, and per-monitor brightness/on/off with capability detection. The user has deferred presets and remote input. Revisit remote wake alongside the mobile app rather than during this desktop/web pass.
 
-## Phase 4: Flutter client
+## Phase 4: Flutter client — next
 
-1. Create the Flutter mobile project and consume the existing Wi-Fi API.
-2. Implement pairing, secure credential storage, connection status, controls, and timers.
-3. Verify on Android first, then iPhone with access to macOS/Xcode build tooling.
-4. Decide whether to retain the web remote as an optional fallback.
+1. Define stable PC identity and migrate address-based certificate lifecycle; specify renewal/reset/recovery.
+2. Implement locally opened, short-lived, single-use QR enrollment with identity verification and protected per-PC credentials.
+3. Add discovery, last-address/manual fallback, authenticated reconnection, and accurate offline/blocked/permission states.
+4. Support home desktop/work laptop profiles with independent trust/state and explicit command targets.
+5. Add a remembered, trusted-network-aware Start host when app opens option; keep Windows sign-in startup separate.
+6. Build Flutter controls/timers against the existing API. Verify Android first, then iPhone with macOS/Xcode.
+7. Test wrong identities, QR expiry/reuse, revocation, IP changes, isolation, permissions, PC switching, and reconnects without command replay.
 
-Reuse the Windows agent and API. Rebuild client presentation and connection handling in Dart; do not promise automatic conversion of web UI code.
+Reuse core behavior and rebuild presentation in Dart. Manual browser setup remains a fallback. See [mobile connections](mobile-connections.md).
+
+Monitoring is explicitly deferred and does not block mobile work. Preserve PC Stats Tray and its website when revisiting the [recorded bridge proposal](monitoring-integration.md). Presets/remote input stay deferred; revisit remote wake alongside mobile development with hardware-specific investigation.
 
 ## Phase 5: Bluetooth and optional wake
 
@@ -52,7 +59,8 @@ Remote wake is a separate investigation. Test supported power states explicitly;
 ## Open decisions
 
 - Installer approach; the initial output is a framework-dependent folder publish.
-- Discovery/QR codes; the prototype uses a manual address and six-digit pairing code.
+- QR/discovery protocol details, stable identity/certificate migration, and recovery UX. Manual address/code pairing remains implemented.
+- USB networking and authenticated routed/relayed access are exploratory; no public-network or AP-isolation fallback is implemented.
 - Media targeting when several applications are playing.
 - Future Bluetooth protocol and Windows peripheral/central support.
 

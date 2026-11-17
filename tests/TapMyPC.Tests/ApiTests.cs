@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Time.Testing;
 using TapMyPC.Api;
 using TapMyPC.Core.Devices;
+using TapMyPC.Core.Shortcuts;
 using TapMyPC.Core.Timers;
 
 namespace TapMyPC.Tests;
@@ -16,6 +17,10 @@ namespace TapMyPC.Tests;
 public sealed class ApiTests : IAsyncLifetime
 {
     private readonly FakeDevice device = new();
+    private readonly FakeBluetooth bluetooth = new();
+    private readonly FakeHardware hardware = new();
+    private readonly FakeShortcutLauncher shortcutLauncher = new();
+    private readonly ShortcutCatalog shortcuts;
     private readonly FakeTimeProvider clock = new();
     private readonly PairingService pairing;
     private readonly PowerScheduler scheduler;
@@ -23,20 +28,91 @@ public sealed class ApiTests : IAsyncLifetime
     private HttpClient client = null!;
     private X509Certificate2 certificate = null!;
 
-    public ApiTests() { pairing = new(new MemoryStore(), clock); scheduler = new(device, clock); }
+    public ApiTests() { pairing = new(new MemoryStore(), clock); scheduler = new(device, clock); shortcuts = new(new MemoryShortcutStore(), shortcutLauncher, scheduler.Activity); shortcuts.Add("Example", ShortcutKind.Website, "https://example.com"); }
     public async Task InitializeAsync()
     {
         using var rsa = RSA.Create(2048);
         using var generated = new CertificateRequest("CN=TapMyPC-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
             .CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddHours(1));
         certificate = X509CertificateLoader.LoadPkcs12(generated.Export(X509ContentType.Pfx), null, X509KeyStorageFlags.UserKeySet);
-        app = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler);
+        app = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler, bluetooth: bluetooth, outputs: hardware, monitors: hardware, shortcuts: shortcuts);
         // Test-only pinning of this ephemeral certificate. Production clients must verify the host identity.
         var handler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert?.Thumbprint == certificate.Thumbprint };
         client = new HttpClient(handler) { BaseAddress = new Uri(app.Urls.Single()) };
     }
     public async Task DisposeAsync() { client.Dispose(); await app.StopAsync(); await app.DisposeAsync(); scheduler.Dispose(); certificate.Dispose(); }
 
+    [Fact]
+    public async Task BluetoothRequiresPairingAndExplicitBooleanBeforeChangingState()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PutAsJsonAsync("/api/v1/bluetooth", new { enabled = false })).StatusCode);
+        Assert.Empty(bluetooth.Changes);
+        await Authenticate();
+        foreach (var body in new[] { "{}", "{\"enabled\":null}", "{\"enabled\":\"false\"}" })
+            Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsync("/api/v1/bluetooth", new StringContent(body, Encoding.UTF8, "application/json"))).StatusCode);
+        Assert.Empty(bluetooth.Changes);
+        foreach (var enabled in new[] { false, true })
+        {
+            var response = await client.PutAsJsonAsync("/api/v1/bluetooth", new { enabled });
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal("Succeeded", payload.GetProperty("feedback").GetProperty("phase").GetString());
+            var state = await client.GetFromJsonAsync<JsonElement>("/api/v1/status");
+            Assert.Equal(enabled ? "On" : "Off", state.GetProperty("bluetooth").GetProperty("state").GetString());
+        }
+        Assert.Equal(new[] { false, true }, bluetooth.Changes);
+    }
+
+    [Fact]
+    public async Task UnavailableBluetoothDoesNotBreakOtherControlsAndReportsFailure()
+    {
+        bluetooth.Status = new(false, false, TapMyPC.Core.Bluetooth.BluetoothRadioState.Unavailable, "No Bluetooth adapter found.");
+        await Authenticate();
+        var status = await client.GetFromJsonAsync<JsonElement>("/api/v1/status");
+        Assert.False(status.GetProperty("bluetooth").GetProperty("canControl").GetBoolean());
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await client.PutAsJsonAsync("/api/v1/bluetooth", new { enabled = true })).StatusCode);
+        Assert.Empty(bluetooth.Changes);
+        Assert.Equal("Failed", scheduler.Activity.Recent[0].Phase.ToString());
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/v1/audio/volume", new { volume = 55 })).StatusCode);
+    }
+    [Fact]
+    public async Task NewControlsRequirePairingAndAcceptOnlyApprovedIdsAndValidPayloads()
+    {
+        foreach (var route in new[] { "/audio/outputs", "/monitors", "/shortcuts" })
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1" + route)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PutAsJsonAsync("/api/v1/audio/output", new { id = "headphones" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PutAsJsonAsync("/api/v1/monitors/power", new { id = "monitor-1", enabled = false })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/v1/shortcuts/" + shortcuts.List()[0].Id + "/launch", new { })).StatusCode);
+        Assert.Equal(0, hardware.OutputChanges);
+        Assert.Empty(shortcutLauncher.Launched);
+        await Authenticate();
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/v1/audio/output", new { id = "missing" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/v1/monitors/brightness", new { id = "monitor-1", brightness = 101 })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/v1/monitors/power", new { id = "monitor-1" })).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await client.PutAsJsonAsync("/api/v1/monitors/power", new { id = "monitor-2", enabled = false })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/shortcuts/" + Guid.NewGuid() + "/launch", new { target = "https://unapproved.example" })).StatusCode);
+        Assert.Empty(shortcutLauncher.Launched);
+    }
+
+    [Fact]
+    public async Task AudioMonitorAndShortcutRoutesUseServerOwnedTargets()
+    {
+        await Authenticate();
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/v1/audio/output", new { id = "headphones" })).StatusCode);
+        Assert.Equal("headphones", hardware.DefaultOutput);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/v1/monitors/brightness", new { id = "monitor-1", brightness = 30 })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/v1/monitors/power", new { id = "monitor-1", enabled = false })).StatusCode);
+        Assert.Equal(30, hardware.Monitors[0].Brightness);
+        Assert.False(hardware.Monitors[0].IsOn);
+        var json = await client.GetStringAsync("/api/v1/shortcuts");
+        Assert.DoesNotContain("https://example.com", json);
+        var id = shortcuts.List()[0].Id;
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/shortcuts/" + id + "/launch", new { target = "https://unapproved.example" })).StatusCode);
+        Assert.Equal("https://example.com", Assert.Single(shortcutLauncher.Launched).Target);
+        shortcuts.Remove(id);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/shortcuts/" + id + "/launch", new { })).StatusCode);
+        Assert.Single(shortcutLauncher.Launched);
+    }
     private async Task Authenticate()
     {
         var response = await client.PostAsJsonAsync("/api/v1/pair", new { code = pairing.OpenPairing().Code, name = "Test phone" });

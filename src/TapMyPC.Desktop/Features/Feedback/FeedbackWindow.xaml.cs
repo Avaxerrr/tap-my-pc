@@ -33,6 +33,11 @@ public partial class FeedbackWindow : Window
         var failed = item.Phase == ActionPhase.Failed;
         ActionIcon.Text = failed ? "\uE783" : remaining is not null ? "\uE823" : item.Title switch
         {
+            "Audio output" => "\uE767",
+            "Monitor brightness" => "\uE706",
+            "Monitor power" => "\uE7F4",
+            "Shortcut" => "\uE8A7",
+            "Bluetooth" => "\uE702",
             "Media" => "\uE768",
             "Audio" => "\uE767",
             "Displays" => "\uE7F4",

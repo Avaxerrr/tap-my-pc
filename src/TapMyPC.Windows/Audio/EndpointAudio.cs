@@ -33,19 +33,44 @@ internal static class EndpointAudio
     });
 
     [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-    private class MMDeviceEnumerator { }
+    internal class MMDeviceEnumerator { }
 
     [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMMDeviceEnumerator
+    internal interface IMMDeviceEnumerator
     {
-        [PreserveSig] int EnumAudioEndpoints(int flow, uint mask, out IntPtr devices);
+        [PreserveSig] int EnumAudioEndpoints(int flow, uint mask, out IMMDeviceCollection devices);
         [PreserveSig] int GetDefaultAudioEndpoint(int flow, int role, out IMMDevice device);
     }
 
     [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMMDevice
+    internal interface IMMDevice
     {
         [PreserveSig] int Activate(ref Guid iid, uint context, IntPtr activation, [MarshalAs(UnmanagedType.IUnknown)] out object instance);
+        [PreserveSig] int OpenPropertyStore(int mode, out IPropertyStore properties);
+        [PreserveSig] int GetId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        [PreserveSig] int GetState(out uint state);
+    }
+
+    [ComImport, Guid("0BD7A1BE-7A1A-44DB-8397-CC5392387B5E"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IMMDeviceCollection
+    {
+        [PreserveSig] int GetCount(out uint count);
+        [PreserveSig] int Item(uint index, out IMMDevice device);
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct PropertyKey { public Guid Format; public uint Id; }
+    [StructLayout(LayoutKind.Explicit, Size = 24)]
+    internal struct PropertyValue
+    {
+        [FieldOffset(0)] public ushort Type;
+        [FieldOffset(8)] public IntPtr Pointer;
+    }
+    [ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IPropertyStore
+    {
+        [PreserveSig] int GetCount(out uint count);
+        [PreserveSig] int GetAt(uint index, out PropertyKey key);
+        [PreserveSig] int GetValue(ref PropertyKey key, out PropertyValue value);
     }
 
     [ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]

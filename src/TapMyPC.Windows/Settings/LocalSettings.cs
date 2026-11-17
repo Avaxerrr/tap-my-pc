@@ -1,11 +1,12 @@
 using System.Text.Json;
 using TapMyPC.Core.Devices;
+using TapMyPC.Core.Shortcuts;
 
 namespace TapMyPC.Windows.Settings;
 
 public record HostSettings(string Address = "auto", int Port = 45831, bool ShowNotifications = true, int Version = 2);
 
-public sealed class LocalSettings(string? directoryPath = null, string? legacyDirectoryPath = null) : IDeviceStore
+public sealed class LocalSettings(string? directoryPath = null, string? legacyDirectoryPath = null) : IDeviceStore, IShortcutStore
 {
     public string DirectoryPath { get; } = directoryPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TapMyPC");
     private readonly string? legacyDirectory = legacyDirectoryPath ?? (directoryPath is null
@@ -23,6 +24,9 @@ public sealed class LocalSettings(string? directoryPath = null, string? legacyDi
     public void SaveHost(HostSettings settings) => Write("host.json", settings);
     public IReadOnlyList<PairedDevice> Load() => Read<List<PairedDevice>>("devices.json") ?? [];
     public void Save(IReadOnlyList<PairedDevice> devices) => Write("devices.json", devices);
+
+    public IReadOnlyList<ApprovedShortcut> LoadShortcuts() => Read<List<ApprovedShortcut>>("shortcuts.json") ?? [];
+    public void SaveShortcuts(IReadOnlyList<ApprovedShortcut> shortcuts) => Write("shortcuts.json", shortcuts);
 
     private T? Read<T>(string name)
     {

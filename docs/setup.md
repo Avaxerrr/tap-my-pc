@@ -26,6 +26,16 @@ Codes last five minutes, accept one successful pairing, and close after five inc
 
 Select a paired device on the PC and revoke it to invalidate its credential immediately. Forget this connection on the website removes only that browser's saved copy; it does not revoke a credential that has been copied elsewhere.
 
+## Planned mobile flow and isolated networks
+
+QR enrollment, automatic discovery, mobile PC profiles, and remembered host startup are planned, not current browser features. Existing pairings already create persistent credentials; ordinary reconnects do not inherently require a new code.
+
+Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic through AP/client isolation. Saved credentials, QR scanning, or a correct IP cannot override that block. If only discovery is blocked, a reachable direct address may work. A timeout alone does not identify isolation conclusively.
+
+Use a network you control for initial LAN operation. Hotspot/USB networking require device tests. VPN/relay support is future work and needs a permitted route. Do not expose the command port publicly or disable firewall protections as a workaround. See [mobile connections](mobile-connections.md).
+
+Monitoring is deferred. Its standalone app/website compatibility plan is in [monitoring integration](monitoring-integration.md).
+
 ## HTTPS identity and certificates
 
 The prototype creates a self-signed, one-year certificate for the selected address in Current User / Personal. Its private key stays in the Windows user key store. No root certificate is trusted automatically, and the app does not run an HTTP fallback.
@@ -58,6 +68,26 @@ Scope LocalAddress to the chosen Wi-Fi address as well if desired. Update the ru
 - There is one pending power action. Cancel it before scheduling a different one. The timer runs on the PC after browser disconnection and after stopping the API listener.
 - Exiting the process cancels the timer. Timers are not persisted, do not wake a sleeping PC, and cannot be canceled once execution begins.
 - Shutdown/restart never pass `/f`. Windows or unsaved work may block the transition. Sleep/hibernate use the existing user shutdown privilege, enabled temporarily during execution; no elevation prompt is requested.
+
+## Audio outputs, shortcuts, and monitors
+
+The phone's Sound card lists connected audio outputs. Choose one and select Use output. This changes Windows default playback and communications roles; apps pinned to a specific device may keep using it. Unplugged/disconnected outputs are rejected. The isolated Windows adapter uses the IPolicyConfig compatibility interface, which is not a documented public Windows API; Windows updates may affect switching, and failures are surfaced.
+
+In the PC app, expand App & website shortcuts. Enter a name, then choose an .exe/.lnk application or enter an http(s) website and Add website. Only locally approved entries appear on the phone. Remove an entry on the PC to reject future launches by its ID. Application arguments can be configured in a locally approved .lnk file; no remote command-line input is accepted. Shortcuts are saved in %LOCALAPPDATA%\TapMyPC\shortcuts.json. Missing applications produce an error when launched.
+
+The phone's Your monitors card shows each display's brightness slider and power buttons. Unsupported controls are disabled with an explanation. Built-in brightness uses Windows WMI when supported; external monitors use DDC/CI, which may need enabling in the monitor's physical menu. Adapters, docks, drivers, HDR modes, and monitor firmware can affect support. All-monitors-off remains available separately.
+
+Individual off requests use DDC power-saving mode. Some monitors stop accepting DDC commands or disappear from Windows while off and require their physical button to wake; the UI reports an unreachable display rather than claiming it can turn it on. Commands report a request, and device refresh reads back the available state.
+
+Use Refresh devices on the phone after plugging/unplugging devices or editing shortcuts. Lists also refresh on connection and after relevant commands. Hardware queries are not part of the two-second status polling loop.
+
+## Bluetooth on/off
+
+The phone remote has a Bluetooth card showing On, Off, Mixed, Disabled, or Unavailable, plus explicit Turn on / Turn off buttons. It controls the PC's Bluetooth radios over the existing Wi-Fi connection. Turning it off disconnects Bluetooth peripherals; confirm before sending that request. It never changes Wi-Fi or disables devices through Device Manager.
+
+The first change may require Windows consent on the PC. Missing adapters, disabled radios, or rejected access are reported without blocking other remote controls. Status reads do not request permission. A command accepted by Windows may still be transitioning; the remote refreshes the effective state.
+
+This controls radio power only. Pairing Bluetooth peripherals and using Bluetooth as the phone-to-PC transport are separate features and remain unimplemented.
 
 ## Startup and local data
 
@@ -116,4 +146,4 @@ This script targets only the simulator port, uses an isolated browser profile, a
 
 ## Remaining limitations
 
-The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, QR discovery, installation, presets, audio-device switching, Flutter, Bluetooth, and remote wake are not implemented. The current build is a prototype, not a verified production release.
+The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, QR discovery, installation, presets (deferred), remote input (deferred), display arrangement, Flutter, Bluetooth transport/peripheral pairing, and remote wake are not implemented. The current build is a prototype, not a verified production release.

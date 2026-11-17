@@ -45,3 +45,34 @@ No firewall rule, startup entry, network-profile change, certificate trust entry
 - Rendered the actual WPF feedback control offscreen for media, mute, volume errors, scheduled timers, and final countdowns. Routine cards measure 320 × 68 pixels at 96 DPI; cancellation and longer error messages fit without clipping.
 - Normal volume notifications are suppressed only in the desktop presenter. Volume errors, mute/media/power feedback, phone responses, and shared activity history are retained.
 - No native volume/media/display/power commands were issued for this verification. Interactive fade/focus behavior and clicking countdown cancellation still require manual testing.
+
+## Bluetooth radio controls
+
+- Release build/publish succeeded with zero warnings/errors. All 25 automated tests passed, including authenticated Bluetooth updates, required boolean validation, unavailable-adapter failures, and requested-versus-confirmed state feedback.
+- Headless Chrome verified Bluetooth off-confirmation dismissal, simulated off/on transitions, state labels, disabled buttons for the current state, existing controls, mobile layout, and reload. No browser script errors were observed.
+- A read-only Windows probe enumerated this PC's Bluetooth radio and reported Off, Available=true, CanControl=true. It did not request radio-control permission or change any state.
+- Actual Windows permission consent and radio on/off transitions still require manual testing. No real Bluetooth peripherals were disconnected, and no shutdown/power command was executed.
+
+## Audio switching, approved shortcuts, and monitor controls
+
+- Release solution build and folder publish succeeded with zero warnings/errors. All 36 automated tests passed.
+- Tests cover authenticated device routes, stale audio/monitor IDs, brightness range validation, unsupported monitor controls, per-monitor targeting, local shortcut persistence/removal, save rollback, URL/path validation, and rejection of unapproved launch targets.
+- Headless Chrome verified simulated audio output switching, approved website launch, per-monitor brightness/on/off, disabled unsupported controls, existing Bluetooth/audio/power behavior, reload, and responsive layout. No script errors or horizontal overflow were observed.
+- An isolated offscreen WPF harness checked actual shortcut view-model approval/validation and rendered the expanded settings form for visual inspection. Its store and launchers were simulated; no real apps or websites were launched.
+- A read-only native probe enumerated four connected audio outputs, identified the default MOMENTUM 4 endpoint, and confirmed the audio-policy COM interface is available. It did not switch outputs.
+- The initial monitor probe falsely reported DISPLAY1 (GBT2726) as unsupported because the adapter discarded its valid zero-valued physical-monitor handle. This was corrected on November 18; see the M27QA detection correction below.
+- Actual output changes, Windows app/website launching, and supported-monitor brightness/power transitions still require manual testing. No audio output, monitor brightness/power, or PC power state was changed by the agent.
+
+## M27QA detection correction — November 18, 2026
+
+- The user confirmed ClickMonitorDDC can control the M27QA over the same direct HDMI connection. A focused read-only diagnostic found DXVA2 returns physical-monitor handle 0, which our adapter had incorrectly treated as missing.
+- Direct calls using that handle successfully read brightness 20/100, contrast 50/100, speaker volume 50/100, and power state 1 (on). These were reads only.
+- Physical handles are now nullable: null represents failed enumeration, while every returned numeric handle, including zero, is retained for queries and commands.
+- Release build passed without warnings/errors and all 36 automated tests passed. A native read-only regression check through the corrected public controller reports brightness=20, CanSetBrightness=true, CanSetPower=true, and IsOn=true for GBT2726.
+- Brightness writes and monitor off/on recovery still require user testing; no settings or power states were changed by the agent.
+
+## User feedback and mobile design status — November 18, 2026
+
+The user subsequently reported the corrected monitor controls work. This is user feedback, separate from the agent's read-only native probes.
+
+QR enrollment, automatic discovery/reconnection, mobile secure storage, multi-PC profiles, and remembered host startup are documented plans, not implemented or security-verified mobile features. Monitoring integration is explicitly deferred. See mobile-connections.md and monitoring-integration.md for boundaries and required future validation.

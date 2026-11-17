@@ -1,4 +1,5 @@
 using TapMyPC.Core.Devices;
+using TapMyPC.Core.Bluetooth;
 
 namespace TapMyPC.Tests;
 
@@ -33,4 +34,19 @@ internal sealed class MemoryStore : IDeviceStore
     public IReadOnlyList<PairedDevice> Devices { get; private set; } = [];
     public IReadOnlyList<PairedDevice> Load() => Devices;
     public void Save(IReadOnlyList<PairedDevice> devices) => Devices = devices.ToArray();
+}
+
+internal sealed class FakeBluetooth : IBluetoothController
+{
+    public BluetoothStatus Status { get; set; } = new(true, true, BluetoothRadioState.On);
+    public List<bool> Changes { get; } = [];
+    public bool ConfirmChange { get; set; } = true;
+    public Task<BluetoothStatus> ReadAsync() => Task.FromResult(Status);
+    public Task SetEnabledAsync(bool enabled)
+    {
+        if (!Status.CanControl) throw new NotSupportedException(Status.Message ?? "Bluetooth control is unavailable.");
+        Changes.Add(enabled);
+        if (ConfirmChange) Status = Status with { State = enabled ? BluetoothRadioState.On : BluetoothRadioState.Off };
+        return Task.CompletedTask;
+    }
 }

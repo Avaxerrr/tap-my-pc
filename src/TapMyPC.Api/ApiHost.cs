@@ -10,6 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TapMyPC.Api.Contracts;
 using TapMyPC.Core.Devices;
+using TapMyPC.Core.Bluetooth;
+using TapMyPC.Core.Audio;
+using TapMyPC.Core.Display;
+using TapMyPC.Core.Shortcuts;
 using TapMyPC.Core.Timers;
 
 namespace TapMyPC.Api;
@@ -17,7 +21,7 @@ namespace TapMyPC.Api;
 public static class ApiHost
 {
     public static async Task<WebApplication> StartAsync(IPAddress address, int port, X509Certificate2 certificate,
-        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default)
+        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(ApiHost).Assembly.FullName });
         builder.Logging.ClearProviders();
@@ -87,12 +91,13 @@ public static class ApiHost
         }
         app.MapPost("/api/v1/pair", (PairRequest request) =>
             Results.Ok(new { token = pairing.Pair(request.Code ?? "", request.Name ?? "") }));
-        app.MapGet("/api/v1/status", () =>
+        app.MapGet("/api/v1/status", async () =>
         {
             var capabilities = device.Capabilities;
             AudioState? audio = null;
             try { if (capabilities.Audio) audio = device.ReadAudio(); } catch { capabilities = capabilities with { Audio = false }; }
-            return Results.Ok(new { pcName = Environment.MachineName, capabilities, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
+            var bluetoothState = bluetooth is null ? new BluetoothStatus(false, false, BluetoothRadioState.Unavailable, "Bluetooth control is unavailable.") : await bluetooth.ReadAsync();
+            return Results.Ok(new { bluetooth = bluetoothState, pcName = Environment.MachineName, capabilities, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
         });
         app.MapPut("/api/v1/audio/volume", (VolumeRequest request) =>
         {
@@ -105,6 +110,35 @@ public static class ApiHost
             return Results.Ok(new { accepted = true, feedback = commands.Media(request.Action) });
         });
         app.MapPost("/api/v1/display/off", () => Results.Ok(new { accepted = true, feedback = commands.DisplaysOff() }));
+        app.MapPut("/api/v1/bluetooth", async (BluetoothRequest request) =>
+        {
+            if (bluetooth is null) throw new NotSupportedException("Bluetooth control is unavailable.");
+            return Results.Ok(new { accepted = true, feedback = await new BluetoothCommands(bluetooth, scheduler.Activity).SetEnabledAsync(request.Enabled) });
+        });
+        var hardware = new HardwareCommands(scheduler.Activity);
+        app.MapGet("/api/v1/audio/outputs", () => Results.Ok(outputs?.List() ?? Array.Empty<AudioOutput>()));
+        app.MapPut("/api/v1/audio/output", async (AudioOutputRequest request) =>
+        {
+            if (outputs is null) throw new NotSupportedException("Audio output switching is unavailable.");
+            return Results.Ok(new { accepted = true, feedback = await hardware.SelectOutputAsync(outputs, request.Id ?? "") });
+        });
+        app.MapGet("/api/v1/shortcuts", () => Results.Ok(shortcuts?.List() ?? Array.Empty<ShortcutSummary>()));
+        app.MapPost("/api/v1/shortcuts/{id:guid}/launch", (Guid id) =>
+        {
+            if (shortcuts is null) throw new NotSupportedException("Shortcuts are unavailable.");
+            return Results.Ok(new { accepted = true, feedback = shortcuts.Launch(id) });
+        });
+        app.MapGet("/api/v1/monitors", async () => Results.Ok(monitors is null ? Array.Empty<MonitorStatus>() : await monitors.ListAsync()));
+        app.MapPut("/api/v1/monitors/brightness", async (MonitorBrightnessRequest request) =>
+        {
+            if (monitors is null) throw new NotSupportedException("Monitor controls are unavailable.");
+            return Results.Ok(new { accepted = true, feedback = await hardware.SetBrightnessAsync(monitors, request.Id ?? "", request.Brightness) });
+        });
+        app.MapPut("/api/v1/monitors/power", async (MonitorPowerRequest request) =>
+        {
+            if (monitors is null) throw new NotSupportedException("Monitor controls are unavailable.");
+            return Results.Ok(new { accepted = true, feedback = await hardware.SetMonitorPowerAsync(monitors, request.Id ?? "", request.Enabled) });
+        });
         app.MapPost("/api/v1/power", (PowerRequest request) =>
         {
             if (!request.Confirmed) throw new ArgumentException("Power actions require explicit confirmation.");
