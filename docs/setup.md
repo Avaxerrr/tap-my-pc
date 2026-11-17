@@ -50,7 +50,7 @@ Scope LocalAddress to the chosen Wi-Fi address as well if desired. Update the ru
 ## Timers and controls
 
 - Volume is 0–100; mute uses an explicit true/false state.
-- Volume up/down buttons send standard Windows volume keys, requesting the native system overlay where Windows displays it. Step size and overlay visibility are controlled by Windows; they are not fixed five-percent operations. Slider/mute changes retain direct, explicit state setting and show our own feedback.
+- Volume up/down buttons send standard Windows volume keys, requesting the native system overlay where Windows displays it. Step size and overlay visibility are controlled by Windows; they are not fixed five-percent operations. Slider/mute changes retain direct, explicit state setting. Volume adjustments do not show a custom PC notification; slider changes may not display a native flyout. Mute/unmute and errors still show compact custom feedback. Phone feedback and dashboard activity are retained for every action.
 - Media commands send standard Windows media keys. The active media application decides how to handle them. Current track metadata is not implemented.
 - Display-off affects connected monitors through the Windows display-power message. Input/activity may wake them.
 - All power actions require confirmation. Shutdown/restart use a minimum ten-second cancellable delay; lock/sleep/hibernate use a minimum three seconds.

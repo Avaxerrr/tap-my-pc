@@ -27,8 +27,11 @@ public sealed class FeedbackPresenter : IDisposable
     private void OnNotice(ActionNotice item) => dispatcher.BeginInvoke(() =>
     {
         if (disposed || !enabled()) return;
+        // Suppress only normal volume feedback; failures still need a visible cue.
+        // The dashboard and phone retain the complete shared activity feed.
+        if (item.Title == "Volume" && item.Phase != ActionPhase.Failed) return;
         current = item;
-        hideAt = DateTimeOffset.UtcNow.AddSeconds(item.Phase == ActionPhase.Failed ? 7 : 4);
+        hideAt = DateTimeOffset.UtcNow.AddSeconds(item.Phase == ActionPhase.Failed ? 7 : 2.5);
         Tick();
     });
 

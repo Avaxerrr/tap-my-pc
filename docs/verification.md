@@ -38,3 +38,10 @@ Automatic selection rechecks the available private IPs when starting; a network 
 - Release-host idle CPU and memory measurement. No measured resource claim is made yet.
 
 No firewall rule, startup entry, network-profile change, certificate trust entry, or Wi-Fi listener was enabled by the agent during the initial verification. The user subsequently launched the host and connected a phone. The .NET CLI's first-run setup automatically installed its standard untrusted development certificate; the app's per-address certificates are created when its real host is started.
+
+## Compact notification update
+
+- Release build and staged publish succeeded with zero warnings/errors; all 22 existing automated tests passed.
+- Rendered the actual WPF feedback control offscreen for media, mute, volume errors, scheduled timers, and final countdowns. Routine cards measure 320 × 68 pixels at 96 DPI; cancellation and longer error messages fit without clipping.
+- Normal volume notifications are suppressed only in the desktop presenter. Volume errors, mute/media/power feedback, phone responses, and shared activity history are retained.
+- No native volume/media/display/power commands were issued for this verification. Interactive fade/focus behavior and clicking countdown cancellation still require manual testing.

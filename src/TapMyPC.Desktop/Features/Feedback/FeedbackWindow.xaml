@@ -4,7 +4,7 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   Title="TapMyPC feedback"
-  Width="370"
+  Width="320"
   SizeToContent="Height"
   WindowStyle="None"
   ResizeMode="NoResize"
@@ -15,59 +15,56 @@
   ShowActivated="False"
   Topmost="True"
   Focusable="False">
-  <Border
-    Background="#F21B2526"
-    BorderBrush="#4A6152"
-    BorderThickness="1"
-    CornerRadius="18"
-    Padding="22">
-    <StackPanel>
-      <TextBlock
-        Text="TAPMYPC"
-        Foreground="#B8DCA0"
-        FontSize="10"
-        FontWeight="SemiBold"
-        Margin="0,0,0,12" />
-      <TextBlock
-        x:Name="Heading"
-        FontSize="23"
-        FontWeight="SemiBold"
-        TextWrapping="Wrap" />
-      <TextBlock
-        x:Name="Detail"
-        Foreground="#BDCBC5"
-        FontSize="13"
-        TextWrapping="Wrap"
-        Margin="0,8,0,0" />
-      <ProgressBar
-        x:Name="AudioBar"
-        Minimum="0"
-        Maximum="100"
-        Height="5"
-        Foreground="#C9EFAA"
-        Background="#3D4A45"
-        BorderThickness="0"
-        Margin="0,16,0,0"
-        Visibility="Collapsed" />
-      <TextBlock
-        x:Name="Countdown"
-        Foreground="#C9EFAA"
-        FontSize="28"
-        FontWeight="Light"
-        Margin="0,12,0,0"
-        Visibility="Collapsed" />
-      <Button
-        x:Name="CancelButton"
-        Content="Cancel power action"
-        Click="Cancel_Click"
-        Focusable="False"
-        Background="#C9EFAA"
-        Foreground="#182317"
-        BorderThickness="0"
-        Padding="12,9"
-        HorizontalAlignment="Left"
-        Margin="0,12,0,0"
-        Visibility="Collapsed" />
-    </StackPanel>
+  <Border Background="#F51B2526" BorderBrush="#46554F" BorderThickness="1"
+          CornerRadius="14" Padding="14">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="32" />
+        <ColumnDefinition Width="12" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border x:Name="IconBackground" Background="#2D3D33" CornerRadius="10"
+              Width="32" Height="32" VerticalAlignment="Top">
+        <TextBlock x:Name="ActionIcon" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                   Foreground="#C9EFAA" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   AutomationProperties.Name="Action status" />
+      </Border>
+      <StackPanel Grid.Column="2">
+        <TextBlock x:Name="Heading" FontSize="11" FontWeight="SemiBold" Foreground="#A8BAB1"
+                   TextWrapping="Wrap" Margin="0,0,0,4" />
+        <TextBlock x:Name="Detail" FontSize="14" TextWrapping="Wrap" LineHeight="19" />
+        <Grid x:Name="CountdownRow" Margin="0,12,0,0" Visibility="Collapsed">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock x:Name="Countdown" Foreground="#C9EFAA" FontSize="20" FontWeight="SemiBold"
+                     VerticalAlignment="Center" />
+          <Button x:Name="CancelButton" Grid.Column="1" Content="Cancel" Click="Cancel_Click"
+                  Focusable="False" Foreground="#182317" Background="#C9EFAA" BorderThickness="0"
+                  Padding="12,6" Cursor="Hand" AutomationProperties.Name="Cancel power action">
+            <Button.Template>
+              <ControlTemplate TargetType="Button">
+                <Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" CornerRadius="8"
+                        Padding="{TemplateBinding Padding}">
+                  <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="ButtonSurface" Property="Background" Value="#E0F7CF" />
+                  </Trigger>
+                  <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="ButtonSurface" Property="Background" Value="#A8D788" />
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Button.Template>
+          </Button>
+        </Grid>
+        <ProgressBar x:Name="CountdownBar" Minimum="0" Maximum="10" Height="3"
+                     Foreground="#C9EFAA" Background="#3D4A45" BorderThickness="0"
+                     Margin="0,10,0,0" Visibility="Collapsed" />
+      </StackPanel>
+    </Grid>
   </Border>
 </Window>
