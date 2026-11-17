@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+.vs/
+TestResults/
+artifacts/
+*.user
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.log
+.env
+.env.*
+!.env.example
+**/host.json
+**/devices.json

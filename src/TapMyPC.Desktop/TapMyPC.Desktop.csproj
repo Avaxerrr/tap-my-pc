@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>TapMyPC</AssemblyName>
+    <RootNamespace>TapMyPC.Desktop</RootNamespace>
+    <Product>TapMyPC</Product>
+    <Title>TapMyPC</Title>
+    <Description>Your PC, a tap away.</Description>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <ProjectReference Include="../TapMyPC.Core/TapMyPC.Core.csproj" />
+    <ProjectReference Include="../TapMyPC.Windows/TapMyPC.Windows.csproj" />
+    <ProjectReference Include="../TapMyPC.Api/TapMyPC.Api.csproj" />
+  </ItemGroup>
+</Project>

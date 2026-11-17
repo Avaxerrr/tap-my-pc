@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+  x:Class="TapMyPC.Desktop.MainWindow"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+  Title="TapMyPC"
+  Width="900"
+  Height="830"
+  MinWidth="740"
+  MinHeight="640"
+  WindowStyle="None"
+  Background="#101718"
+  Foreground="#EEF3EE"
+  FontFamily="Segoe UI"
+  WindowStartupLocation="CenterScreen">
+  <shell:WindowChrome.WindowChrome>
+    <shell:WindowChrome
+      CaptionHeight="50"
+      ResizeBorderThickness="6"
+      GlassFrameThickness="0"
+      CornerRadius="12"
+      UseAeroCaptionButtons="False" />
+  </shell:WindowChrome.WindowChrome>
+  <Window.Resources>
+    <BooleanToVisibilityConverter
+      x:Key="BoolVisibility" />
+    <Style
+      TargetType="TextBlock">
+      <Setter
+        Property="TextWrapping"
+        Value="Wrap" />
+    </Style>
+    <Style
+      TargetType="Button">
+      <Setter
+        Property="Background"
+        Value="#263332" />
+      <Setter
+        Property="Foreground"
+        Value="#EEF3EE" />
+      <Setter
+        Property="BorderThickness"
+        Value="0" />
+      <Setter
+        Property="Padding"
+        Value="16,11" />
+      <Setter
+        Property="Cursor"
+        Value="Hand" />
+      <Setter
+        Property="Template">
+        <Setter.Value>
+          <ControlTemplate
+            TargetType="Button">
+            <Border
+              x:Name="Surface"
+              Background="{TemplateBinding Background}"
+              CornerRadius="9"
+              Padding="{TemplateBinding Padding}">
+              <ContentPresenter
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger
+                Property="IsMouseOver"
+                Value="True">
+                <Setter
+                  TargetName="Surface"
+                  Property="Opacity"
+                  Value="0.8" />
+              </Trigger>
+              <Trigger
+                Property="IsEnabled"
+                Value="False">
+                <Setter
+                  TargetName="Surface"
+                  Property="Opacity"
+                  Value="0.4" />
+              </Trigger>
+              <Trigger
+                Property="IsKeyboardFocused"
+                Value="True">
+                <Setter
+                  TargetName="Surface"
+                  Property="BorderBrush"
+                  Value="#C9EFAA" />
+                <Setter
+                  TargetName="Surface"
+                  Property="BorderThickness"
+                  Value="1" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style
+      x:Key="Primary"
+      TargetType="Button"
+      BasedOn="{StaticResource {x:Type Button}}">
+      <Setter
+        Property="Background"
+        Value="#C9EFAA" />
+      <Setter
+        Property="Foreground"
+        Value="#192519" />
+      <Setter
+        Property="FontWeight"
+        Value="SemiBold" />
+    </Style>
+    <Style
+      TargetType="TextBox">
+      <Setter
+        Property="Padding"
+        Value="12" />
+      <Setter
+        Property="Background"
+        Value="#10191A" />
+      <Setter
+        Property="Foreground"
+        Value="#EEF3EE" />
+      <Setter
+        Property="BorderBrush"
+        Value="#394A45" />
+      <Setter
+        Property="VerticalContentAlignment"
+        Value="Center" />
+    </Style>
+    <Style
+      x:Key="Card"
+      TargetType="Border">
+      <Setter
+        Property="Background"
+        Value="#192324" />
+      <Setter
+        Property="BorderBrush"
+        Value="#2D3B38" />
+      <Setter
+        Property="BorderThickness"
+        Value="1" />
+      <Setter
+        Property="CornerRadius"
+        Value="16" />
+      <Setter
+        Property="Padding"
+        Value="24" />
+    </Style>
+    <Style
+      x:Key="Label"
+      TargetType="TextBlock">
+      <Setter
+        Property="Foreground"
+        Value="#9BAFA6" />
+      <Setter
+        Property="FontSize"
+        Value="11" />
+      <Setter
+        Property="Margin"
+        Value="0,0,0,10" />
+    </Style>
+    <Style
+      TargetType="CheckBox">
+      <Setter
+        Property="Foreground"
+        Value="#D2DED6" />
+      <Setter
+        Property="Margin"
+        Value="0,10,0,6" />
+    </Style>
+  </Window.Resources>
+  <Border
+    BorderBrush="#35433E"
+    BorderThickness="1"
+    CornerRadius="12">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition
+          Height="50" />
+        <RowDefinition />
+      </Grid.RowDefinitions>
+      <Grid
+        Margin="22,0,8,0">
+        <TextBlock
+          Text="◉   TAPMYPC"
+          Foreground="#C9EFAA"
+          FontSize="11"
+          FontWeight="SemiBold"
+          VerticalAlignment="Center" />
+        <StackPanel
+          Orientation="Horizontal"
+          HorizontalAlignment="Right"
+          shell:WindowChrome.IsHitTestVisibleInChrome="True">
+          <Button
+            Content="─"
+            Width="44"
+            Padding="0"
+            Background="Transparent"
+            ToolTip="Minimize"
+            AutomationProperties.Name="Minimize"
+            Click="Minimize_Click" />
+          <Button
+            Content="□"
+            Width="44"
+            Padding="0"
+            Background="Transparent"
+            ToolTip="Maximize or restore"
+            AutomationProperties.Name="Maximize or restore"
+            Click="Maximize_Click" />
+          <Button
+            Content="✕"
+            Width="44"
+            Padding="0"
+            Background="Transparent"
+            ToolTip="Hide to tray"
+            AutomationProperties.Name="Hide to tray"
+            Click="Hide_Click" />
+        </StackPanel>
+      </Grid>
+      <ScrollViewer
+        Grid.Row="1"
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled">
+        <StackPanel
+          Margin="32,18,32,24">
+          <Grid
+            Margin="0,0,0,25">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition />
+              <ColumnDefinition
+                Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+              <TextBlock
+                Text="Your PC, a tap away."
+                FontSize="31"
+                FontWeight="SemiBold" />
+              <TextBlock
+                Text="Connect once. Settle in. Control from your phone."
+                Foreground="#9BAFA6"
+                Margin="0,8,0,0" />
+            </StackPanel>
+            <Border
+              Grid.Column="1"
+              Background="#203129"
+              CornerRadius="20"
+              Padding="14,9"
+              VerticalAlignment="Center"
+              Margin="16,0,0,0">
+              <TextBlock
+                Text="{Binding HostStatus}"
+                Foreground="#C9EFAA"
+                FontSize="11" />
+            </Border>
+          </Grid>
+          <Border
+            Style="{StaticResource Card}">
+            <StackPanel>
+              <TextBlock
+                Text="01 / CONNECT YOUR PHONE"
+                Style="{StaticResource Label}" />
+              <TextBlock
+                Text="Your remote starts here."
+                FontSize="22"
+                FontWeight="SemiBold" />
+              <TextBlock
+                Text="{Binding NetworkSummary}"
+                Foreground="#9BAFA6"
+                Margin="0,7,0,16" />
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition />
+                  <ColumnDefinition
+                    Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox
+                  Text="{Binding RemoteUrl, Mode=OneWay}"
+                  IsReadOnly="True"
+                  FontSize="18"
+                  Foreground="#C9EFAA" />
+                <Button
+                  Grid.Column="1"
+                  Content="Copy link"
+                  Command="{Binding CopyUrl}"
+                  IsEnabled="{Binding IsHosting}"
+                  Margin="12,0,0,0" />
+              </Grid>
+              <Grid
+                Margin="0,18,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition
+                    Width="Auto" />
+                  <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Button
+                  Content="{Binding HostButtonText}"
+                  Command="{Binding ToggleHost}"
+                  Style="{StaticResource Primary}"
+                  MinWidth="125" />
+                <TextBlock
+                  Grid.Column="1"
+                  Text="{Binding Message}"
+                  Foreground="#AFBEB5"
+                  Margin="18,0,0,0"
+                  VerticalAlignment="Center"
+                  FontSize="12" />
+              </Grid>
+            </StackPanel>
+          </Border>
+          <Grid
+            Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition />
+              <ColumnDefinition
+                Width="18" />
+              <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Border
+              Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock
+                  Text="02 / PAIR A DEVICE"
+                  Style="{StaticResource Label}" />
+                <TextBlock
+                  Text="Make it yours."
+                  FontSize="21"
+                  FontWeight="SemiBold" />
+                <TextBlock
+                  Text="{Binding PairingCode}"
+                  FontSize="31"
+                  FontFamily="Consolas"
+                  Foreground="#C9EFAA"
+                  Margin="0,18,0,7" />
+                <TextBlock
+                  Text="{Binding PairingExpiry}"
+                  Foreground="#9BAFA6"
+                  FontSize="12"
+                  MinHeight="38" />
+                <Button
+                  Content="Generate pairing code"
+                  Command="{Binding OpenPairing}"
+                  IsEnabled="{Binding IsHosting}"
+                  HorizontalAlignment="Left"
+                  Margin="0,14,0,0" />
+              </StackPanel>
+            </Border>
+            <Border
+              Grid.Column="2"
+              Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock
+                  Text="03 / RECENT ACTIVITY"
+                  Style="{StaticResource Label}" />
+                <TextBlock
+                  Text="Know what happened."
+                  FontSize="21"
+                  FontWeight="SemiBold"
+                  Margin="0,0,0,12" />
+                <Grid
+                  MinHeight="145">
+                  <TextBlock
+                    Text="Remote actions will appear here, including results and errors."
+                    Foreground="#9BAFA6"
+                    FontSize="12">
+                    <TextBlock.Style>
+                      <Style
+                        TargetType="TextBlock">
+                        <Setter
+                          Property="Visibility"
+                          Value="Collapsed" />
+                        <Style.Triggers>
+                          <DataTrigger
+                            Binding="{Binding Activity.Count}"
+                            Value="0">
+                            <Setter
+                              Property="Visibility"
+                              Value="Visible" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                  <ScrollViewer
+                    MaxHeight="170"
+                    VerticalScrollBarVisibility="Auto">
+                    <ItemsControl
+                      ItemsSource="{Binding Activity}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                          <StackPanel
+                            Margin="0,0,0,12">
+                            <TextBlock
+                              Text="{Binding Message}"
+                              FontSize="12"
+                              Foreground="#D4E0D8" />
+                            <TextBlock
+                              Text="{Binding Phase}"
+                              FontSize="10"
+                              Foreground="#91A79B"
+                              Margin="0,4,0,0" />
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </ScrollViewer>
+                </Grid>
+              </StackPanel>
+            </Border>
+          </Grid>
+          <Border
+            Style="{StaticResource Card}"
+            Margin="0,18,0,0"
+            Padding="20,16"
+            Visibility="{Binding HasPending, Converter={StaticResource BoolVisibility}}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition
+                  Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock
+                  Text="UPCOMING ACTION"
+                  Style="{StaticResource Label}" />
+                <TextBlock
+                  Text="{Binding Pending}"
+                  FontSize="19"
+                  Foreground="#C9EFAA" />
+              </StackPanel>
+              <Button
+                Grid.Column="1"
+                Content="Cancel action"
+                Command="{Binding CancelTimer}"
+                VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <Expander
+            Header="Advanced settings"
+            Foreground="#A8BCB0"
+            Margin="0,22,0,0">
+            <StackPanel
+              Margin="0,16,0,0">
+              <TextBlock
+                Text="The network address is automatic. Override it only for another adapter or localhost debugging."
+                Foreground="#9BAFA6"
+                FontSize="12"
+                Margin="0,0,0,12" />
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition />
+                  <ColumnDefinition
+                    Width="100" />
+                  <ColumnDefinition
+                    Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox
+                  ItemsSource="{Binding NetworkChoices}"
+                  DisplayMemberPath="Label"
+                  SelectedValuePath="Address"
+                  SelectedValue="{Binding Address}"
+                  IsEnabled="{Binding CanEditConnection}"
+                  Padding="8" />
+                <TextBox
+                  Grid.Column="1"
+                  Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}"
+                  IsEnabled="{Binding CanEditConnection}"
+                  Margin="12,0,0,0"
+                  ToolTip="Port" />
+                <Button
+                  Grid.Column="2"
+                  Content="Refresh"
+                  Command="{Binding RefreshNetwork}"
+                  IsEnabled="{Binding CanEditConnection}"
+                  Margin="12,0,0,0" />
+              </Grid>
+              <CheckBox
+                Content="Show brief TapMyPC notifications on this PC"
+                IsChecked="{Binding ShowNotifications}" />
+              <CheckBox
+                Content="Start in tray when I sign in (starts saved host)"
+                IsChecked="{Binding StartupEnabled}" />
+              <TextBlock
+                Text="Paired devices"
+                Style="{StaticResource Label}"
+                Margin="0,18,0,6" />
+              <ListBox
+                ItemsSource="{Binding Devices}"
+                SelectedItem="{Binding SelectedDevice}"
+                DisplayMemberPath="Name"
+                Background="#10191A"
+                Foreground="#EEF3EE"
+                BorderBrush="#394A45"
+                MinHeight="50"
+                MaxHeight="110" />
+              <Button
+                Content="Revoke selected device"
+                Command="{Binding RevokeDevice}"
+                HorizontalAlignment="Left"
+                Margin="0,10,0,14" />
+              <TextBlock
+                Text="Certificate fingerprint · SHA-256"
+                Style="{StaticResource Label}" />
+              <TextBox
+                Text="{Binding Fingerprint, Mode=OneWay}"
+                IsReadOnly="True"
+                TextWrapping="Wrap"
+                FontFamily="Consolas"
+                FontSize="11" />
+              <Button
+                Content="Export public certificate"
+                Command="{Binding ExportCertificate}"
+                HorizontalAlignment="Left"
+                Margin="0,10,0,0" />
+            </StackPanel>
+          </Expander>
+          <TextBlock
+            Text="Closing this window keeps your remote running in the tray. No firewall or certificate-trust settings are changed automatically."
+            Foreground="#81998C"
+            FontSize="11"
+            Margin="0,22,0,0" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</Window>

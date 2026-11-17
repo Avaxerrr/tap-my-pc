@@ -1,0 +1,24 @@
+namespace TapMyPC.Core.Networking;
+
+public record NetworkAddress(string Address, string Name, bool IsWifi, bool HasGateway)
+{
+    public string Label => Address switch
+    {
+        "auto" => "Automatic network address (recommended)",
+        "127.0.0.1" => "This PC only · localhost (debugging)",
+        _ => $"{Name} · {Address}"
+    };
+}
+
+public static class AddressSelection
+{
+    public const string Automatic = "auto";
+    public static string Resolve(string? selected, IEnumerable<NetworkAddress> available)
+    {
+        var candidates = available.ToArray();
+        if (selected == "127.0.0.1") return selected;
+        if (!string.IsNullOrWhiteSpace(selected) && selected != Automatic && candidates.Any(a => a.Address == selected)) return selected;
+        return candidates.OrderByDescending(a => a.HasGateway).ThenByDescending(a => a.IsWifi).FirstOrDefault()?.Address
+            ?? throw new InvalidOperationException("No active private network address was found. Connect to Wi-Fi or select localhost in Advanced settings.");
+    }
+}

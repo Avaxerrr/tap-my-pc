@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#101517"><title>TapMyPC</title><link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script></head>
+<body>
+<main>
+  <header><div><span class="eyebrow">YOUR PC, A TAP AWAY</span><h1>TapMyPC<span class="accent">.</span></h1></div><span id="connection" class="badge">Not connected</span></header>
+  <p id="notice" role="status" aria-live="polite">Open pairing in the Windows app to get started.</p>
+  <section id="pairing" class="card">
+    <span class="eyebrow">01 / CONNECT</span><h2>A little closer.</h2><p>Enter the one-time code shown on your PC. It expires after five minutes.</p>
+    <form id="pair-form"><label for="device-name">Device name</label><input id="device-name" maxlength="60" value="My phone" required autocomplete="off"><label for="pair-code">Pairing code</label><input id="pair-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required autocomplete="one-time-code"><button class="primary" type="submit">Connect to PC <span aria-hidden="true">↗</span></button></form>
+  </section>
+  <div id="remote" hidden>
+    <aside id="live-action" hidden aria-live="polite"><div><strong id="live-action-title"></strong><span id="live-action-time"></span></div><button id="cancel-live-action">Cancel</button></aside>
+    <section class="card"><div class="section-heading"><div><span class="eyebrow">01 / SOUND</span><h2>Set the mood.</h2></div><span id="volume-value" class="large-value">—</span></div>
+      <label for="volume">Master volume</label><input type="range" id="volume" min="0" max="100" value="0"><div class="row"><button id="volume-down" aria-label="Volume down">− Volume</button><button id="mute">Mute</button><button id="volume-up" aria-label="Volume up">+ Volume</button></div>
+      <div class="row media"><button data-media="Previous" aria-label="Previous track">⏮</button><button data-media="PlayPause" aria-label="Play or pause">Play / pause</button><button data-media="Next" aria-label="Next track">⏭</button></div>
+    </section>
+    <section class="card"><span class="eyebrow">02 / WIND DOWN</span><h2>Call it a night.</h2><div class="grid"><button id="display-off">◐<span>Monitors off</span></button><button data-power="Lock">▣<span>Lock PC</span></button><button data-power="Sleep">☾<span>Sleep</span></button><button data-power="Hibernate">◌<span>Hibernate</span></button></div></section>
+    <section class="card"><span class="eyebrow">03 / ON YOUR TIME</span><h2>Leave the rest to us.</h2><form id="timer-form"><div class="row"><div><label for="timer-action">Action</label><select id="timer-action"><option value="Hibernate">Hibernate</option><option value="Sleep">Sleep</option><option value="Shutdown">Shut down</option><option value="Restart">Restart</option></select></div><div><label for="timer-minutes">After minutes</label><input id="timer-minutes" type="number" min="1" max="1440" value="30" required></div></div><button type="submit" class="primary">Set timer</button></form>
+      <div id="pending" hidden><p id="pending-label"></p><button id="cancel-timer">Cancel pending action</button></div>
+      <div class="row power-row"><button data-power="Shutdown" class="danger">Shut down</button><button data-power="Restart">Restart</button></div>
+    </section>
+    <footer><span id="pc-name">Your PC</span><button id="disconnect" class="text-button">Forget this connection</button></footer>
+  </div>
+  <dialog id="confirm-dialog"><form method="dialog"><span class="eyebrow">POWER CONTROL</span><h2 id="confirm-title">Confirm action</h2><p id="confirm-description"></p><div class="row"><button value="cancel">Keep PC on</button><button value="confirm" class="primary">Confirm</button></div></form></dialog>
+</main>
+<div id="action-toast" role="status" aria-live="polite" hidden><span id="action-indicator" aria-hidden="true"></span><span id="action-message"></span><button id="dismiss-toast" aria-label="Dismiss notification">×</button></div>
+</body></html>
