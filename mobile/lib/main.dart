@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'connection.dart';
+import 'bluetooth_connection.dart';
+import 'selected_connection.dart';
 import 'pairing_page.dart';
 import 'discovery.dart';
 import 'ui/app_theme.dart';
@@ -75,6 +77,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   List<dynamic> outputs = [], monitors = [], shortcuts = [];
   String message = 'Add your first PC to get started.';
   bool busy = false, refreshing = false, foreground = true;
+  bool editingConnection = false;
   String appVersion = '';
   String? feedback, lastServerTime;
   bool feedbackError = false;
@@ -86,6 +89,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   final Map<String, List<String>> candidates = {};
   final Map<String, DateTime> verifiedAt = {};
   final Set<String> pairingRequired = {};
+  final Set<String> unsavedProfiles = {};
   String discoveryMessage = 'Looking for saved PCs on this network.';
   bool probing = false;
   int ticks = 0;
@@ -157,7 +161,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   void select(PcProfile profile) {
     epoch++;
     api?.close();
-    api = widget.createApi(profile);
+    api = profile.connectionMode == 'bluetooth'
+        ? BluetoothPcApi(profile)
+        : widget.createApi(profile);
     setState(() {
       selected = profile;
       status = null;
@@ -179,6 +185,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     final client = api;
     final generation = epoch;
     if (client == null ||
+        editingConnection ||
         busy ||
         refreshing ||
         !foreground ||
@@ -198,34 +205,45 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         final current = selected!;
         final alternatives = (candidates[normalizePin(current.pin)] ?? [])
             .where((a) => a != current.address);
-        if (alternatives.isEmpty) rethrow;
-        final recovered = await reconnectPc(current, alternatives);
-        if (!mounted || generation != epoch) {
+        if (alternatives.isEmpty &&
+            current.bluetoothAddress == null &&
+            !client.isBluetooth) {
+          rethrow;
+        }
+        final recovered = await connectSelectedPc(
+          current,
+          client.isBluetooth
+              ? [current.address, ...alternatives]
+              : alternatives,
+          wifi: widget.createApi,
+        );
+        if (!mounted || generation != epoch || busy) {
           recovered.api.close();
           return;
         }
         api?.close();
         api = recovered.api;
         final updated = recovered.profile;
-        setState(() {
-          profiles = profiles
-              .map(
-                (p) => normalizePin(p.pin) == normalizePin(updated.pin)
-                    ? updated
-                    : p,
-              )
-              .toList();
-          selected = updated;
-        });
-        try {
-          await store.save(profiles);
-        } catch (_) {
-          /* Current verified connection remains usable. */
-        }
+        await rememberVerifiedProfile(updated, generation);
         next = recovered.status;
       }
       if (!mounted || generation != epoch) return;
       final activeClient = api!;
+      var verified = activeClient.verifiedProfile;
+      final bluetoothInfo = next['bluetoothConnection'];
+      if (bluetoothInfo is Map &&
+          bluetoothInfo['address'] is String &&
+          bluetoothInfo['serviceId'] ==
+              '8cf69287-4d5e-47f1-97c8-0a4ec3b5d290' &&
+          RegExp(
+            r'^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$',
+          ).hasMatch(bluetoothInfo['address'])) {
+        verified = verified.withBluetoothAddress(
+          (bluetoothInfo['address'] as String).toUpperCase(),
+        );
+      }
+      await rememberVerifiedProfile(verified, generation);
+      if (!mounted || generation != epoch) return;
       final loadDevices = devices || status == null;
       // A verified status response establishes connectivity. Optional device
       // lists must not turn a reachable PC into an offline one.
@@ -237,7 +255,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
             : Map<String, dynamic>.from(pending);
         lastServerTime = next['serverTime'];
         verifiedAt[normalizePin(selected!.pin)] = DateTime.now();
-        message = 'Connected to ${selected!.name}';
+        message =
+            'Connected to ${selected!.name}${activeClient.isBluetooth ? ' · Bluetooth' : ''}${unsavedProfiles.contains(selected!.pin) ? '. Identity storage failed; retrying automatically.' : ''}';
       });
       if (loadDevices) {
         final errors = <String, String>{};
@@ -287,9 +306,13 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
   }
 
-  String friendly(Object error) => error is HttpException
-      ? error.message
-      : error.toString().replaceFirst('Exception: ', '');
+  String friendly(Object error) => switch (error) {
+    HttpException e => e.message,
+    HandshakeException e => e.message,
+    FormatException e => e.message,
+    PlatformException e => e.message ?? 'Bluetooth is unavailable.',
+    _ => error.toString().replaceFirst('Exception: ', ''),
+  };
   Future<void> command(String path, String method, Object? body) async {
     if (busy || status == null || api == null) return;
     final generation = epoch;
@@ -385,27 +408,189 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> addPc() async {
-    final result = await Navigator.push<PcProfile>(
-      context,
-      MaterialPageRoute(builder: (_) => const PairPage()),
-    );
-    if (!mounted || result == null) return;
-    final saved = [...profiles.where((p) => p.pin != result.pin), result];
+  Future<void> rememberVerifiedProfile(
+    PcProfile updated,
+    int generation,
+  ) async {
+    if (!mounted || generation != epoch || editingConnection) return;
+    final original = profiles.where((p) => p.pin == updated.pin).firstOrNull;
+    if (original == null ||
+        original.token != updated.token ||
+        (original.keyPin == updated.keyPin &&
+            original.address == updated.address &&
+            original.bluetoothAddress == updated.bluetoothAddress &&
+            original.connectionMode == updated.connectionMode &&
+            !unsavedProfiles.contains(updated.pin))) {
+      return;
+    }
+    setState(() {
+      profiles = profiles
+          .map((p) => p.pin == updated.pin ? updated : p)
+          .toList();
+      if (selected?.pin == updated.pin) selected = updated;
+    });
+    unsavedProfiles.add(updated.pin);
     try {
-      await store.save(saved);
-      if (!mounted) return;
-      setState(() => profiles = saved);
-      pairingRequired.remove(result.pin);
-      select(result);
-      startDiscovery();
+      await store.save(profiles);
+      unsavedProfiles.remove(updated.pin);
     } catch (_) {
-      if (mounted) {
+      if (mounted && generation == epoch) {
         setState(
           () => message =
-              'Could not save pairing securely. Revoke the new entry on the PC and try again.',
+              'Connected, but the renewed identity could not be saved securely. Try connecting again.',
         );
       }
+    }
+  }
+
+  Future<void> connectionSettings() async {
+    final target = selected;
+    if (target == null || busy) return;
+    if (editingConnection) return;
+    editingConnection = true;
+    epoch++;
+    try {
+      final mode = await showDialog<String>(
+        context: context,
+        builder: (dialog) => AlertDialog(
+          title: Text('Connection for ${target.name}'),
+          content: SizedBox(
+            width: 360,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Current: ${api?.transportLabel ?? 'Disconnected'}'),
+                  const SizedBox(height: 12),
+                  for (final choice in const [
+                    (
+                      'auto',
+                      'Automatic',
+                      'Wi-Fi first; Bluetooth when Wi-Fi cannot connect.',
+                    ),
+                    ('wifi', 'Wi-Fi only', 'Use the local network.'),
+                    (
+                      'bluetooth',
+                      'Bluetooth only',
+                      'Use Bluetooth without the local network.',
+                    ),
+                  ])
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(choice.$2),
+                      subtitle: Text(choice.$3),
+                      trailing: target.connectionMode == choice.$1
+                          ? const Icon(Icons.check)
+                          : null,
+                      onTap: () => Navigator.pop(dialog, choice.$1),
+                    ),
+                  if (target.bluetoothAddress == null)
+                    const Text(
+                      'Connect over Wi-Fi once to save this PC’s Bluetooth connection.',
+                    ),
+                  TextButton(
+                    onPressed: () async {
+                      try {
+                        if (await PhoneBluetooth.requestAccess()) {
+                          await PhoneBluetooth.openSettings();
+                        }
+                      } catch (error) {
+                        if (mounted) setState(() => message = friendly(error));
+                      }
+                    },
+                    child: const Text('Phone Bluetooth settings'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialog),
+              child: const Text('Cancel'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || mode == null || selected?.pin != target.pin || busy) {
+        return;
+      }
+      if (mode == 'bluetooth' && target.bluetoothAddress == null) {
+        setState(
+          () => message =
+              'Connect to this PC over Wi-Fi once before selecting Bluetooth.',
+        );
+        return;
+      }
+      try {
+        if (mode != 'wifi' &&
+            target.bluetoothAddress != null &&
+            !await PhoneBluetooth.requestAccess()) {
+          if (mounted) {
+            setState(
+              () => message =
+                  'Nearby devices permission is needed for Bluetooth.',
+            );
+          }
+          return;
+        }
+        if (!mounted || selected?.pin != target.pin) return;
+        final updated = target.withConnectionMode(mode);
+        final saved = profiles
+            .map((p) => p.pin == target.pin ? updated : p)
+            .toList();
+        await store.save(saved);
+        if (!mounted || selected?.pin != target.pin) return;
+        setState(() => profiles = saved);
+        select(updated);
+      } catch (error) {
+        if (mounted) setState(() => message = friendly(error));
+      }
+    } finally {
+      editingConnection = false;
+      if (mounted) refresh(devices: true);
+    }
+  }
+
+  Future<void> recoverPc() async {
+    final target = selected;
+    if (target == null || busy) return;
+    await enrollPc(recovering: target);
+  }
+
+  Future<void> addPc() => enrollPc();
+
+  Future<void> enrollPc({PcProfile? recovering}) async {
+    if (editingConnection) return;
+    editingConnection = true;
+    epoch++;
+    try {
+      final result = await Navigator.push<PcProfile>(
+        context,
+        MaterialPageRoute(builder: (_) => PairPage(recovering: recovering)),
+      );
+      if (!mounted || result == null) return;
+      final saved = replacePcProfile(profiles, result, recovering: recovering);
+      try {
+        await store.save(saved);
+        if (!mounted) return;
+        setState(() => profiles = saved);
+        pairingRequired.remove(result.pin);
+        if (recovering != null) pairingRequired.remove(recovering.pin);
+        select(result);
+        startDiscovery();
+      } catch (_) {
+        if (mounted) {
+          setState(
+            () => message =
+                'Could not save pairing securely. Revoke the new entry on the PC and try again.',
+          );
+        }
+      }
+    } finally {
+      editingConnection = false;
+      if (mounted) refresh(devices: true);
     }
   }
 
@@ -514,11 +699,11 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   }
 
   Future<void> probeSaved() async {
-    if (probing || busy || !foreground) return;
+    if (probing || busy || editingConnection || !foreground) return;
     probing = true;
     try {
       for (final profile in List<PcProfile>.of(profiles)) {
-        if (!mounted || !foreground) break;
+        if (!mounted || !foreground || editingConnection) break;
         if (normalizePin(profile.pin) == normalizePin(selected?.pin ?? '') ||
             pairingRequired.contains(profile.pin)) {
           continue;
@@ -531,12 +716,16 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           continue;
         }
         VerifiedPcConnection? connection;
+        final generation = epoch;
         try {
-          connection = await reconnectPc(profile, [
+          connection = await connectSelectedPc(profile, [
             profile.address,
             ...?candidates[key],
           ]);
-          if (mounted) setState(() => verifiedAt[key] = DateTime.now());
+          if (mounted) {
+            await rememberVerifiedProfile(connection.profile, generation);
+            if (mounted) setState(() => verifiedAt[key] = DateTime.now());
+          }
         } catch (error) {
           if (error is PcApiException && error.statusCode == 401 && mounted) {
             setState(() => pairingRequired.add(profile.pin));
@@ -569,7 +758,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           'Normal use: open both apps. This phone looks for your saved PCs, verifies their certificates, and reconnects without another code. Each PC has its own pairing.\n\n'
           'Stop connections on the PC pauses access and stays stopped after restart. Start connections to resume.\n\n'
           'Use the PC selector to switch. Commands always target the named PC. Discovery never grants access.\n\n'
-          'Both devices need a reachable local network. Public Wi-Fi may block direct connections. Bluetooth transport and internet remote access are not included yet.',
+          'First pairing needs reachable Wi-Fi. After one verified connection, Settings > Connection offers Automatic, Wi-Fi only, or Bluetooth only. Allow Nearby devices and complete system Bluetooth pairing if prompted. Both radios must be on. Bluetooth works independently of LAN reachability; internet remote access is not included.',
         ),
       ),
       actions: [
@@ -602,6 +791,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     onSelect: select,
     onAdd: addPc,
     onForget: forget,
+    onRecover: recoverPc,
+    onConnection: connectionSettings,
     onRefresh: () => refresh(devices: true),
     onHelp: explainConnections,
     send: command,

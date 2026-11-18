@@ -110,6 +110,17 @@ public sealed class PairingService
     }
     public void ClearPresence() { lock (gate) lastAuthenticated.Clear(); }
 
+    public void RevokeAll()
+    {
+        lock (gate)
+        {
+            store.Save(Array.Empty<PairedDevice>());
+            devices.Clear();
+            lastAuthenticated.Clear();
+            ClosePairing();
+        }
+    }
+
     public void Revoke(Guid id)
     {
         lock (gate)

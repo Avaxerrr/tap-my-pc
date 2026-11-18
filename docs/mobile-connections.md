@@ -1,6 +1,6 @@
 # Mobile connections and trust
 
-Current installed development versions: desktop/server **0.3.4 (build 7)** and Android **0.4.3 (build 7)**. QR enrollment, saved PC discovery/reconnection, stable certificate identity across IP changes, and remembered desktop connection state were introduced in the earlier 0.3.0 work. Monitoring is deferred. See [setup](setup.md) and [verification](verification.md) for current delivery evidence.
+Current installed development versions: desktop/server **0.5.0 (build 9)** and Android **0.6.0 (build 10)**, adding encrypted Bluetooth secondary connectivity and saved transport preferences, including the earlier certificate work. Installation results are recorded in verification.md. QR enrollment, saved PC discovery/reconnection, stable certificate identity across IP changes, and remembered desktop connection state were introduced in the earlier 0.3.0 work. Monitoring is planned after Bluetooth secondary connectivity and before remote wake. See [setup](setup.md) and [verification](verification.md) for current delivery evidence.
 
 ## Current Android enrollment
 
@@ -10,7 +10,19 @@ The Android app scans locally, validates the payload, previews the PC, and verif
 
 QR and browser/manual code enrollment share one window. Successful use of either consumes both. Regeneration, expiration, five invalid attempts, or stopping/exiting the host closes that window; the desktop hides the QR after observing closure. No HTTP endpoint generates or exposes QR invitations. Payloads/secrets are not logged.
 
-Saved profiles distinguish pinned certificates rather than just IP addresses. Reconnection tries saved addresses and matching mDNS hints. The desktop remembers its existing certificate in identity.json and reuses it across IP changes. Certificate renewal/replacement still requires explicit recovery; a different certificate is never silently trusted. See [mobile setup](../mobile/README.md).
+Saved profiles distinguish pinned certificates rather than just IP addresses. Reconnection tries saved addresses and matching mDNS hints. The desktop remembers its existing certificate in identity.json and reuses it across IP changes. Renewed certificates are accepted only with a previously verified identity key and valid dates. A different key requires explicit local reset and fresh enrollment. See [mobile setup](../mobile/README.md).
+
+## Certificate renewal and recovery
+
+The desktop checks validity at listener startup and during its existing ten-second network checks. Within 30 days of expiry it stops/restarts only the listener and advertisement, issues a new one-year certificate with the same persisted RSA private key, and saves its new thumbprint. No certificate-store root trust, Windows clock, startup preference, or power timer changes are required. Old certificate entries are retained; they are not silently removed from the user's store.
+
+Android initially checks the exact QR/manual SHA-256 leaf fingerprint. After a verified connection it derives SHA-256 of the DER SubjectPublicKeyInfo from the actual TLS certificate, persists it as optional keyPin in the existing protected profile, and still requires valid certificate dates. Valid renewed certificates with that key can use the existing bearer token. Renewal does not extend revoked phone access. Profiles without keyPin remain leaf-only until a successful verified connection upgrades them; a phone that never connected before renewal must re-pair. Update the phone before the desktop when a certificate is already near expiry. Older Android builds may require re-pairing after every certificate renewal.
+
+Discovery adds pk=identity-key SHA-256 alongside the existing fp leaf fingerprint. Either saved identity can supply an address hint; TLS and bearer verification remain mandatory. Profile selection IDs remain stable across renewal. Profile writes are serialized and failed migration saves retry without replaying commands.
+
+If the certificate/private key is missing or unusable, use desktop Configure > Advanced Network & Security > Reset connection identity. Confirm Reset and revoke all phones. The listener closes, a fresh key/certificate is created, all old credentials/invitations are persistently revoked, and connections resume only if previously enabled and the network is trusted. Pending timers continue. If paused/offline, the identity can still reset; resume connections on a trusted network to display a fresh QR.
+
+On Android select the affected PC, then Settings > Re-pair selected PC. Explicitly scan and confirm that PC's new QR, or enter its new fingerprint and manual code. Only that profile is replaced; other PCs remain saved. No changed identity is accepted merely because its name/address matches. Browser users must verify the new fingerprint and accept the new self-signed certificate after renewal/reset.
 
 ## Current prototype
 
@@ -23,7 +35,7 @@ Normal desktop launch resumes connections unless Stop connections was previously
 - Android discovers _tapmypc._tcp services with native NSD while foregrounded, and tries saved addresses. Advertisements contain a version, public certificate fingerprint and machine name, never a credential.
 - Treat discovered names, IDs, and addresses as untrusted hints. Verify saved cryptographic identity before sending credentials or commands.
 - Authenticate silently per PC; ordinary restarts, IP changes, and temporary disconnections do not require new enrollment.
-- Existing valid certificates migrate into a persistent identity reference. Missing/expired certificates fail closed; renewal/key replacement and recovery remain future UI work. Never silently trust a replacement key.
+- Existing valid certificates migrate into a persistent identity reference. The desktop renews within 30 days of expiry, including after expiry when the original private key still exists. A missing/unusable key, or a lost identity reference with existing paired clients, fails closed with a local reset instruction. Older installations that have saved phones but never wrote identity.json require a local reset instead of guessing a certificate from its subject. Never silently trust a replacement key.
 - Start/Stop connections is remembered independently of Windows sign-in startup. Normal exit preserves that preference. No trusted network means waiting, with checks on network change and every ten seconds.
 - Show selected-PC connection feedback plus per-PC Connected, Available, Offline/searching, or Pairing required. Foreground reads retry automatically; saved selection persists. Revoked credentials require another QR.
 - A successful pinned/authenticated status response establishes the selected-PC connection. Failed audio-output, monitor, or shortcut lists show a warning in the affected section and clear that list, without marking the PC offline. Failed device lists retry on the existing ten-second foreground cadence or on manual refresh. Failed status or rejected credentials still disable control; 401 requires pairing.
@@ -33,7 +45,7 @@ Protect credentials with Keystore-backed encryption on Android and Keychain on i
 
 ## Multiple PCs
 
-The Android client supports separately selected saved profiles for the user's home desktop and work laptop. The saved certificate fingerprint is the current stable identity; separate identity keys and automatic renewal remain planned. Pair each separately. Each profile owns its PC identity, friendly name, endpoint hints, trust pin, and credential. Each PC retains independent paired phones, capabilities, shortcuts, activity, and timers.
+The Android client supports separately selected saved profiles for the user's home desktop and work laptop. The saved certificate fingerprint is the current stable identity; the Android profile also stores a verified identity-key pin that survives normal renewal. Explicit recovery changes the key and re-pairs only the deliberately selected phone profile. Pair each separately. Each profile owns its PC identity, friendly name, endpoint hints, trust pin, and credential. Each PC retains independent paired phones, capabilities, shortcuts, activity, and timers.
 
 Keep selected PC visible, especially in power confirmations. Switching profiles must isolate responses and in-flight work. Never redirect commands or silently fall back to another PC. Future monitoring availability is per PC. The desktop connection badge reflects authenticated requests in the last ten seconds, including requests whose operation later fails; it does not establish that all hardware queries succeeded. See [connection feedback](action-feedback.md#main-window-connection-indicator).
 
@@ -59,7 +71,7 @@ Saved pairing cannot make blocked traffic pass. A connection timeout alone does 
 
 Ethernet does not guarantee an isolated Wi-Fi phone can reach a wired PC. A VPN is not automatically a workaround: direct peer traffic may still be blocked; internet-based relaying/routing may be required.
 
-Do not bypass managed-network policy, disable firewall protections, or expose/forward the command port publicly. Public-network hosting is not enabled automatically. Bluetooth transport, USB, Wi-Fi Direct, and internet relay are not implemented. Existing Bluetooth radio on/off is a different feature.
+Do not bypass managed-network policy, disable firewall protections, or expose/forward the command port publicly. Public-network hosting is not enabled automatically. Bluetooth secondary transport is implemented separately from Bluetooth radio on/off. After initial Wi-Fi enrollment and verified Bluetooth metadata, a saved phone can use Bluetooth without LAN reachability. USB, Wi-Fi Direct, and internet relay remain unimplemented. See [Bluetooth](bluetooth.md).
 
 ## References
 

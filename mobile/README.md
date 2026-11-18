@@ -1,8 +1,8 @@
 # TapMyPC Android client
 
-Current development release: **0.4.3 (build 7)**, keeping a verified PC connected when an optional device list fails, with specific warnings and periodic read-only retries. Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
+Installed development build: **0.6.0 (build 10)**, adding encrypted Bluetooth secondary connectivity, protected Bluetooth metadata, and per-PC Automatic/Wi-Fi-only/Bluetooth-only selection. Certificate renewal/recovery is included. Installation results are recorded in [verification](../docs/verification.md). Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
 
-Automatic certificate renewal, configurable timer durations, Bluetooth transport, and iOS deployment are not implemented yet. Monitoring stays deferred. Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
+Configurable timer durations and iOS deployment are not implemented yet. Monitoring is planned after Bluetooth secondary connectivity and before remote wake. Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
 
 ## QR pairing
 
@@ -16,7 +16,7 @@ Manual entry stays available if camera access is unavailable. Profiles are disti
 
 Start the host in the PC app. In Advanced settings copy its SHA-256 certificate fingerprint. On Android select Add PC, enter a friendly name, the displayed HTTPS address, the fingerprint, and a freshly generated one-time code. Compare the fingerprint using the local PC app, not an unverified network source.
 
-Connections use an empty TLS trust store and a dedicated TLS socket which verifies the exact leaf fingerprint and validity before HTTP receives the socket. Redirects are not followed. Credentials/profile data use flutter_secure_storage; Android backup is disabled. Address changes recover automatically when discovery reaches the PC. Certificate expiry/replacement still requires explicit recovery.
+Connections use an empty TLS trust store and a dedicated TLS socket which verifies the enrolled leaf fingerprint or a previously verified identity-key pin, plus validity, before HTTP receives the socket. Redirects are not followed. Credentials/profile data use flutter_secure_storage; Android backup is disabled. Address changes recover automatically when discovery reaches the PC. Same-key renewal preserves updated profiles. Missing/replaced keys require desktop reset and Android Settings > Re-pair selected PC. Leaf-only profiles must connect once to learn keyPin before their first renewal, or pair again afterward.
 
 Pairings persist across app restarts. Selecting another PC isolates old responses and never redirects actions. Commands are not automatically retried. Forget removes the saved local profile; revoke on the PC to invalidate its credential.
 
@@ -48,9 +48,15 @@ The test checks decoding, wrong-pin rejection before redemption, successful enro
 
 Open both apps on a reachable trusted LAN after pairing once. Android remembers the selected PC, discovers saved PCs while foregrounded, verifies pinned TLS identity, and refreshes authenticated status. Other saved PCs show availability; commands never fall back to another PC and are not replayed during recovery. The Help button explains this flow in the app.
 
-Stop connections on the PC persists across restarts. Start connections resumes. Public/isolated networks may prevent control; discovery cannot bypass blocked traffic. Bluetooth transport remains deferred.
+Stop connections on the PC persists across restarts. Start connections resumes. Public/isolated networks may prevent control; discovery cannot bypass blocked traffic. Bluetooth secondary transport is implemented. See [Bluetooth setup](../docs/bluetooth.md).
 
 The reconnection_test.dart device test combines actual desktop mDNS advertisement, Android NSD, one-time QR enrollment, wrong-pin/replay rejection, stale-address recovery, protected storage, remembered selection, and the in-app help dialog. Run with the same temporary QR fixture plus TEST_LAN_ADDRESS; the simulator must be reachable from the phone. Restore saved profiles and selection after device tests.
+
+## Bluetooth secondary connection
+
+Connect to the PC over Wi-Fi once to save authenticated Bluetooth metadata. Open Settings > Connection, allow Nearby devices, and choose Automatic, Wi-Fi only, or Bluetooth only. Phone Bluetooth settings opens Android settings for radio power/system pairing. Both radios must be on. Already enrolled profiles can then control without LAN access. The phone labels active Bluetooth control; commands never retry across transports. Initial QR/manual enrollment stays on Wi-Fi.
+
+Native Android carries opaque TLS bytes over secure RFCOMM; the existing Dart client verifies the PC identity before sending credentials. Old profile JSON remains compatible through optional bluetoothAddress and connectionMode fields. See [Bluetooth architecture and hardware tests](../docs/bluetooth.md).
 
 ## Android presentation
 

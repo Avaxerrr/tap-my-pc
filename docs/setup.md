@@ -2,11 +2,23 @@
 
 ## Versions and QR visibility
 
-Current desktop/server development version: **0.3.4, build 7**. The desktop title bar reads the compiled version, and authenticated status reports `serverVersion: 0.3.4+7`. Android is **0.4.3, build 7**. Its header and Settings > About read installed package metadata; its version is independent of the PC version.
+Current installed development versions: desktop/server **0.5.0, build 9** (status reports `serverVersion: 0.5.0+9`) and Android **0.6.0, build 10**. Installation results are recorded in verification.md. Its header and Settings > About read installed package metadata; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
 Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build.props`; Android has its own declaration in `mobile/pubspec.yaml`. Follow [versioning guidelines](versioning.md) automatically for future deliverables. Version numbers need not match across the two apps when API compatibility is unchanged.
+
+## Bluetooth secondary connection
+
+Start connections on the PC with Bluetooth on. Connect Android over Wi-Fi once to save the verified PC's Bluetooth metadata. In Android Settings > Connection choose Automatic, Wi-Fi only, or Bluetooth only; allow Nearby devices and complete OS pairing if prompted. Saved phones can then control without a reachable LAN. Start/Stop connections controls both transports; Public LAN restrictions do not disable Bluetooth. See [Bluetooth setup and limitations](bluetooth.md).
+
+## Certificate renewal and recovery
+
+Certificates renew automatically within 30 days of expiry using the same PC identity key. An expired certificate can also renew when its private key remains available. Install/update Android first and let it connect once to learn the key before updating a PC whose certificate is near expiry; old leaf-only profiles otherwise require a fresh QR after renewal.
+
+For a missing/unusable PC key, open Configure > Advanced Network & Security > Reset connection identity and confirm Reset and revoke all phones. All phones must pair again. Pending timers, shortcuts, preferences, and the remembered Start/Stop choice remain. On Android select that PC and use Settings > Re-pair selected PC, then scan/confirm the new QR or use its new manual fingerprint/code. Other saved PC profiles remain.
+
+Reset also works while connections are paused. If the network is unavailable/untrusted, reconnect to a trusted network and start connections before pairing. Check an incorrect PC/phone clock before resetting: certificates outside their validity dates are rejected. Browsers need a new manually verified self-signed certificate exception after renewal/reset. See [connection trust and migration](mobile-connections.md#certificate-renewal-and-recovery).
 
 ## Build and launch
 
@@ -52,7 +64,7 @@ Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic 
 
 Use a network you control for initial LAN operation. Hotspot/USB networking require device tests. VPN/relay support is future work and needs a permitted route. Do not expose the command port publicly or disable firewall protections as a workaround. See [mobile connections](mobile-connections.md).
 
-Monitoring is deferred. Its standalone app/website compatibility plan is in [monitoring integration](monitoring-integration.md).
+Monitoring is planned after Bluetooth secondary connectivity and before remote wake. Its standalone app/website compatibility plan is in [monitoring integration](monitoring-integration.md).
 
 ## HTTPS identity and certificates
 
@@ -105,7 +117,7 @@ The phone remote has a Bluetooth card showing On, Off, Mixed, Disabled, or Unava
 
 The first change may require Windows consent on the PC. Missing adapters, disabled radios, or rejected access are reported without blocking other remote controls. Status reads do not request permission. A command accepted by Windows may still be transitioning; the remote refreshes the effective state.
 
-This controls radio power only. Pairing Bluetooth peripherals and using Bluetooth as the phone-to-PC transport are separate features and remain unimplemented.
+These controls change radio power. The separate phone-to-PC Bluetooth transport is implemented; turning off the PC radio will disconnect it. Bluetooth peripheral management remains unimplemented. See [Bluetooth setup](bluetooth.md).
 
 ## Startup and local data
 
@@ -184,4 +196,14 @@ This script targets only the simulator port, uses an isolated browser profile, a
 
 ## Remaining limitations
 
-The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, a desktop installer, presets (deferred), remote input (deferred), display arrangement, iOS deployment, Bluetooth transport/peripheral pairing, and remote wake are not implemented. The current build is a prototype, not a verified production release.
+The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, a desktop installer, presets (deferred), remote input (deferred), display arrangement, iOS deployment, Bluetooth peripheral management, and remote wake are not implemented. The current build is a prototype, not a verified production release.
+
+## Certificate lifecycle checks
+
+Run dotnet run --project tools/TapMyPC.CertificateUiCheck -c Release for the isolated WPF confirmation/recovery check. It uses temporary settings, test-owned certificates, loopback HTTPS, and simulated controls.
+
+For Windows/Flutter end-to-end checks, start dotnet run --project tools/TapMyPC.CertificateTestHost -c Release -- artifacts/certificate-test.json in the repository root. In a second shell run flutter test --dart-define=TEST_CERT_FIXTURE_PATH=ABSOLUTE_PATH_TO_FIXTURE from mobile (or its synchronized temporary build copy). The fixture must be fresh for each scenario run. Without that define, the fixture-specific test is explicitly skipped; the rest of the suite runs normally.
+
+Afterward, read the fixture JSON in PowerShell and POST to its controlUrl + /test/stop with the X-Test-Key header set to its controlKey. This lets the helper remove its own certificates and temporary settings. Never point this harness at the real app. Its control listener is loopback-only, requires a fresh test-only secret, and has no real Windows command controller.
+
+For native testing, mobile/integration_test/certificate_lifecycle_test.dart takes TEST_CERT_FIXTURE as the base64-encoded fixture JSON through a temporary --dart-define-from-file file. Use a separate temporary Android applicationId, forward only the fixture API/control loopback ports with adb reverse, then remove those mappings. The test restores protected profiles/selection in its test app. Fixtures contain temporary test credentials and belong under ignored artifacts, never in normal APK build defines. Test certificate fixtures under mobile/test/fixtures contain public test-only keys, not live identities.

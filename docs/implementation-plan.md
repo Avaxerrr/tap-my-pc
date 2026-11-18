@@ -2,7 +2,9 @@
 
 ## Current state
 
-Desktop/server development build: **0.3.4 (build 7)**, removing the custom companion shadow for smoother dragging and showing a muted No phone connected badge until a remote is active, keeping app animations enabled independently of Windows effects, and removing the animation setting, alongside dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android is **0.4.3 (build 7)** with a desktop-matched UI, Remote/Devices/Power navigation, persistent timer/feedback presentation, saved accent themes, and installed version visibility. The Android polish patches keep selected navigation icons white in every accent theme, follow Android reduced motion automatically, and isolate optional device-list failures from verified PC connectivity. The desktop updater now preserves nested runtime dependencies; its earlier flat copy omitted the Windows monitoring library and caused monitor-list errors. QR pairing, pinned discovery/address recovery, and multi-PC selection are preserved. See [setup](setup.md) and [versioning](versioning.md).
+Certificate lifecycle and Bluetooth secondary connectivity are implemented. Next priorities are hardware monitoring in the app, then remote wake investigation. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.5.0+9 and Android 0.6.0+10, including the earlier certificate work. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
+
+Previous installed desktop/server development build: **0.3.4 (build 7)**, removing the custom companion shadow for smoother dragging and showing a muted No phone connected badge until a remote is active, keeping app animations enabled independently of Windows effects, and removing the animation setting, alongside dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android is **0.4.3 (build 7)** with a desktop-matched UI, Remote/Devices/Power navigation, persistent timer/feedback presentation, saved accent themes, and installed version visibility. The Android polish patches keep selected navigation icons white in every accent theme, follow Android reduced motion automatically, and isolate optional device-list failures from verified PC connectivity. The desktop updater now preserves nested runtime dependencies; its earlier flat copy omitted the Windows monitoring library and caused monitor-list errors. QR pairing, pinned discovery/address recovery, and multi-PC selection are preserved. See [setup](setup.md) and [versioning](versioning.md).
 
 The app is branded **TapMyPC**, with the tagline **Your PC, a tap away.** The solution, project namespaces, executable, tray, dashboard, web UI, and documentation use this name. Compatibility code preserves the pre-rename preferences, paired-client credentials, certificates, and single-instance behavior.
 
@@ -46,9 +48,9 @@ Implemented audio output switching, locally approved app/website shortcuts, and 
 
 ## Phase 4: Flutter client — in progress
 
-The first Android client is implemented in mobile/ using the existing manual enrollment API, exact certificate verification, secure profile storage, multiple saved PCs, and native controls. QR enrollment is now implemented with single-use secrets and pinned certificate verification. Native discovery, authenticated address recovery, certificate reuse across IP changes, and remembered host startup are implemented. Certificate renewal/recovery remains a next protocol step. See [mobile setup](../mobile/README.md).
+The first Android client is implemented in mobile/ using the existing manual enrollment API, exact certificate verification, secure profile storage, multiple saved PCs, and native controls. QR enrollment is now implemented with single-use secrets and pinned certificate verification. Native discovery, authenticated address recovery, certificate reuse across IP changes, and remembered host startup are implemented. Same-key certificate renewal and local recovery are implemented; migration and compatibility limits are in mobile-connections.md. See [mobile setup](../mobile/README.md).
 
-1. Define stable PC identity and migrate address-based certificate lifecycle; specify renewal/reset/recovery.
+1. Implemented: same-key renewal, legacy profile migration, and confirmed local identity reset/re-pairing.
 2. Implement locally opened, short-lived, single-use QR enrollment with identity verification and protected per-PC credentials.
 3. Implemented: native Android discovery, last-address/manual fallback, authenticated reconnection, availability and permission/error feedback. Do not infer AP isolation from timeouts.
 4. Support home desktop/work laptop profiles with independent trust/state and explicit command targets.
@@ -58,21 +60,29 @@ The first Android client is implemented in mobile/ using the existing manual enr
 
 Reuse core behavior and rebuild presentation in Dart. Manual browser setup remains a fallback. See [mobile connections](mobile-connections.md).
 
-Monitoring is explicitly deferred and does not block mobile work. Preserve PC Stats Tray and its website when revisiting the [recorded bridge proposal](monitoring-integration.md). Presets/remote input stay deferred; revisit remote wake alongside mobile development with hardware-specific investigation.
+Monitoring is planned after Bluetooth. Preserve PC Stats Tray and its website using the [recorded bridge proposal](monitoring-integration.md). Presets/remote input stay deferred; investigate remote wake after monitoring.
 
-## Phase 5: Bluetooth and optional wake
+## Phase 5: Bluetooth secondary connection — implemented
 
-Before building the Bluetooth UI, prove command exchange between Windows and each mobile platform. Choose roles, protocol, and libraries based on actual compatibility, including Windows adapter capabilities. Reuse core command handlers and define Bluetooth-specific authorization and connection behavior.
+Proved an encrypted Classic RFCOMM exchange on the development PC and Android phone. Windows advertises a secure custom RFCOMM service and forwards to a fixed process-owned loopback HTTPS listener; native Android forwards opaque TLS bytes to the Dart client. Existing TLS identity verification, bearer credentials, commands, feedback, timers, and revocation are reused. No separate command dispatcher is needed.
+
+Android saves Automatic/Wi-Fi-only/Bluetooth-only selection per PC. First enrollment and Bluetooth-address learning use authenticated Wi-Fi; saved phones can then control without LAN access. Global Start/Stop controls both listeners, while Public-network restrictions apply to Wi-Fi. Only read-only status recovery can switch transports; commands are never replayed. iOS remains deferred. See [Bluetooth](bluetooth.md).
+
+## Phase 6: Hardware monitoring
+
+Implement the [PC Stats Tray bridge](monitoring-integration.md) and Android monitoring presentation. Keep the standalone collector and website intact, reuse cached samples, and show stale/unavailable data without disabling remote controls. Decide monitoring update rates and Bluetooth payload suitability during design.
+
+## Phase 7: Remote wake investigation
 
 Remote wake is a separate investigation. Test supported power states explicitly; Bluetooth or Wi-Fi connectivity while awake does not prove wake capability.
 
 ## Open decisions
 
 - Installer approach; the initial output is a framework-dependent folder publish.
-- QR/discovery and existing certificate migration are implemented. Automatic certificate renewal and identity-recovery UX remain. Manual address/code pairing remains available.
+- QR/discovery and existing certificate migration are implemented. Automatic same-key certificate renewal and explicit local identity reset are implemented; seamless migration requires an updated phone to connect before its first renewal. Manual address/code pairing remains available.
 - USB networking and authenticated routed/relayed access are exploratory; no public-network or AP-isolation fallback is implemented.
 - Media targeting when several applications are playing.
-- Future Bluetooth protocol and Windows peripheral/central support.
+- Bluetooth uses Windows Classic RFCOMM server and Android secure RFCOMM client roles. Wider adapter/background behavior needs further testing.
 
 Implemented decisions: HTTPS with per-user self-signed certificates; revocable bearer credentials stored as hashes on the PC; local JSON preferences; explicit listen address; status polling every two seconds while visible; ten-second minimum shutdown/restart countdown, three-second minimum for other power actions; one pending timer with explicit cancellation before replacement. Timers are canceled on host-process exit and do not survive restart. [API details](api.md) and [setup](setup.md) document the behavior.
 

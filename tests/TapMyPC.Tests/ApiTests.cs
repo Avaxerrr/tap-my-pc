@@ -35,12 +35,26 @@ public sealed class ApiTests : IAsyncLifetime
         using var generated = new CertificateRequest("CN=TapMyPC-test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
             .CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddHours(1));
         certificate = X509CertificateLoader.LoadPkcs12(generated.Export(X509ContentType.Pfx), null, X509KeyStorageFlags.UserKeySet);
-        app = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler, bluetooth: bluetooth, outputs: hardware, monitors: hardware, shortcuts: shortcuts);
+        app = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler, bluetooth: bluetooth, outputs: hardware, monitors: hardware, shortcuts: shortcuts, bluetoothConnection: () => new(true, "10:6F:D9:9E:80:F0", TapMyPC.Core.Bluetooth.BluetoothConnectionInfo.ServiceUuid));
         // Test-only pinning of this ephemeral certificate. Production clients must verify the host identity.
         var handler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert?.Thumbprint == certificate.Thumbprint };
         client = new HttpClient(handler) { BaseAddress = new Uri(app.Urls.Single()) };
     }
     public async Task DisposeAsync() { client.Dispose(); await app.StopAsync(); await app.DisposeAsync(); scheduler.Dispose(); certificate.Dispose(); }
+
+    [Fact]
+    public async Task BluetoothConnectionMetadataRequiresAuthentication()
+    {
+        var unauthorized = await client.GetAsync("/api/v1/status");
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.DoesNotContain("10:6F:D9:9E:80:F0", await unauthorized.Content.ReadAsStringAsync());
+        await Authenticate();
+        var status = await client.GetFromJsonAsync<JsonElement>("/api/v1/status");
+        var connection = status.GetProperty("bluetoothConnection");
+        Assert.True(connection.GetProperty("available").GetBoolean());
+        Assert.Equal("10:6F:D9:9E:80:F0", connection.GetProperty("address").GetString());
+        Assert.Equal(TapMyPC.Core.Bluetooth.BluetoothConnectionInfo.ServiceUuid, connection.GetProperty("serviceId").GetString());
+    }
 
     [Fact]
     public async Task OnlyAuthenticatedTrafficUpdatesRemotePresence()

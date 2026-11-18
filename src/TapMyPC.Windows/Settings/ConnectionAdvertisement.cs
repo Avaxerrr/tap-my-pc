@@ -8,7 +8,7 @@ public sealed class ConnectionAdvertisement : IDisposable
 {
     private readonly MulticastService mdns;
     private readonly ServiceDiscovery discovery;
-    public ConnectionAdvertisement(IPAddress address, int port, string fingerprint)
+    public ConnectionAdvertisement(IPAddress address, int port, string fingerprint, string? keyFingerprint = null)
     {
         mdns = new MulticastService(nics => nics.Where(n =>
             n.GetIPProperties().UnicastAddresses.Any(a => a.Address.Equals(address))))
@@ -19,6 +19,7 @@ public sealed class ConnectionAdvertisement : IDisposable
             var service = new ServiceProfile("TapMyPC-" + fingerprint[..12], "_tapmypc._tcp", (ushort)port, new[] { address });
             service.AddProperty("v", "1");
             service.AddProperty("fp", fingerprint);
+            if (keyFingerprint is not null) service.AddProperty("pk", keyFingerprint);
             service.AddProperty("name", Environment.MachineName);
             mdns.Start();
             discovery.Advertise(service);

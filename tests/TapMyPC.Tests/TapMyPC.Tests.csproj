@@ -21,4 +21,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="../../src/TapMyPC.Windows/Settings/HostCertificate.cs" Link="Production/HostCertificate.cs" />
+    <Compile Include="../../src/TapMyPC.Windows/Settings/CertificateIdentity.cs" Link="Production/CertificateIdentity.cs" />
+    <Compile Include="../../src/TapMyPC.Windows/Settings/LocalSettings.cs" Link="Production/LocalSettings.cs" />
+  </ItemGroup>
 </Project>

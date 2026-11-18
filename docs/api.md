@@ -151,13 +151,19 @@ The mobile client validates the schema/expiry and verifies the scanned certifica
 
 QR and six-digit code enrollment share a single five-minute window, five-invalid-attempt limit, and atomic single-use redemption. A successful QR redemption invalidates the manual code and vice versa. Regeneration or explicit closure invalidates prior invitations. Replays/expired secrets return 401; missing required properties return 400.
 
-QR identity is the exact leaf certificate. The desktop persists its certificate reference and reuses the same leaf across IP changes. Android verifies that pin before sending any credential to a discovered address. Automatic renewal and identity-replacement recovery remain unimplemented.
+QR identity is the exact leaf certificate. The desktop persists its certificate reference and reuses the same leaf across IP changes. Android verifies that pin before sending any credential to a discovered address. After a verified connection Android derives and stores the peer certificate's SHA-256 SubjectPublicKeyInfo pin. Valid same-key renewals preserve saved credentials; a key reset requires local confirmation and fresh enrollment. QR v1 and HTTP routes are unchanged.
+
+## Bluetooth connection metadata
+
+Authenticated status includes optional bluetoothConnection: {available:boolean,address:string|null,serviceId:string,message:string|null}. The service UUID is 8cf69287-4d5e-47f1-97c8-0a4ec3b5d290; address is the PC adapter MAC. Clients learn address hints only through an authenticated, identity-verified connection. Availability failure does not invalidate Wi-Fi controls.
+
+Bluetooth carries the existing API unchanged through encrypted RFCOMM and a fixed loopback HTTPS listener. The same TLS identity, bearer credentials, route validation, revocation, feedback, and timer state apply. No unauthenticated Bluetooth command route or localhost authorization exemption exists. See [Bluetooth](bluetooth.md).
 
 ## Discovery and remaining protocol work
 
-Desktop mDNS advertises _tapmypc._tcp on the selected trusted adapter, with v=1, fp=certificate SHA-256 fingerprint, and name=machine name in TXT records. Android NSD resolves saved-PC address hints, then verifies pinned HTTPS and authenticated status before updating the saved address. Advertisements never contain command tokens or pairing secrets and never authorize access. Certificate renewal and identity recovery remain future work; see [mobile connections](mobile-connections.md).
+Desktop mDNS advertises _tapmypc._tcp on the selected trusted adapter, with v=1, fp=certificate SHA-256 fingerprint, pk=SubjectPublicKeyInfo SHA-256 fingerprint, and name=machine name in TXT records. Android NSD resolves saved-PC address hints, then verifies pinned HTTPS and authenticated status before updating the saved address. Advertisements never contain command tokens or pairing secrets and never authorize access. Same-key renewal and explicit local identity reset are implemented; see [mobile connections](mobile-connections.md).
 
-Monitoring is explicitly deferred. This contract does not promise a metrics endpoint; the proposed future bridge is recorded in [monitoring integration](monitoring-integration.md).
+Monitoring is planned after Bluetooth. This contract does not promise a metrics endpoint; the proposed future bridge is recorded in [monitoring integration](monitoring-integration.md).
 
 ## Flutter and Bluetooth
 

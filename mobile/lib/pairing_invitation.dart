@@ -76,7 +76,7 @@ class PairingInvitation {
           'The PC returned an invalid pairing response.',
         );
       }
-      return PcProfile(name, address, fingerprint, token);
+      return client.verifiedProfile.withToken(token);
     } finally {
       client.close();
     }

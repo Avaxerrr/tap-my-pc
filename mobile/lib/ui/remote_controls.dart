@@ -351,7 +351,7 @@ class DeviceControls extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                'Control the PC’s Bluetooth radio over Wi-Fi.',
+                'Control the PC’s Bluetooth radio. Turning it off disconnects Bluetooth control.',
                 style: TextStyle(color: AppColors.secondary),
               ),
               const SizedBox(height: 14),

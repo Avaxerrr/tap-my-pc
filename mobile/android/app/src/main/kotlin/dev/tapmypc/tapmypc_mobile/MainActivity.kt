@@ -13,6 +13,7 @@ import java.net.Inet4Address
 import java.util.ArrayDeque
 
 class MainActivity : FlutterActivity() {
+    private var bluetoothBridge: BluetoothBridge? = null
     private var sink: EventChannel.EventSink? = null
     private var listener: NsdManager.DiscoveryListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -24,6 +25,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        bluetoothBridge = BluetoothBridge(this, MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tapmypc/bluetooth"))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tapmypc/app")
             .setMethodCallHandler { call, result ->
                 if (call.method == "version") {
@@ -111,6 +113,7 @@ class MainActivity : FlutterActivity() {
                             host is Inet4Address && (host.isSiteLocalAddress || host.isLoopbackAddress) &&
                             service.port in 1024..65535) {
                             val data = mapOf("kind" to "found", "fingerprint" to fp,
+                                "keyFingerprint" to service.attributes["pk"]?.toString(Charsets.UTF_8)?.lowercase().orEmpty(),
                                 "address" to "https://${host.hostAddress}:${service.port}", "service" to service.serviceName)
                             resolved[service.serviceName] = data
                             sink?.success(data)
@@ -133,5 +136,8 @@ class MainActivity : FlutterActivity() {
         multicastLock?.let { if (it.isHeld) it.release() }
         multicastLock = null
     }
-    override fun onDestroy() { stopDiscovery(); sink = null; super.onDestroy() }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (bluetoothBridge?.permissionResponse(requestCode, grantResults) != true) super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+    override fun onDestroy() { bluetoothBridge?.close(); stopDiscovery(); sink = null; super.onDestroy() }
 }

@@ -17,6 +17,7 @@ class RemoteDashboard extends StatefulWidget {
   final String Function(PcProfile) profileStatus;
   final ValueChanged<PcProfile> onSelect;
   final Future<void> Function() onAdd, onForget, onRefresh;
+  final Future<void> Function()? onRecover, onConnection;
   final VoidCallback onHelp;
   final SendCommand send;
   final PowerCommand power;
@@ -39,6 +40,8 @@ class RemoteDashboard extends StatefulWidget {
     required this.onSelect,
     required this.onAdd,
     required this.onForget,
+    this.onRecover,
+    this.onConnection,
     required this.onRefresh,
     required this.onHelp,
     required this.send,
@@ -176,6 +179,25 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
               ),
             const Divider(),
             Text('CONNECTIONS', style: Theme.of(context).textTheme.bodySmall),
+            if (widget.selected != null && widget.onConnection != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.settings_input_antenna),
+                title: const Text('Connection'),
+                subtitle: Text(
+                  widget.selected!.connectionMode == 'auto'
+                      ? 'Automatic · Wi-Fi first'
+                      : widget.selected!.connectionMode == 'bluetooth'
+                      ? 'Bluetooth only'
+                      : 'Wi-Fi only',
+                ),
+                onTap: widget.busy
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                        widget.onConnection!();
+                      },
+              ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.add),
@@ -214,6 +236,18 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                       },
               ),
             ],
+            if (widget.selected != null && widget.onRecover != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.qr_code_scanner),
+                title: const Text('Re-pair selected PC'),
+                onTap: widget.busy
+                    ? null
+                    : () {
+                        Navigator.pop(context);
+                        widget.onRecover!();
+                      },
+              ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.help_outline),

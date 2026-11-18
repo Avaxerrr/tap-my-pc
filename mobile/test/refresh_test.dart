@@ -85,6 +85,44 @@ void main() {
     await tester.pump();
   }
 
+  testWidgets(
+    'Connection dialog pauses background reads and keeps pairing on cancel',
+    (tester) async {
+      final api = FakePcApi();
+      final appearance = AppearanceController();
+      addTearDown(appearance.dispose);
+      await tester.pumpWidget(
+        AppearanceScope(
+          controller: appearance,
+          child: MaterialApp(
+            theme: appTheme(AccentPalette.choices.first),
+            home: RemotePage(createApi: (_) => api),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Connection'));
+      await tester.tap(find.text('Connection'));
+      await tester.pumpAndSettle();
+      expect(find.text('Automatic'), findsOneWidget);
+      expect(find.text('Bluetooth only'), findsOneWidget);
+      final before = api.calls.length;
+      await tester.pump(const Duration(seconds: 12));
+      expect(api.calls.length, before);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text('Connected to Test desktop'), findsOneWidget);
+      expect(api.calls.length, greaterThan(before));
+      final saved = await const ProfileStore().load();
+      expect(saved.single.token, profile.token);
+      expect(saved.single.pin, profile.pin);
+      expect(api.calls.where((c) => !c.startsWith('GET ')), isEmpty);
+      await dispose(tester);
+    },
+  );
+
   for (final route in ['/monitors', '/audio/outputs', '/shortcuts']) {
     testWidgets(
       '$route failure keeps reachable PC connected and other controls enabled',

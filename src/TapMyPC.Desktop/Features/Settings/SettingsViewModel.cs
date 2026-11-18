@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.Builder;
 using TapMyPC.Api;
+using TapMyPC.Desktop.Connections;
 using TapMyPC.Api.Contracts;
 using System.Windows.Media.Imaging;
 using TapMyPC.Core.Devices;
@@ -32,6 +33,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly ShortcutCatalog? shortcuts;
     private readonly IMonitorController? monitors;
     private readonly LocalSettings settings;
+    private readonly BluetoothConnectionHost? bluetoothHost;
     private readonly PairingService pairing;
     private readonly PowerScheduler scheduler;
     private readonly DispatcherTimer refreshTimer;
@@ -59,9 +61,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private bool startupEnabled;
     private bool showNotifications;
     private bool isChangingHost;
+    private bool identityResetRequested;
+    private string certificateSummary = "Certificate details appear when connections start.";
     private IReadOnlyList<PairedClient> connectedClients = Array.Empty<PairedClient>();
 
-    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null)
+    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, bool enableBluetoothTransport = true)
     {
         this.device = device;
         this.bluetooth = bluetooth;
@@ -71,6 +75,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         Appearance = new AppearanceViewModel(settings);
         this.pairing = pairing;
         this.scheduler = scheduler;
+        if (enableBluetoothTransport) bluetoothHost = new(settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors);
         var saved = settings.ReadHost();
         address = saved.Address;
         port = saved.Port.ToString();
@@ -80,7 +85,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         ToggleHost = new AsyncCommand(ToggleHostAsync);
         OpenPairing = new RelayCommand(() =>
         {
-            if (server is null || certificate is null) { Message = "Select Start connections before adding a phone."; return; }
+            if (server is null || certificate is null) { Message = bluetoothHost?.Info.Available == true ? "Connect this PC to a trusted Wi-Fi network for first-time pairing. Paired phones can use Bluetooth." : "Select Start connections before adding a phone."; return; }
             var window = pairing.OpenPairingSession();
             try
             {
@@ -111,6 +116,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             catch (Exception ex) { Message = ex.Message; }
         });
         ExportCertificate = new RelayCommand(ExportPublicCertificate);
+        RequestIdentityReset = new RelayCommand(() => { identityResetRequested = true; Notify(nameof(IdentityResetRequested)); });
+        CancelIdentityReset = new RelayCommand(() => { identityResetRequested = false; Notify(nameof(IdentityResetRequested)); });
+        ConfirmIdentityReset = new AsyncCommand(ResetIdentityAsync);
         RevokeDevice = new RelayCommand(() =>
         {
             try
@@ -152,6 +160,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string PairingButtonText => HasPairingQr ? "Refresh pairing QR" : pairing.Clients.Count > 0 ? "Add another phone" : "Show pairing QR";
     public string PairingHint => !IsHosting
         ? "Connections are stopped. Start connections to pair or reconnect a phone."
+        : server is null ? "Paired phones can use Bluetooth. Connect to a trusted Wi-Fi network for first-time pairing."
         : HasPairingQr
             ? "On Android: Add PC → Scan PC QR. The QR hides automatically after successful pairing."
             : pairing.Clients.Count > 0
@@ -160,6 +169,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string PairingCode => pairingCode;
     public string PairingExpiry => pairingExpiry;
     public string Fingerprint => fingerprint;
+    public string CertificateSummary => certificateSummary;
+    public bool IdentityResetRequested => identityResetRequested;
+    public bool CanResetIdentity => !isChangingHost;
+    public RelayCommand RequestIdentityReset { get; }
+    public RelayCommand CancelIdentityReset { get; }
+    public AsyncCommand ConfirmIdentityReset { get; }
     public string RemoteUrl => remoteUrl;
     public string NetworkSummary => networkSummary;
     public string Pending => pending;
@@ -169,10 +184,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
         : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
-    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "No phone connected";
+    public string HostStatus => isChangingHost ? "Updating host…" : (server is null && bluetoothHost?.Info.Available != true) ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "No phone connected";
     public string HostButtonText => isChangingHost ? "Please wait…" : connectionsEnabled ? "Stop connections" : "Start connections";
     public bool CanEditConnection => server is null && !isChangingHost;
-    public bool IsHosting => server is not null && !isChangingHost;
+    public bool IsHosting => (server is not null || bluetoothHost?.Info.Available == true) && !isChangingHost;
+    public string BluetoothConnectionSummary => bluetoothHost?.Info.Available == true ? "Bluetooth ready · secondary connection" : bluetoothHost?.Info.Message ?? "Bluetooth transport disabled.";
     public bool StartupEnabled
     {
         get => startupEnabled;
@@ -261,29 +277,32 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private async Task StartListenerAsync()
     {
-        if (shuttingDown || !connectionsEnabled || server is not null) return;
+        if (shuttingDown || !connectionsEnabled) return;
+        if (bluetoothHost is not null) await bluetoothHost.EnsureAsync();
+        Notify(nameof(BluetoothConnectionSummary));
+        if (server is not null) return;
         DetectNetwork();
         var ip = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read()));
         if (!NetworkTrust.IsTrusted(ip))
             throw new InvalidOperationException("Connections are waiting: Windows must mark this network Private or Domain. Use a trusted network; public networks are not enabled automatically.");
         if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535)
             throw new ArgumentException("Port must be between 1024 and 65535.");
-        var identity = settings.ReadIdentity();
-        var nextCertificate = HostCertificate.GetOrCreate(ip, identity?.CertificateThumbprint);
+        var nextCertificate = new CertificateIdentity(settings, pairing).Load(ip);
         try
         {
-            if (identity is null) settings.SaveIdentity(new(nextCertificate.Thumbprint));
             var nextServer = await ApiHost.StartAsync(ip, number, nextCertificate, device, pairing, scheduler,
-                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors);
+                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors, bluetoothConnection: () => bluetoothHost?.Info);
             certificate = nextCertificate; server = nextServer; listeningAddress = ip;
         }
         catch { nextCertificate.Dispose(); throw; }
         remoteUrl = $"https://{ip}:{number}";
         fingerprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
+        certificateSummary = $"Valid until {certificate.NotAfter:d}. Renews automatically with the same PC identity key.";
+        Notify(nameof(CertificateSummary));
         discoverySummary = "";
         if (!IPAddress.IsLoopback(ip))
         {
-            try { advertisement = new ConnectionAdvertisement(ip, number, fingerprint); }
+            try { advertisement = new ConnectionAdvertisement(ip, number, fingerprint, HostCertificate.KeyFingerprint(certificate)); }
             catch { discoverySummary = " Discovery is unavailable; saved addresses and QR pairing still work."; }
         }
         Message = "Ready for paired phones. Open the Android app to reconnect." + discoverySummary;
@@ -291,8 +310,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         if (pairing.Clients.Count == 0) OpenPairing.Execute(null);
     }
 
-    private async Task StopListenerAsync()
+    private async Task StopListenerAsync(bool stopBluetooth = true)
     {
+        if (stopBluetooth && bluetoothHost is not null) await bluetoothHost.StopAsync();
+        Notify(nameof(BluetoothConnectionSummary));
         pairing.ClosePairing(); ClearPairingQr();
         pairingCode = "— — — — — —"; pairingExpires = null;
         pairingExpiry = "Pairings are remembered. Start connections to reconnect.";
@@ -313,16 +334,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         if (shuttingDown || !connectionsEnabled || !await hostGate.WaitAsync(0)) return;
         try
         {
+            if (bluetoothHost is not null) await bluetoothHost.EnsureAsync();
+            Notify(nameof(BluetoothConnectionSummary));
             IPAddress? current = null;
             try { current = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read())); } catch { }
             if (current is null || !NetworkTrust.IsTrusted(current))
             {
-                if (server is not null) await StopListenerAsync();
+                if (server is not null) await StopListenerAsync(stopBluetooth: false);
                 Message = "Waiting for a trusted Private/Domain network. Your saved pairings are unchanged.";
             }
-            else if (server is null || !current.Equals(listeningAddress))
+            else if (server is null || !current.Equals(listeningAddress) || (certificate is not null && HostCertificate.NeedsRenewal(certificate)))
             {
-                await StopListenerAsync();
+                await StopListenerAsync(stopBluetooth: false);
                 await StartListenerAsync();
             }
         }
@@ -330,9 +353,39 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         finally { hostGate.Release(); NotifyHost(); }
     }
 
+    private async Task ResetIdentityAsync()
+    {
+        if (!identityResetRequested || shuttingDown) return;
+        await hostGate.WaitAsync();
+        isChangingHost = true; NotifyHost();
+        try
+        {
+            await StopListenerAsync();
+            // Recovery remains available offline or with a broken saved identity.
+            IPAddress ip;
+            try { ip = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read())); }
+            catch { ip = IPAddress.Loopback; }
+            using var replacement = new CertificateIdentity(settings, pairing).Reset(ip);
+            fingerprint = replacement.GetCertHashString(HashAlgorithmName.SHA256);
+            certificateSummary = $"Identity reset. Certificate valid until {replacement.NotAfter:d}. Pair each phone again.";
+            identityResetRequested = false;
+            Notify(nameof(IdentityResetRequested)); Notify(nameof(CertificateSummary));
+            const string recovered = "Connection identity reset and all previous phone access revoked. Pair each phone again using a new QR. Pending timers continue.";
+            if (connectionsEnabled)
+            {
+                try { await StartListenerAsync(); }
+                catch (Exception ex) { Message = recovered + " Connections are waiting: " + ex.Message; Tick(); return; }
+            }
+            Message = connectionsEnabled ? recovered : recovered + " Connections remain paused; select Start connections when ready.";
+            Tick();
+        }
+        catch (Exception ex) { Message = $"Identity recovery could not finish: {ex.Message}"; }
+        finally { isChangingHost = false; hostGate.Release(); NotifyHost(); }
+    }
+
     private void NotifyHost()
     {
-        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText) }) Notify(name);
+        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText), nameof(CanResetIdentity) }) Notify(name);
         RefreshPresence();
     }
 
@@ -373,7 +426,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void RefreshPresence()
     {
-        var active = server is null || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
+        var active = (server is null && bluetoothHost?.Info.Available != true) || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
         if (connectedClients.SequenceEqual(active)) return;
         connectedClients = active;
         foreach (var name in new[] { nameof(HasConnectedClients), nameof(ConnectionSummary), nameof(ConnectionHint), nameof(HostStatus) }) Notify(name);

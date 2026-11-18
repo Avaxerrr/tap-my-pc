@@ -1,12 +1,12 @@
-# Hardware monitoring integration — deferred
+# Hardware monitoring integration — planned
 
-Explicitly deferred by the user on November 18, 2026. Do not make monitoring a dependency of initial mobile work.
+The user reprioritized monitoring on November 18, 2026: implement it after Bluetooth secondary connectivity and before remote wake. This supersedes the earlier deferral. Integration remains unimplemented and is not a prerequisite for Bluetooth work.
 
 ## Existing project and goal
 
 Source: C:\Users\Work\Documents\Coding Projects\Coding\HardwareMonitoring (PC Stats Tray).
 
-Bring its hardware stats into the future mobile app while preserving PC Stats Tray as a standalone app, including its website, tray, desktop overlay, and optional RTSS output.
+Bring its hardware stats into the existing Android app while preserving PC Stats Tray as a standalone app, including its website, tray, desktop overlay, and optional RTSS output.
 
 Reuse candidates in PCStatsTray include:
 - Services/OverlayMetricCollector.cs: sensor collection/selection, currently coupled to OverlayConfig and formatted display values.

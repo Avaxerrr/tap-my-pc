@@ -7,14 +7,14 @@ One Windows process hosts the WPF application, tray integration, local-network A
 ```text
 Browser remote / Flutter Android client
                     |
-          Authenticated Wi-Fi API
+   Pinned HTTPS over Wi-Fi / Bluetooth RFCOMM
                     |
              Core feature handlers
                     |
          Windows-specific implementations
 
 WPF view models call the same core handlers.
-Future Bluetooth transport calls the same core handlers.
+Bluetooth carries the same authenticated HTTPS API through a process-owned loopback listener, reusing the same core handlers.
 ```
 
 The PC listener remains independent of any client screen. The web prototype is a replaceable client; its HTML/CSS/JavaScript will not automatically convert to Flutter widgets.
@@ -80,7 +80,7 @@ Desktop wires implementations and hosts the API through application startup/shut
 - Dispose listeners and background work during application exit.
 - Do not add a separate Windows service unless a concrete requirement justifies it. Interactive-session controls need particular care if that changes.
 
-Bluetooth radio control uses a separate Core interface and asynchronous command handler. Windows implements it with WinRT radio APIs, filters exclusively for Bluetooth adapters, and requests change permission on the WPF Dispatcher only when needed. The status endpoint reads radio state without requesting permission. This feature uses the existing Wi-Fi API; Bluetooth as a command transport remains deferred.
+Bluetooth radio control uses a separate Core interface and asynchronous command handler. Windows implements it with WinRT radio APIs, filters exclusively for Bluetooth adapters, and requests change permission on the WPF Dispatcher only when needed. The status endpoint reads radio state without requesting permission. This feature uses the existing Wi-Fi API; Bluetooth command transport is implemented separately through WindowsRfcommServer and Desktop/Connections/BluetoothConnectionHost. It forwards encrypted bytes to a fixed loopback ApiHost and shares the same feature handlers, pairing, timers, and activity.
 
 Audio output and per-monitor controls have dedicated Core interfaces with Windows implementations. HardwareCommands validates selections/ranges and publishes shared activity. The API serves device lists separately from the two-second status poll; the phone refreshes them on connection, after commands, on request, or on the ten-second foreground retry cadence when a list previously failed. Monitor I/O runs off the UI thread, serializes changes, briefly caches reads, and always releases native physical-monitor handles. Built-in brightness uses WMI where available; external displays use DDC/CI.
 
@@ -95,7 +95,7 @@ ShortcutCatalog owns the locally approved list. Only the PC settings UI can add/
 - Separate command acceptance from confirmed device state, especially for power transitions that end the connection.
 - The Windows host owns timers, paired-client records, preferences, and authoritative state.
 - Flutter implements its own UI and API client while reusing the server behavior and protocol. A documented command contract, not a shared programming language, provides compatibility.
-- Add Bluetooth as a transport adapter when needed. Keep current handlers independent of HTTP, but avoid designing an unused transport framework now.
+- Bluetooth is a byte transport adapter for the existing HTTPS API. Keep feature handlers independent of transport; do not duplicate commands or add a speculative transport framework.
 
 Implemented routes and DTOs are documented in [API contract](api.md). The web remote polls status every two seconds while visible. It stores a bearer token locally; the PC persists only its hash and client metadata. Pairing uses a locally generated, single-use six-digit code that expires after five minutes or five incorrect attempts. Remote clients cannot generate pairing codes.
 
@@ -103,11 +103,11 @@ Implemented routes and DTOs are documented in [API contract](api.md). The web re
 
 Pairing and authenticated commands are required. Validate inputs, limit exposed operations to supported commands, and keep credentials out of logs. Kestrel serves HTTPS using a certificate held in the current user's Personal certificate store; it does not add a root trust entry. Normal launch resumes the saved connection preference (enabled by default) and automatically selects an active IPv4 address, preferring an adapter with a gateway and then Wi-Fi. Windows Private/Domain network classification is checked separately before listening. Stop connections persists across launches, including when waiting for a trusted network. The listener still binds only one address. Localhost and manual overrides are under Advanced settings. Legacy address-only settings migrate to Automatic once; versioned explicit debug overrides are preserved. Origin/Host checks, request limits, and per-IP rate limiting constrain the API. See [setup](setup.md) for the initial certificate identity check and phone trust limitations.
 
-## Mobile connections and deferred monitoring
+## Mobile connections and planned monitoring
 
-Manual browser pairing remains available. The desktop saves a public certificate reference in identity.json and reuses that exact certificate across selected-IP changes; it fails closed if the saved identity is missing or expired. Android now supports QR enrollment, protected saved profiles, and explicit PC selection. The QR carries a one-use secret and pinned leaf fingerprint; certificate verification precedes secret transmission. Shared pairing state atomically consumes both QR and manual paths. Desktop image rendering uses QRCoder; native Android decoding uses bundled ML Kit through mobile_scanner. Native Android NSD discovers _tapmypc._tcp hints; saved-pin HTTPS authentication validates candidates before updating stored addresses. Desktop advertising is limited to its selected trusted adapter. Connection preference persists, auto-starts by default, waits on Public/unidentified networks, and rebinds after network changes. Initial QR generation occurs only with no paired clients; subsequent enrollment is explicit. Certificate renewal and identity recovery remain future work. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
+Manual browser pairing remains available. The desktop saves the active certificate reference in identity.json. It reuses the certificate across selected-IP changes and automatically renews it within 30 days of expiry, preserving the persisted RSA identity key. An expired certificate can renew with its existing key; a missing/unusable key requires confirmed local recovery. Android now supports QR enrollment, protected saved profiles, and explicit PC selection. The QR carries a one-use secret and exact leaf fingerprint; verification of that leaf precedes secret transmission. The phone derives its stable key pin from the TLS certificate, never discovery or an unverified payload. Shared pairing state atomically consumes both QR and manual paths. Desktop image rendering uses QRCoder; native Android decoding uses bundled ML Kit through mobile_scanner. Native Android NSD discovers _tapmypc._tcp hints; saved-pin HTTPS authentication validates candidates before updating stored addresses. Desktop advertising is limited to its selected trusted adapter. Connection preference persists, auto-starts by default, waits on Public/unidentified networks, and rebinds after network changes. Initial QR generation occurs only with no paired clients; subsequent enrollment is explicit. Authenticated status includes Bluetooth address/service metadata. Android saves per-PC Automatic/Wi-Fi-only/Bluetooth-only preferences. Bluetooth uses the same TLS identity checks before credentials, remains usable when Wi-Fi is unavailable, and shares the remembered Start/Stop choice. First-time enrollment stays on Wi-Fi. See [Bluetooth](bluetooth.md). Android learns a SHA-256 SubjectPublicKeyInfo pin only from a verified TLS peer, stores it with the saved profile, and accepts valid renewed certificates with that same key. Legacy leaf-only profiles migrate on their next verified connection; without prior migration they need a fresh QR after renewal. Confirmed local reset creates a new key, persistently revokes all phones and invitations, and retains PC timers and connection preference. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
 
-Monitoring is deferred. The proposed bridge keeps PC Stats Tray and its website standalone, reads local cached snapshots, and serves them through TapMyPC. No monitoring dependency or elevated network host is introduced now. See [monitoring integration](monitoring-integration.md).
+Monitoring is planned after Bluetooth secondary connectivity and before remote wake. The proposed bridge keeps PC Stats Tray and its website standalone, reads local cached snapshots, and serves them through TapMyPC. No monitoring dependency or elevated network host is introduced now. See [monitoring integration](monitoring-integration.md).
 
 ## Action feedback and presentation
 

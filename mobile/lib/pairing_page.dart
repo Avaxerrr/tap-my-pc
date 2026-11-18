@@ -6,7 +6,8 @@ import 'pairing_invitation.dart';
 import 'ui/app_theme.dart';
 
 class PairPage extends StatefulWidget {
-  const PairPage({super.key});
+  final PcProfile? recovering;
+  const PairPage({super.key, this.recovering});
   @override
   State<PairPage> createState() => _PairPageState();
 }
@@ -19,6 +20,13 @@ class _PairPageState extends State<PairPage> {
   PairingInvitation? invitation;
   bool busy = false;
   String error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    name.text = widget.recovering?.name ?? '';
+    address.text = widget.recovering?.address ?? '';
+  }
 
   Future<void> scan() async {
     final result = await Navigator.push<PairingInvitation>(
@@ -58,12 +66,7 @@ class _PairPageState extends State<PairPage> {
           method: 'POST',
           body: {'name': 'TapMyPC Android', 'code': code.text.trim()},
         );
-        profile = PcProfile(
-          draft.name,
-          draft.address,
-          draft.pin,
-          result['token'],
-        );
+        profile = client.verifiedProfile.withToken(result['token']);
       }
       if (!mounted) return;
       Navigator.pop(context, profile);
@@ -77,7 +80,9 @@ class _PairPageState extends State<PairPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Add PC')),
+    appBar: AppBar(
+      title: Text(widget.recovering == null ? 'Add PC' : 'Re-pair selected PC'),
+    ),
     body: Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
@@ -85,6 +90,13 @@ class _PairPageState extends State<PairPage> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            if (widget.recovering != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Text(
+                  'Replace the saved pairing for ${widget.recovering!.name}. Scan a fresh QR displayed by that PC. Other saved PCs stay unchanged.',
+                ),
+              ),
             Align(
               alignment: Alignment.centerLeft,
               child: Container(
@@ -139,7 +151,13 @@ class _PairPageState extends State<PairPage> {
                       const SizedBox(height: 16),
                       FilledButton(
                         onPressed: busy ? null : () => pair(qr: true),
-                        child: Text(busy ? 'Pairing…' : 'Pair with this PC'),
+                        child: Text(
+                          busy
+                              ? 'Pairing…'
+                              : widget.recovering == null
+                              ? 'Pair with this PC'
+                              : 'Replace saved pairing',
+                        ),
                       ),
                     ],
                   ),

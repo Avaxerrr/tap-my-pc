@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'package:crypto/crypto.dart';
+import 'certificate_identity.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 String normalizePin(String value) =>
@@ -9,19 +9,99 @@ String normalizePin(String value) =>
 
 class PcProfile {
   final String name, address, pin, token;
-  const PcProfile(this.name, this.address, this.pin, this.token);
-  PcProfile atAddress(String next) => PcProfile(name, next, pin, token);
+  final String? keyPin, bluetoothAddress;
+  final String connectionMode;
+  const PcProfile(
+    this.name,
+    this.address,
+    this.pin,
+    this.token, {
+    this.keyPin,
+    this.bluetoothAddress,
+    this.connectionMode = 'auto',
+  });
+  PcProfile atAddress(String next) => PcProfile(
+    name,
+    next,
+    pin,
+    token,
+    keyPin: keyPin,
+    bluetoothAddress: bluetoothAddress,
+    connectionMode: connectionMode,
+  );
+  PcProfile withKeyPin(String key) => PcProfile(
+    name,
+    address,
+    pin,
+    token,
+    keyPin: key,
+    bluetoothAddress: bluetoothAddress,
+    connectionMode: connectionMode,
+  );
+  PcProfile withToken(String credential) => PcProfile(
+    name,
+    address,
+    pin,
+    credential,
+    keyPin: keyPin,
+    bluetoothAddress: bluetoothAddress,
+    connectionMode: connectionMode,
+  );
+  PcProfile withConnectionMode(String mode) => PcProfile(
+    name,
+    address,
+    pin,
+    token,
+    keyPin: keyPin,
+    bluetoothAddress: bluetoothAddress,
+    connectionMode: mode,
+  );
+  PcProfile withBluetoothAddress(String address) => PcProfile(
+    name,
+    this.address,
+    pin,
+    token,
+    keyPin: keyPin,
+    bluetoothAddress: address,
+    connectionMode: connectionMode,
+  );
   Map<String, dynamic> toJson() => {
     'name': name,
     'address': address,
     'pin': pin,
     'token': token,
+    if (keyPin != null) 'keyPin': keyPin,
+    if (bluetoothAddress != null) 'bluetoothAddress': bluetoothAddress,
+    if (connectionMode != 'auto') 'connectionMode': connectionMode,
   };
-  factory PcProfile.fromJson(Map<String, dynamic> j) =>
-      PcProfile(j['name'], j['address'], j['pin'], j['token']);
+  factory PcProfile.fromJson(Map<String, dynamic> j) => PcProfile(
+    j['name'],
+    j['address'],
+    j['pin'],
+    j['token'],
+    keyPin: j['keyPin'],
+    bluetoothAddress: j['bluetoothAddress'],
+    connectionMode: j['connectionMode'] ?? 'auto',
+  );
 }
 
+/// Re-enrollment replaces only the deliberately selected profile and duplicate trusted identity.
+List<PcProfile> replacePcProfile(
+  List<PcProfile> profiles,
+  PcProfile result, {
+  PcProfile? recovering,
+}) => [
+  ...profiles.where(
+    (p) =>
+        p.pin != recovering?.pin &&
+        p.pin != result.pin &&
+        !(result.keyPin != null && p.keyPin == result.keyPin),
+  ),
+  result,
+];
+
 class ProfileStore {
+  static Future<void> _writes = Future<void>.value();
   final FlutterSecureStorage storage;
   const ProfileStore([this.storage = const FlutterSecureStorage()]);
   Future<String?> lastSelected() => storage.read(key: 'tapmypc.selected.v1');
@@ -35,17 +115,39 @@ class ProfileStore {
         .toList();
   }
 
-  Future<void> save(List<PcProfile> profiles) => storage.write(
-    key: 'tapmypc.profiles.v1',
-    value: jsonEncode(profiles.map((p) => p.toJson()).toList()),
-  );
+  Future<void> save(List<PcProfile> profiles) {
+    final value = jsonEncode(profiles.map((p) => p.toJson()).toList());
+    return _writes = _writes
+        .catchError((Object _) {})
+        .then((_) => storage.write(key: 'tapmypc.profiles.v1', value: value));
+  }
 }
 
 class PcApi {
   final PcProfile profile;
   late final HttpClient _client;
+  late final String _requestAddress;
+  Duration _timeout = const Duration(seconds: 8);
+  String get transportLabel => 'Wi-Fi';
+  bool get isBluetooth => false;
+  String? _verifiedKeyPin;
+  PcProfile get verifiedProfile =>
+      _verifiedKeyPin == null ? profile : profile.withKeyPin(_verifiedKeyPin!);
   PcApi(this.profile) {
-    final base = Uri.parse(profile.address);
+    _initialize(profile.address);
+  }
+  PcApi.tunnel(this.profile, int port) {
+    if (port < 1 || port > 65535) {
+      throw const FormatException('Invalid Bluetooth tunnel port.');
+    }
+    _timeout = const Duration(seconds: 25);
+    _initialize('https://127.0.0.1:$port');
+    // A peer/channel carries one RFCOMM stream; queue optional HTTP requests on it.
+    _client.maxConnectionsPerHost = 1;
+  }
+  void _initialize(String address) {
+    _requestAddress = address;
+    final base = Uri.parse(address);
     if (base.scheme != 'https' ||
         base.host.isEmpty ||
         base.userInfo.isNotEmpty ||
@@ -61,9 +163,15 @@ class PcApi {
         'Copy the SHA-256 certificate fingerprint from Advanced settings on the PC.',
       );
     }
+    if (profile.keyPin != null &&
+        !RegExp(r'^[a-f0-9]{64}$').hasMatch(profile.keyPin!)) {
+      throw const FormatException(
+        'The saved PC identity key is invalid. Pair again.',
+      );
+    }
     _client = HttpClient(context: SecurityContext(withTrustedRoots: false))
-      ..connectionTimeout = const Duration(seconds: 8);
-    // Verify the exact leaf certificate before returning a socket to HTTP.
+      ..connectionTimeout = _timeout;
+    // Verify enrolled leaf or previously verified identity key before HTTP sees the socket.
     // No pairing code, bearer credential, or HTTP request is sent beforehand.
     _client.connectionFactory = (uri, proxyHost, proxyPort) async {
       if (uri.host != base.host || uri.port != base.port) {
@@ -74,22 +182,26 @@ class PcApi {
             uri.host,
             uri.port,
             context: SecurityContext(withTrustedRoots: false),
-            onBadCertificate: (cert) =>
-                normalizePin(profile.pin) ==
-                sha256.convert(cert.der).toString(),
-            timeout: const Duration(seconds: 8),
+            onBadCertificate: (cert) => acceptsCertificate(
+              cert,
+              normalizePin(profile.pin),
+              profile.keyPin,
+            ),
+            timeout: _timeout,
           ).then<Socket>((socket) {
             final cert = socket.peerCertificate;
             if (cert == null ||
-                sha256.convert(cert.der).toString() !=
-                    normalizePin(profile.pin) ||
-                DateTime.now().isBefore(cert.startValidity) ||
-                DateTime.now().isAfter(cert.endValidity)) {
+                !acceptsCertificate(
+                  cert,
+                  normalizePin(profile.pin),
+                  profile.keyPin,
+                )) {
               socket.destroy();
               throw const HandshakeException(
-                'PC identity does not match. Verify its fingerprint locally.',
+                'PC identity changed or its certificate is invalid. Check the PC clock; after a local identity reset, use Re-pair selected PC and scan its new QR.',
               );
             }
+            _verifiedKeyPin = certificateKeyPin(cert.der);
             return socket;
           });
       return ConnectionTask.fromSocket(pending, () {
@@ -97,15 +209,14 @@ class PcApi {
       });
     };
   }
+
   Future<dynamic> request(
     String path, {
     String method = 'GET',
     Object? body,
   }) async {
-    final uri = Uri.parse(profile.address).resolve('/api/v1$path');
-    final req = await _client
-        .openUrl(method, uri)
-        .timeout(const Duration(seconds: 8));
+    final uri = Uri.parse(_requestAddress).resolve('/api/v1$path');
+    final req = await _client.openUrl(method, uri).timeout(_timeout);
     req.followRedirects = false;
     if (profile.token.isNotEmpty) {
       req.headers.set('Authorization', 'Bearer ${profile.token}');
@@ -114,11 +225,8 @@ class PcApi {
       req.headers.contentType = ContentType.json;
       req.write(jsonEncode(body));
     }
-    final response = await req.close().timeout(const Duration(seconds: 8));
-    final text = await utf8.decoder
-        .bind(response)
-        .join()
-        .timeout(const Duration(seconds: 8));
+    final response = await req.close().timeout(_timeout);
+    final text = await utf8.decoder.bind(response).join().timeout(_timeout);
     dynamic result;
     try {
       result = jsonDecode(text);
@@ -147,7 +255,9 @@ class PcApiException extends HttpException {
 String? discoveredAddress(PcProfile profile, Map<dynamic, dynamic> event) {
   if (event['kind'] != 'found' ||
       event['fingerprint'] is! String ||
-      normalizePin(event['fingerprint']) != normalizePin(profile.pin) ||
+      !(normalizePin(event['fingerprint']) == normalizePin(profile.pin) ||
+          (profile.keyPin != null &&
+              event['keyFingerprint'] == profile.keyPin)) ||
       event['address'] is! String) {
     return null;
   }
@@ -184,18 +294,19 @@ class VerifiedPcConnection {
 /// PcApi runs before the saved bearer credential is sent to any candidate.
 Future<VerifiedPcConnection> reconnectPc(
   PcProfile profile,
-  Iterable<String> addresses,
-) async {
+  Iterable<String> addresses, {
+  PcApi Function(PcProfile) createApi = PcApi.new,
+}) async {
   Object lastError = const SocketException('No reachable address found.');
   for (final address in addresses.toSet().take(5)) {
     PcApi? client;
     try {
       final candidate = profile.atAddress(address);
-      client = PcApi(candidate);
+      client = createApi(candidate);
       final response = Map<String, dynamic>.from(
         await client.request('/status'),
       );
-      return VerifiedPcConnection(candidate, client, response);
+      return VerifiedPcConnection(client.verifiedProfile, client, response);
     } catch (error) {
       client?.close();
       if (error is PcApiException && error.statusCode == 401) rethrow;

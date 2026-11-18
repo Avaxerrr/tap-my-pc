@@ -1,6 +1,6 @@
 # Project essentials
 
-- TapMyPC is a local-network remote for a Windows PC, with browser and Flutter Android clients. iOS and Bluetooth transport are deferred.
+- TapMyPC is a local-network remote for a Windows PC, with browser and Flutter Android clients. iOS is deferred. Android supports Wi-Fi and Bluetooth RFCOMM with the same pinned HTTPS authentication.
 - Use C# with WPF/MVVM for the Windows tray/settings app. Host the command API and prototype website in the same process.
 - Keep feature behavior, Windows-specific implementations, API transport, and WPF presentation separate. UI and endpoints must not implement Windows operations directly.
 - Keep the API independent of the prototype UI so Flutter can reuse it. The PC owns timers and persistent settings. Authenticate remote commands; do not force-close applications by default.

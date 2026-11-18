@@ -10,7 +10,7 @@ Control a Windows PC from bed without walking to the computer or using a full re
 - Prototype client: responsive website served by the Windows host.
 - Final mobile client: Flutter for Android and iOS. Android is the first testing target; the user also owns an iPhone.
 - Initial communication: home Wi-Fi/local network. Internet access and a cloud backend are not required.
-- Later communication: Bluetooth alongside the mobile app. Protocol and library selection are deferred.
+- Communication: Wi-Fi plus a secondary Classic Bluetooth RFCOMM connection on Android. Both use the same pinned HTTPS command API and authorization.
 
 ## Initial controls
 
@@ -32,12 +32,22 @@ The prototype should include the initial controls before expanding into later fe
 
 Audio output switching, locally approved app/website shortcuts, and per-monitor brightness/on/off are implemented. Hardware support is detected rather than assumed. Display arrangement is outside this pass.
 
+## Next priorities
+
+Updated November 18, 2026, in the user's requested order:
+
+1. Complete certificate renewal/recovery before Bluetooth. The implementation is available in the new development builds; delivery and checks are recorded in [verification](verification.md).
+2. Implemented: Bluetooth as a secondary Android connection alongside Wi-Fi, including saved transport choice and physical-link validation. See [Bluetooth](bluetooth.md).
+3. Hardware monitoring in the app, preserving PC Stats Tray and its standalone website. See [monitoring integration](monitoring-integration.md).
+4. Remote wake, subject to hardware and supported power-state investigation.
+5. Reassess further features afterward. Media information is useful but lower priority; consider an earlier addition only if implementation is small.
+
+Certificates automatically renew with the same PC identity key. Updated Android profiles preserve pairing across renewal. A missing or unusable key requires a locally confirmed Reset connection identity, which revokes previous phone credentials and requires re-pairing. Pending PC timers continue during renewal/reset. See [mobile connections](mobile-connections.md) for legacy-profile migration limits.
+
 ## Deferred features
 
 - Presets (including Bedtime) and remote touchpad/keyboard/input are skipped for now at the user's request.
-- Remote wake will be revisited with the mobile app and requires hardware/power-state investigation.
-- Hardware monitoring is explicitly deferred; preserve PC Stats Tray as a standalone app and website. See [monitoring integration](monitoring-integration.md).
-- Other later candidates: display arrangement, media metadata/targeting, and Bluetooth transport. USB networking and internet/VPN/relay support are exploratory options.
+- Other later candidates: display arrangement and media metadata/targeting. USB networking and internet/VPN/relay support are exploratory options.
 - Flutter Android is implemented as a development client; iOS remains planned.
 
 ## Mobile requirements and current implementation
@@ -47,9 +57,9 @@ Audio output switching, locally approved app/website shortcuts, and per-monitor 
 - Home desktop and work laptop profiles from the first mobile version. Pair independently and keep the selected PC visible.
 - Remembered host startup after setup, subject to trusted-network restrictions.
 - Preserve authentication/revocation. Discovery never authorizes control.
-- Saved pairing does not bypass AP isolation or enable internet control.
+- Saved pairing does not bypass AP isolation or enable internet control. An already enrolled phone can separately use Bluetooth without a reachable LAN.
 
-The Android development client implements QR and manual pinned enrollment, protected saved profiles, automatic discovery/address recovery, remembered PC selection, and multiple independent PCs. Desktop connection startup/pause is remembered and restricted to trusted networks. Existing certificates migrate into stable identity references; automatic certificate renewal/recovery remains unimplemented. See [mobile connections](mobile-connections.md).
+The Android development client implements QR and manual pinned enrollment, protected saved profiles, automatic discovery/address recovery, remembered PC selection, multiple independent PCs, and saved Automatic/Wi-Fi-only/Bluetooth-only connection modes. Desktop connection startup/pause is remembered and restricted to trusted networks. Existing certificates migrate into stable identity references; same-key certificate renewal and explicit local identity reset/re-pairing are implemented. See [mobile connections](mobile-connections.md).
 
 ## Behavior expectations
 
