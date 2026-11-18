@@ -4,9 +4,9 @@
 
 A personal Windows PC remote for controlling audio, media, displays, and power from bed.
 
-The planned Windows host uses C# and WPF. A phone-friendly website will be the first client; a Flutter Android/iOS app will follow. Communication starts over the home Wi-Fi network, with Bluetooth deferred.
+The Windows host uses C# and WPF, with a responsive browser remote and a native Flutter Android client. Communication uses the local network; iOS and Bluetooth transport remain planned.
 
-The prototype includes a frameless WPF tray/dashboard host, automatic network-address selection, authenticated HTTPS API, a responsive web remote, and command feedback with PC notifications and countdowns. Flutter and Bluetooth remain future work.
+Current development version: **0.3.0 (build 3)**. The prototype includes a WPF tray/dashboard host, authenticated HTTPS API, audio output switching, approved app/website shortcuts, monitor controls, power timers, and command feedback. Android supports one-time QR pairing, protected saved profiles, automatic discovery/reconnection, and independent PC selection.
 
 ## Run
 
@@ -18,7 +18,9 @@ dotnet test TapMyPC.sln -c Release -m:1
 dotnet run --project src/TapMyPC.Desktop -c Release
 ```
 
-Normal launch opens the dashboard with the listener stopped and the network IP selected automatically. Start the host when ready. Localhost, port overrides, certificates, and paired-device management are under Advanced settings. Read [setup](docs/setup.md) for phone pairing, HTTPS, firewall details, and applying staged updates.
+Normal launch resumes connections on a Windows Private/Domain network unless previously paused. The initial QR appears automatically; scan it from Android Add PC to pair once. After pairing, the QR hides and saved PCs reconnect automatically when reachable. Stop connections persists across restarts; Add another phone creates a fresh QR. Localhost, port overrides, certificates, and paired-device management are under Advanced settings. Read [setup](docs/setup.md) for phone pairing, HTTPS, firewall details, and applying staged updates.
+
+For Android build and device-test instructions, see [mobile setup](mobile/README.md). Both devices need a reachable local network; saved pairing cannot bypass AP isolation or enable internet access.
 
 For development without changing any actual PC controls, use the [simulator](docs/setup.md#simulator).
 

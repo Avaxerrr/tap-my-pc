@@ -7,11 +7,19 @@ namespace TapMyPC.Windows.Settings;
 public static class HostCertificate
 {
     // A per-user store keeps the private key out of source/config files. This does not trust the certificate.
-    public static X509Certificate2 GetOrCreate(IPAddress address)
+    public static X509Certificate2 GetOrCreate(IPAddress address, string? savedThumbprint = null)
     {
         var subject = $"CN=TapMyPC-{address}";
         using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
         store.Open(OpenFlags.ReadWrite);
+        if (!string.IsNullOrWhiteSpace(savedThumbprint))
+        {
+            var saved = store.Certificates.FirstOrDefault(c => c.Thumbprint == savedThumbprint && c.HasPrivateKey);
+            if (saved is null) throw new InvalidOperationException("The saved PC certificate is missing. Restore it before reconnecting; do not trust a replacement automatically.");
+            if (saved.NotAfter.ToUniversalTime() <= DateTime.UtcNow)
+                throw new InvalidOperationException("The PC certificate expired. Certificate renewal and phone re-pairing are required.");
+            return saved;
+        }
         // Reuse a valid pre-rename identity so existing browser exceptions/pins keep working.
         var existing = store.Certificates.FirstOrDefault(c =>
             (c.Subject == subject || c.Subject == $"CN=PCRemote-{address}") &&

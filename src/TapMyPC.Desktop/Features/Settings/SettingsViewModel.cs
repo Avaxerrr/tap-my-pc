@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Net;
+using System.Net.NetworkInformation;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -8,6 +10,8 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.Builder;
 using TapMyPC.Api;
+using TapMyPC.Api.Contracts;
+using System.Windows.Media.Imaging;
 using TapMyPC.Core.Devices;
 using TapMyPC.Core.Bluetooth;
 using TapMyPC.Core.Audio;
@@ -32,15 +36,23 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly PowerScheduler scheduler;
     private readonly DispatcherTimer refreshTimer;
     private readonly Dispatcher dispatcher = Dispatcher.CurrentDispatcher;
+    private readonly SemaphoreSlim hostGate = new(1, 1);
+    private ConnectionAdvertisement? advertisement;
+    private IPAddress? listeningAddress;
+    private bool connectionsEnabled;
+    private bool shuttingDown;
+    private int networkCheck;
+    private string discoverySummary = "";
     private WebApplication? server;
     private X509Certificate2? certificate;
     private string address;
     private string port;
-    private string message = "Your network address is selected automatically. Start the host, then open the link on your phone.";
+    private string message = "Your network address is selected automatically. Start the host, then generate and scan a pairing QR below.";
+    private BitmapSource? pairingQrImage;
     private string pairingCode = "— — — — — —";
-    private string pairingExpiry = "Generate a code when your phone is ready.";
+    private string pairingExpiry = "Generate a QR when your phone is ready.";
     private string fingerprint = "Available after starting the host.";
-    private string remoteUrl = "Start the host to get your phone link";
+    private string remoteUrl = "Start host, then generate a pairing QR below";
     private string networkSummary = "Detecting your network…";
     private DateTimeOffset? pairingExpires;
     private string pending = "No power action scheduled";
@@ -61,14 +73,28 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         address = saved.Address;
         port = saved.Port.ToString();
         showNotifications = saved.ShowNotifications;
+        connectionsEnabled = saved.ConnectionsEnabled;
         startupEnabled = StartupRegistration.Enabled;
         ToggleHost = new AsyncCommand(ToggleHostAsync);
         OpenPairing = new RelayCommand(() =>
         {
-            var window = pairing.OpenPairing();
+            if (server is null || certificate is null) { Message = "Select Start connections before adding a phone."; return; }
+            var window = pairing.OpenPairingSession();
+            try
+            {
+                pairingQrImage = Features.Settings.PairingQrImage.Create(PairingInvitation.CreateJson(Environment.MachineName, RemoteUrl, Fingerprint, window));
+            }
+            catch
+            {
+                pairing.ClosePairing();
+                ClearPairingQr();
+                Message = "Could not generate pairing QR. Please try again.";
+                return;
+            }
+            Notify(nameof(PairingQrImage)); Notify(nameof(HasPairingQr)); Notify(nameof(PairingHint)); Notify(nameof(PairingButtonText));
             pairingCode = window.Code;
             pairingExpires = window.ExpiresAt;
-            Message = "Enter this one-time code on your phone. It works once and expires after five minutes.";
+            Message = "Scan this QR in the TapMyPC Android app. The code below also works for browser pairing.";
             Tick();
             Notify(nameof(PairingCode));
         });
@@ -105,6 +131,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         scheduler.Activity.Published += OnActivity;
         refreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Tick(), dispatcher);
         Tick();
+        NetworkChange.NetworkAddressChanged += OnNetworkChanged;
     }
 
     public ShortcutsViewModel? ShortcutSettings { get; }
@@ -115,6 +142,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string Address { get => address; set { address = value; Notify(); } }
     public string Port { get => port; set { port = value; Notify(); } }
     public string Message { get => message; private set { message = value; Notify(); } }
+    public BitmapSource? PairingQrImage => pairingQrImage;
+    public bool HasPairingQr => pairingQrImage is not null;
+    public string VersionLabel => "v" + (typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown").Replace("+", " (build ") + ")";
+    public string AppHeading => $"◉   TAPMYPC    {VersionLabel}";
+    public string PairingButtonText => HasPairingQr ? "Refresh pairing QR" : pairing.Clients.Count > 0 ? "Add another phone" : "Show pairing QR";
+    public string PairingHint => !IsHosting
+        ? "Connections are stopped. Start connections to pair or reconnect a phone."
+        : HasPairingQr
+            ? "On Android: Add PC → Scan PC QR. The QR hides automatically after successful pairing."
+            : pairing.Clients.Count > 0
+                ? "Your paired phones reconnect automatically. Use Add another phone only for a new device."
+                : "Your pairing QR appears here. If it expired, select Show pairing QR to generate another.";
     public string PairingCode => pairingCode;
     public string PairingExpiry => pairingExpiry;
     public string Fingerprint => fingerprint;
@@ -122,8 +161,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string NetworkSummary => networkSummary;
     public string Pending => pending;
     public bool HasPending => scheduler.State.Pending is not null;
-    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? "Offline" : "Ready for your phone";
-    public string HostButtonText => isChangingHost ? "Please wait…" : server is null ? "Start host" : "Stop host";
+    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : "Ready for your phone";
+    public string HostButtonText => isChangingHost ? "Please wait…" : connectionsEnabled ? "Stop connections" : "Start connections";
     public bool CanEditConnection => server is null && !isChangingHost;
     public bool IsHosting => server is not null && !isChangingHost;
     public bool StartupEnabled
@@ -176,53 +215,120 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         Notify(nameof(NetworkSummary));
     }
 
+    public async Task InitializeAsync()
+    {
+        await hostGate.WaitAsync();
+        try { if (connectionsEnabled) await StartListenerAsync(); else Message = "Connections are stopped. Start connections when you are ready; paired phones are remembered."; }
+        catch (Exception ex) { Message = ex.Message; }
+        finally { hostGate.Release(); NotifyHost(); }
+    }
+
     private async Task ToggleHostAsync()
     {
-        isChangingHost = true;
-        NotifyHost();
+        await hostGate.WaitAsync();
+        isChangingHost = true; NotifyHost();
         try
         {
-            if (server is not null)
+            if (connectionsEnabled)
             {
-                await server.StopAsync();
-                await server.DisposeAsync();
-                server = null;
-                certificate?.Dispose();
-                certificate = null;
-                remoteUrl = "Start the host to get your phone link";
-                Message = "Host stopped. Pending power timers still run until canceled or the app exits.";
+                // Pause first and close the listener even if persisting the choice fails.
+                connectionsEnabled = false;
+                Exception? saveError = null;
+                try { SavePreferences(); } catch (Exception ex) { saveError = ex; }
+                await StopListenerAsync();
+                Message = saveError is null
+                    ? "Connections stopped and will stay stopped after restart. Paired phones are remembered. Pending timers continue."
+                    : $"Connections stopped, but the pause could not be saved: {saveError.Message}";
             }
             else
             {
-                DetectNetwork();
-                var ip = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read()));
-                if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535)
-                    throw new ArgumentException("Port must be between 1024 and 65535.");
-                Message = "Starting the secure host…";
-                certificate?.Dispose();
-                certificate = HostCertificate.GetOrCreate(ip);
-                server = await ApiHost.StartAsync(ip, number, certificate, device, pairing, scheduler, bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors);
-                remoteUrl = $"https://{ip}:{number}";
-                fingerprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
+                connectionsEnabled = true;
                 SavePreferences();
-                Message = IPAddress.IsLoopback(ip)
-                    ? "Debugging mode: this link works only on this PC. Select Automatic in Advanced settings for phone access."
-                    : "Ready. Open the phone link on the same Wi-Fi, then generate a pairing code below.";
+                await StartListenerAsync();
             }
         }
         catch (Exception ex) { Message = ex.Message; }
-        finally { isChangingHost = false; NotifyHost(); }
+        finally { isChangingHost = false; hostGate.Release(); NotifyHost(); }
+    }
+
+    private async Task StartListenerAsync()
+    {
+        if (shuttingDown || !connectionsEnabled || server is not null) return;
+        DetectNetwork();
+        var ip = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read()));
+        if (!NetworkTrust.IsTrusted(ip))
+            throw new InvalidOperationException("Connections are waiting: Windows must mark this network Private or Domain. Use a trusted network; public networks are not enabled automatically.");
+        if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535)
+            throw new ArgumentException("Port must be between 1024 and 65535.");
+        var identity = settings.ReadIdentity();
+        var nextCertificate = HostCertificate.GetOrCreate(ip, identity?.CertificateThumbprint);
+        try
+        {
+            if (identity is null) settings.SaveIdentity(new(nextCertificate.Thumbprint));
+            var nextServer = await ApiHost.StartAsync(ip, number, nextCertificate, device, pairing, scheduler,
+                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors);
+            certificate = nextCertificate; server = nextServer; listeningAddress = ip;
+        }
+        catch { nextCertificate.Dispose(); throw; }
+        remoteUrl = $"https://{ip}:{number}";
+        fingerprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
+        discoverySummary = "";
+        if (!IPAddress.IsLoopback(ip))
+        {
+            try { advertisement = new ConnectionAdvertisement(ip, number, fingerprint); }
+            catch { discoverySummary = " Discovery is unavailable; saved addresses and QR pairing still work."; }
+        }
+        Message = "Ready for paired phones. Open the Android app to reconnect." + discoverySummary;
+        NotifyHost();
+        if (pairing.Clients.Count == 0) OpenPairing.Execute(null);
+    }
+
+    private async Task StopListenerAsync()
+    {
+        pairing.ClosePairing(); ClearPairingQr();
+        pairingCode = "— — — — — —"; pairingExpires = null;
+        pairingExpiry = "Pairings are remembered. Start connections to reconnect.";
+        advertisement?.Dispose(); advertisement = null;
+        if (server is not null) { await server.StopAsync(); await server.DisposeAsync(); server = null; }
+        listeningAddress = null; certificate?.Dispose(); certificate = null;
+        remoteUrl = "Browser address available when connections are running";
+        Notify(nameof(PairingCode)); Notify(nameof(PairingExpiry));
+    }
+
+    private void OnNetworkChanged(object? sender, EventArgs e) =>
+        dispatcher.BeginInvoke(() => _ = CheckNetworkAsync());
+
+    private async Task CheckNetworkAsync()
+    {
+        if (shuttingDown || !connectionsEnabled || !await hostGate.WaitAsync(0)) return;
+        try
+        {
+            IPAddress? current = null;
+            try { current = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read())); } catch { }
+            if (current is null || !NetworkTrust.IsTrusted(current))
+            {
+                if (server is not null) await StopListenerAsync();
+                Message = "Waiting for a trusted Private/Domain network. Your saved pairings are unchanged.";
+            }
+            else if (server is null || !current.Equals(listeningAddress))
+            {
+                await StopListenerAsync();
+                await StartListenerAsync();
+            }
+        }
+        catch (Exception ex) { Message = ex.Message; }
+        finally { hostGate.Release(); NotifyHost(); }
     }
 
     private void NotifyHost()
     {
-        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus) }) Notify(name);
+        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText) }) Notify(name);
     }
 
     private void SavePreferences()
     {
         if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535) throw new ArgumentException("Port must be between 1024 and 65535.");
-        settings.SaveHost(new(Address, number, ShowNotifications));
+        settings.SaveHost(new(Address, number, ShowNotifications, ConnectionsEnabled: connectionsEnabled));
     }
 
     private void ExportPublicCertificate()
@@ -256,6 +362,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void Tick()
     {
+        if (++networkCheck % 10 == 0) _ = CheckNetworkAsync();
+        if (!pairing.IsPairingOpen) ClearPairingQr();
         if (pairingExpires is { } expiry)
         {
             var remaining = expiry - DateTimeOffset.UtcNow;
@@ -276,22 +384,36 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
                 Notify(nameof(PairingCode)); Notify(nameof(PairingExpiry));
             }
         }
+        if (clients.Count > 0 && pairingExpires is null && !pairing.IsPairingOpen)
+        {
+            pairingExpiry = "Paired phones reconnect automatically. No QR is needed for normal use.";
+            Notify(nameof(PairingExpiry));
+        }
         pairedCount = clients.Count;
+        Notify(nameof(PairingHint)); Notify(nameof(PairingButtonText));
         pending = scheduler.State.Pending is { } item
             ? $"{item.Action} in {Math.Max(0, Math.Ceiling((item.DueAt - DateTimeOffset.UtcNow).TotalSeconds))} seconds"
             : "No power action scheduled";
         Notify(nameof(Pending)); Notify(nameof(HasPending));
         RefreshActivity();
     }
+    private void ClearPairingQr()
+    {
+        if (pairingQrImage is null) return;
+        pairingQrImage = null;
+        Notify(nameof(PairingQrImage)); Notify(nameof(HasPairingQr)); Notify(nameof(PairingHint)); Notify(nameof(PairingButtonText));
+    }
     private int pairedCount;
 
     public async Task ShutdownAsync()
     {
+        shuttingDown = true;
+        NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
         refreshTimer.Stop();
         scheduler.Activity.Published -= OnActivity;
-        scheduler.Dispose();
-        if (server is not null) { await server.StopAsync(); await server.DisposeAsync(); server = null; }
-        certificate?.Dispose();
+        await hostGate.WaitAsync();
+        try { await StopListenerAsync(); scheduler.Dispose(); }
+        finally { hostGate.Release(); }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

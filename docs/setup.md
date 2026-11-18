@@ -1,8 +1,16 @@
 # Setup and operation
 
+## Versions and QR visibility
+
+Current development version: 0.3.0, build 3. The desktop title bar and Android app header show their installed version/build. When connected, Android also shows the PC-reported serverVersion; 0.3.0+3 means version 0.3.0, build 3.
+
+The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
+
+Desktop assembly/product/file versions are declared in Directory.Build.props. Android version/build comes from mobile/pubspec.yaml and is read from installed package metadata. Increment the build when distributing an update, keep the two version declarations aligned for coordinated builds, and verify installed metadata after deployment.
+
 ## Build and launch
 
-Development requires Windows and the .NET 10 SDK. The repository pins SDK 10.0.115 with patch roll-forward. No third-party runtime package is needed by the application; test packages restore from NuGet.
+Development requires Windows and the .NET 10 SDK. The repository pins SDK 10.0.115 with patch roll-forward. NuGet restores QR rendering and mDNS support along with test dependencies.
 
 ```powershell
 dotnet build TapMyPC.sln -c Release -m:1
@@ -10,25 +18,35 @@ dotnet test TapMyPC.sln -c Release -m:1
 dotnet run --project src/TapMyPC.Desktop -c Release
 ```
 
-Normal launch opens settings with the network listener stopped. Closing the settings window hides it; the app stays in the tray. Double-click the tray icon or use Settings to reopen it. Exit from its tray menu stops the listener and cancels all pending timers. A second instance exits rather than creating another listener.
+Normal launch resumes the remembered connection preference (enabled by default). Stop connections persists a pause across launches; Start connections resumes it. Closing the settings window hides it; the app stays in the tray. Double-click the tray icon or use Settings to reopen it. Exit from its tray menu stops the listener and cancels all pending timers. A second instance exits rather than creating another listener.
 
 ## Connect a phone
 
 1. Use the same trusted home network on the phone and PC. Internet access is unnecessary. Guest networks or router client isolation may prevent connection.
 2. The dashboard automatically detects an active private IPv4 address, preferring a gateway-capable adapter and then Wi-Fi. Use Advanced settings only to override it. `127.0.0.1` is available there for debugging and works only on the PC itself. If no network address exists, the app explains the problem instead of silently falling back to localhost.
-3. Click Start secure host. The initial port is 45831. The listener binds only to the selected address.
+3. Connections start automatically on trusted Windows Private/Domain networks, unless previously paused. Select Start connections to resume. The initial port is 45831 and the listener binds only to the selected address.
 4. Complete the HTTPS identity check below and any required local firewall setup.
 5. Open the displayed HTTPS URL on the phone, generate a pairing code on the PC, and enter it with a device name on the phone. Commands show sending/result notifications; pending power actions have a visible countdown and cancellation on both devices.
 
-Address selection is refreshed when starting the host or using Advanced / Refresh. It does not migrate a running listener automatically when the network changes. Stop/start the host to use a new address. Old settings from the first prototype migrate to Automatic selection; new explicit debugging overrides are retained.
+Address selection is refreshed on network changes and every ten seconds. The listener restarts automatically on the selected trusted address while enabled; it stops on an untrusted network. A deliberate Stop connections remains paused. Old settings from the first prototype migrate to Automatic selection; new explicit debugging overrides are retained.
 
 Codes last five minutes, accept one successful pairing, and close after five incorrect attempts. Generate another code for each additional phone. Up to 20 clients may be paired. A successful pairing stores a long-lived credential in that browser's local storage. Private browsing or clearing site data loses it.
 
 Select a paired device on the PC and revoke it to invalidate its credential immediately. Forget this connection on the website removes only that browser's saved copy; it does not revoke a credential that has been copied elsewhere.
 
-## Planned mobile flow and isolated networks
+## Pair the Android app with QR
 
-QR enrollment, automatic discovery, mobile PC profiles, and remembered host startup are planned, not current browser features. Existing pairings already create persistent credentials; ordinary reconnects do not inherently require a new code.
+1. Open the desktop app on a trusted network. Resume Start connections if previously paused.
+2. The initial QR appears automatically when no phones are paired. For an additional phone select Add another phone. The QR and browser fallback code expire after five minutes and permit one successful pairing.
+3. On Android select Add PC, then Scan PC QR. Allow camera access when Android asks.
+4. Scan the QR displayed by your PC, review its name/address, and select Pair with this PC. The app verifies the embedded certificate fingerprint before sending its one-time secret.
+5. The QR hides after pairing. Android saves the credential securely, discovers saved PCs, verifies the certificate, and reconnects automatically. Use the PC selector to choose another independently paired PC; the selection is remembered.
+
+Manual setup remains under Enter details manually. If camera access is denied, enable it in Android settings or use manual setup. Regenerate on the PC if a QR expires or was used. Stopping the host closes outstanding invitations. Ordinary saved-address reconnects do not require a new QR.
+
+## Automatic reconnection and isolated networks
+
+Android QR enrollment, saved PC selection, native mDNS discovery, certificate reuse across IP changes, and remembered connection startup are implemented. The browser continues using its existing manual code flow. Existing pairings already create persistent credentials; ordinary reconnects do not inherently require a new code.
 
 Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic through AP/client isolation. Saved credentials, QR scanning, or a correct IP cannot override that block. If only discovery is blocked, a reachable direct address may work. A timeout alone does not identify isolation conclusively.
 
@@ -38,15 +56,15 @@ Monitoring is deferred. Its standalone app/website compatibility plan is in [mon
 
 ## HTTPS identity and certificates
 
-The prototype creates a self-signed, one-year certificate for the selected address in Current User / Personal. Its private key stays in the Windows user key store. No root certificate is trusted automatically, and the app does not run an HTTP fallback.
+The prototype creates an initial self-signed, one-year certificate in Current User / Personal, then persists its thumbprint in identity.json and reuses that exact certificate across address changes. Missing or expired identities fail closed and require explicit recovery; automatic certificate renewal is not implemented. Its private key stays in the Windows user key store. No root certificate is trusted automatically, and the app does not run an HTTP fallback.
 
 A phone browser will initially show a certificate warning. Before making a site-specific exception, verify that the address is the one displayed by the PC and compare the certificate's SHA-256 fingerprint with settings where the browser exposes it. Use Export public certificate if a trusted transfer or certificate inspection is needed; the exported `.cer` contains no private key. If the phone cannot verify the certificate identity, complete that setup separately rather than treating encryption alone as proof of identity. Do not broadly disable certificate validation.
 
-Browser certificate inspection/exception controls differ, and this is a prototype setup friction. Future Flutter clients should use an explicit pairing/identity-verification flow with certificate pinning, rather than accepting all self-signed certificates. An IP change or certificate renewal may require a new browser exception; confirm the new identity on the PC.
+Browser certificate inspection/exception controls differ, and this is a prototype setup friction. The Android client verifies an exact QR/saved certificate pin before sending credentials, including after address recovery. An IP change or certificate renewal may require a new browser exception; confirm the new identity on the PC.
 
 ## Windows Firewall
 
-The app does not automatically create firewall rules, request elevation, or change the network profile. Localhost testing needs no inbound LAN rule. If the phone cannot connect, check the selected address and network isolation before adding a rule.
+The app does not automatically create firewall rules, request elevation, or change the network profile. Localhost testing needs no inbound LAN rule. If the phone cannot connect, check the selected address and network isolation before adding a rule. Automatic discovery uses mDNS UDP 5353 on the selected trusted adapter; if blocked, saved/direct addresses remain usable when TCP is reachable. The app does not open that firewall port automatically.
 
 On a trusted home network configured as Private, allow the published executable's TCP port for the Private profile and LocalSubnet only. This example is for a user to run in an elevated PowerShell when ready; it has not been run by the agent:
 
@@ -91,9 +109,9 @@ This controls radio power only. Pairing Bluetooth peripherals and using Bluetoot
 
 ## Startup and local data
 
-Startup is off by default. The checkbox writes a per-user Run entry that launches the current executable with `--tray`. This mode starts the saved host and keeps the window hidden. Use a stable published executable path before enabling startup. Remove the checkbox before moving/deleting that executable.
+Startup is off by default. The checkbox writes a per-user Run entry that launches the current executable with `--tray`. This mode respects the saved connection preference and keeps the window hidden; a paused host stays paused. Use a stable published executable path before enabling startup. Remove the checkbox before moving/deleting that executable.
 
-Host preferences and paired-client hashes live in `%LOCALAPPDATA%\TapMyPC\host.json` and `devices.json`. Certificate keys are stored separately in the Windows user certificate/key stores. Do not edit these files while the app is running. Corrupt or inaccessible configuration is reported rather than silently discarded.
+Host preferences and paired-client hashes live in `%LOCALAPPDATA%\TapMyPC\host.json` and `devices.json`. The same directory contains `identity.json` with the public certificate thumbprint reference. Certificate keys are stored separately in the Windows user certificate/key stores. Do not edit these files while the app is running. Corrupt or inaccessible configuration is reported rather than silently discarded.
 
 The dashboard has a custom frameless title bar with minimize, maximize/restore, and hide-to-tray buttons. Technical connection overrides, certificate tools, sign-in startup, notifications, and paired-device management are under Advanced settings.
 
@@ -125,7 +143,7 @@ Exit the old app using its tray menu when convenient; pending timers will be can
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Apply-Update.ps1
 ```
 
-Open the usual `artifacts/publish/TapMyPC/TapMyPC.exe` afterward, then start the host and reload the phone page. The script refuses to update a running copy. It copies staged files into the existing location, leaves user preferences/paired devices untouched, and preserves the executable path used by startup and program-scoped firewall rules. It does not kill the old host, change firewall settings, or run PC controls. Optional `-Launch` starts the updated executable after copying; it is not used automatically by the agent.
+Open the usual `artifacts/publish/TapMyPC/TapMyPC.exe` afterward, then resume connections if paused and reopen the phone app/page. The script refuses to update a running copy. It copies staged files into the existing location, leaves user preferences/paired devices untouched, and preserves the executable path used by startup and program-scoped firewall rules. It does not kill the old host, change firewall settings, or run PC controls. Optional `-Launch` starts the updated executable after copying.
 
 ## Simulator
 
@@ -146,4 +164,4 @@ This script targets only the simulator port, uses an isolated browser profile, a
 
 ## Remaining limitations
 
-The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, QR discovery, installation, presets (deferred), remote input (deferred), display arrangement, Flutter, Bluetooth transport/peripheral pairing, and remote wake are not implemented. The current build is a prototype, not a verified production release.
+The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, a desktop installer, presets (deferred), remote input (deferred), display arrangement, iOS deployment, Bluetooth transport/peripheral pairing, and remote wake are not implemented. The current build is a prototype, not a verified production release.

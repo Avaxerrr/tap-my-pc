@@ -183,7 +183,7 @@
       <Grid
         Margin="22,0,8,0">
         <TextBlock
-          Text="◉   TAPMYPC"
+          Text="{Binding AppHeading}"
           Foreground="#C9EFAA"
           FontSize="11"
           FontWeight="SemiBold"
@@ -237,7 +237,7 @@
                 FontSize="31"
                 FontWeight="SemiBold" />
               <TextBlock
-                Text="Connect once. Settle in. Control from your phone."
+                Text="Pair once. Open the Android app to reconnect automatically."
                 Foreground="#9BAFA6"
                 Margin="0,8,0,0" />
             </StackPanel>
@@ -258,16 +258,17 @@
             Style="{StaticResource Card}">
             <StackPanel>
               <TextBlock
-                Text="01 / CONNECT YOUR PHONE"
+                Text="01 / CONNECTIONS"
                 Style="{StaticResource Label}" />
               <TextBlock
-                Text="Your remote starts here."
+                Text="Ready when you are."
                 FontSize="22"
                 FontWeight="SemiBold" />
               <TextBlock
                 Text="{Binding NetworkSummary}"
                 Foreground="#9BAFA6"
                 Margin="0,7,0,16" />
+              <Expander Header="Browser connection details (optional)" Foreground="#9BAFA6">
               <Grid>
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition />
@@ -286,6 +287,7 @@
                   IsEnabled="{Binding IsHosting}"
                   Margin="12,0,0,0" />
               </Grid>
+              </Expander>
               <Grid
                 Margin="0,18,0,0">
                 <Grid.ColumnDefinitions>
@@ -323,22 +325,31 @@
                   Text="02 / PAIR A DEVICE"
                   Style="{StaticResource Label}" />
                 <TextBlock
-                  Text="Make it yours."
+                  Text="Pair your phone once."
                   FontSize="21"
                   FontWeight="SemiBold" />
+                <TextBlock Text="{Binding PairingHint}" Foreground="#BDCDC5" FontSize="12" Margin="0,10,0,0" />
+                <Border Background="White" CornerRadius="10" Padding="8" Margin="0,16,0,6"
+                        HorizontalAlignment="Center" Visibility="{Binding HasPairingQr, Converter={StaticResource BoolVisibility}}">
+                  <Image Source="{Binding PairingQrImage}" Width="256" Height="256"
+                         RenderOptions.BitmapScalingMode="NearestNeighbor"
+                         AutomationProperties.Name="Scan to pair with TapMyPC" />
+                </Border>
+                <Expander Header="Browser pairing code" Foreground="#9BAFA6" Margin="0,8,0,0">
                 <TextBlock
                   Text="{Binding PairingCode}"
                   FontSize="31"
                   FontFamily="Consolas"
                   Foreground="#C9EFAA"
                   Margin="0,18,0,7" />
+                </Expander>
                 <TextBlock
                   Text="{Binding PairingExpiry}"
                   Foreground="#9BAFA6"
                   FontSize="12"
                   MinHeight="38" />
                 <Button
-                  Content="Generate pairing code"
+                  Content="{Binding PairingButtonText}"
                   Command="{Binding OpenPairing}"
                   IsEnabled="{Binding IsHosting}"
                   HorizontalAlignment="Left"
@@ -503,7 +514,7 @@
                 Content="Show brief TapMyPC notifications on this PC"
                 IsChecked="{Binding ShowNotifications}" />
               <CheckBox
-                Content="Start in tray when I sign in (starts saved host)"
+                Content="Start in tray when I sign in (respects stopped connections)"
                 IsChecked="{Binding StartupEnabled}" />
               <TextBlock
                 Text="Paired devices"

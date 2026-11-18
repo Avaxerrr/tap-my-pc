@@ -2,6 +2,8 @@
 
 ## Current state
 
+Coordinated development build: 0.3.0 (build 3), with automatic trusted-network connections, one-time QR setup, native Android discovery/address recovery, remembered multi-PC selection, and in-app connection help. See [setup](setup.md).
+
 The app is branded **TapMyPC**, with the tagline **Your PC, a tap away.** The solution, project namespaces, executable, tray, dashboard, web UI, and documentation use this name. Compatibility code preserves the pre-rename preferences, paired-client credentials, certificates, and single-instance behavior.
 
 The first prototype is implemented on .NET 10: the four main projects, WPF tray/settings UI, HTTPS host, pairing/revocation, web remote, Windows control adapters, and PC-owned timers. A separate loopback-only simulator supports testing without Windows actions. See [verification](verification.md) for evidence and outstanding checks.
@@ -36,13 +38,15 @@ Verify timers continue after browser disconnection and cancellation prevents the
 
 Implemented audio output switching, locally approved app/website shortcuts, and per-monitor brightness/on/off with capability detection. The user has deferred presets and remote input. Revisit remote wake alongside the mobile app rather than during this desktop/web pass.
 
-## Phase 4: Flutter client — next
+## Phase 4: Flutter client — in progress
+
+The first Android client is implemented in mobile/ using the existing manual enrollment API, exact certificate verification, secure profile storage, multiple saved PCs, and native controls. QR enrollment is now implemented with single-use secrets and pinned certificate verification. Native discovery, authenticated address recovery, certificate reuse across IP changes, and remembered host startup are implemented. Certificate renewal/recovery remains a next protocol step. See [mobile setup](../mobile/README.md).
 
 1. Define stable PC identity and migrate address-based certificate lifecycle; specify renewal/reset/recovery.
 2. Implement locally opened, short-lived, single-use QR enrollment with identity verification and protected per-PC credentials.
-3. Add discovery, last-address/manual fallback, authenticated reconnection, and accurate offline/blocked/permission states.
+3. Implemented: native Android discovery, last-address/manual fallback, authenticated reconnection, availability and permission/error feedback. Do not infer AP isolation from timeouts.
 4. Support home desktop/work laptop profiles with independent trust/state and explicit command targets.
-5. Add a remembered, trusted-network-aware Start host when app opens option; keep Windows sign-in startup separate.
+5. Implemented: remembered Start/Stop connections, automatic startup on trusted networks and rebind after network changes; Windows sign-in startup stays separate.
 6. Build Flutter controls/timers against the existing API. Verify Android first, then iPhone with macOS/Xcode.
 7. Test wrong identities, QR expiry/reuse, revocation, IP changes, isolation, permissions, PC switching, and reconnects without command replay.
 
@@ -59,7 +63,7 @@ Remote wake is a separate investigation. Test supported power states explicitly;
 ## Open decisions
 
 - Installer approach; the initial output is a framework-dependent folder publish.
-- QR/discovery protocol details, stable identity/certificate migration, and recovery UX. Manual address/code pairing remains implemented.
+- QR/discovery and existing certificate migration are implemented. Automatic certificate renewal and identity-recovery UX remain. Manual address/code pairing remains available.
 - USB networking and authenticated routed/relayed access are exploratory; no public-network or AP-isolation fallback is implemented.
 - Media targeting when several applications are playing.
 - Future Bluetooth protocol and Windows peripheral/central support.

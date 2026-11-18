@@ -38,9 +38,9 @@ Audio output switching, locally approved app/website shortcuts, and per-monitor 
 - Remote wake will be revisited with the mobile app and requires hardware/power-state investigation.
 - Hardware monitoring is explicitly deferred; preserve PC Stats Tray as a standalone app and website. See [monitoring integration](monitoring-integration.md).
 - Other later candidates: display arrangement, media metadata/targeting, and Bluetooth transport. USB networking and internet/VPN/relay support are exploratory options.
-- Flutter Android/iOS remains the planned mobile client.
+- Flutter Android is implemented as a development client; iOS remains planned.
 
-## Mobile requirements — planned
+## Mobile requirements and current implementation
 
 - QR first-time pairing; persistent per-PC credentials for normal reconnection.
 - Automatic local discovery with identity verification and last-address/manual fallback.
@@ -49,11 +49,11 @@ Audio output switching, locally approved app/website shortcuts, and per-monitor 
 - Preserve authentication/revocation. Discovery never authorizes control.
 - Saved pairing does not bypass AP isolation or enable internet control.
 
-These features are not implemented. See [mobile connections](mobile-connections.md).
+The Android development client implements QR and manual pinned enrollment, protected saved profiles, automatic discovery/address recovery, remembered PC selection, and multiple independent PCs. Desktop connection startup/pause is remembered and restricted to trusted networks. Existing certificates migrate into stable identity references; automatic certificate renewal/recovery remains unimplemented. See [mobile connections](mobile-connections.md).
 
 ## Behavior expectations
 
-- Require deliberate confirmation for shutdown/restart and provide a short cancellation opportunity. Exact interaction and duration remain to be selected.
+- Require deliberate confirmation for shutdown/restart and provide a short cancellation opportunity. Shutdown/restart have a minimum ten-second cancellable delay; other supported power actions have a minimum three seconds.
 - Do not force-close applications by default. A power request may be blocked by unsaved work; accepting a command does not guarantee the power transition completes.
 - Timers run on the PC and continue when the browser disconnects. The prototype cancels them on process exit and does not persist them across restart.
 - Show pending actions and connection failures clearly. Avoid ambiguous toggle commands where an explicit state can be requested, such as setting mute on/off.

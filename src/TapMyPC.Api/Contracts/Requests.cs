@@ -15,3 +15,5 @@ public record BluetoothRequest([property: JsonRequired] bool Enabled);
 public record AudioOutputRequest([property: JsonRequired] string? Id);
 public record MonitorBrightnessRequest([property: JsonRequired] string? Id, [property: JsonRequired] int Brightness);
 public record MonitorPowerRequest([property: JsonRequired] string? Id, [property: JsonRequired] bool Enabled);
+
+public record QrPairRequest([property: JsonRequired] string? Secret, [property: JsonRequired] string? Name);

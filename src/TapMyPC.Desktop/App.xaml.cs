@@ -21,7 +21,7 @@ public partial class App : Application
     private SettingsViewModel? settingsViewModel;
     private FeedbackPresenter? feedback;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
         // Keep the original lock identity so a pre-rename host cannot run beside TapMyPC.
@@ -40,8 +40,8 @@ public partial class App : Application
             feedback = new FeedbackPresenter(scheduler, () => settingsViewModel.ShowNotifications, Dispatcher);
             MainWindow = new MainWindow { DataContext = settingsViewModel };
             tray = new TrayIcon(ShowSettings, ExitAsync);
-            if (e.Args.Contains("--tray")) settingsViewModel.ToggleHost.Execute(null);
-            else ShowSettings();
+            if (!e.Args.Contains("--tray")) ShowSettings();
+            await settingsViewModel.InitializeAsync();
         }
         catch (Exception ex)
         {

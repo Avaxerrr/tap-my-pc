@@ -25,6 +25,7 @@ shortcuts.Add("Example app", ShortcutKind.App, Path.Combine(Path.GetTempPath(), 
 var port = args.Length > 0 && int.TryParse(args[0], out var parsed) ? parsed : 45832;
 await using var app = await ApiHost.StartAsync(IPAddress.Loopback, port, certificate, device, pairing, scheduler, bluetooth: new SimulatedBluetooth(), outputs: hardware, monitors: hardware, shortcuts: shortcuts);
 Console.WriteLine($"SIMULATED controls only. URL: {app.Urls.Single()}");
+Console.WriteLine($"Certificate SHA-256: {certificate.GetCertHashString(HashAlgorithmName.SHA256)}");
 Console.WriteLine($"Pairing code: {pairing.OpenPairing().Code} (one use; five minutes)");
 await app.WaitForShutdownAsync();
 

@@ -5,7 +5,7 @@
 One Windows process hosts the WPF application, tray integration, local-network API, prototype web assets, and background feature services. The projects below define code boundaries, not separate executables or Windows services.
 
 ```text
-Browser prototype now / Flutter client later
+Browser remote / Flutter Android client
                     |
           Authenticated Wi-Fi API
                     |
@@ -50,6 +50,7 @@ src/
     wwwroot/
 tests/
   TapMyPC.Tests/
+mobile/                 # Flutter Android client and device tests
 tools/
   TapMyPC.Simulator/
   browser-smoke.cjs
@@ -93,18 +94,18 @@ ShortcutCatalog owns the locally approved list. Only the PC settings UI can add/
 - Prefer explicit desired-state operations where possible. Prevent automatic retries from duplicating non-idempotent power or timer actions.
 - Separate command acceptance from confirmed device state, especially for power transitions that end the connection.
 - The Windows host owns timers, paired-client records, preferences, and authoritative state.
-- Flutter will implement its own UI and API client while reusing the server behavior and protocol. A documented command contract, not a shared programming language, provides compatibility.
+- Flutter implements its own UI and API client while reusing the server behavior and protocol. A documented command contract, not a shared programming language, provides compatibility.
 - Add Bluetooth as a transport adapter when needed. Keep current handlers independent of HTTP, but avoid designing an unused transport framework now.
 
 Implemented routes and DTOs are documented in [API contract](api.md). The web remote polls status every two seconds while visible. It stores a bearer token locally; the PC persists only its hash and client metadata. Pairing uses a locally generated, single-use six-digit code that expires after five minutes or five incorrect attempts. Remote clients cannot generate pairing codes.
 
 ## Local-network access
 
-Pairing and authenticated commands are required. Validate inputs, limit exposed operations to supported commands, and keep credentials out of logs. Kestrel serves HTTPS using a certificate held in the current user's Personal certificate store; it does not add a root trust entry. Normal launch leaves the host stopped and automatically selects an active private IPv4 address, preferring an adapter with a gateway and then Wi-Fi. The listener still binds only one address. Localhost and manual overrides are under Advanced settings. Legacy address-only settings migrate to Automatic once; versioned explicit debug overrides are preserved. Origin/Host checks, request limits, and per-IP rate limiting constrain the API. See [setup](setup.md) for the initial certificate identity check and phone trust limitations.
+Pairing and authenticated commands are required. Validate inputs, limit exposed operations to supported commands, and keep credentials out of logs. Kestrel serves HTTPS using a certificate held in the current user's Personal certificate store; it does not add a root trust entry. Normal launch resumes the saved connection preference (enabled by default) and automatically selects an active IPv4 address, preferring an adapter with a gateway and then Wi-Fi. Windows Private/Domain network classification is checked separately before listening. Stop connections persists across launches, including when waiting for a trusted network. The listener still binds only one address. Localhost and manual overrides are under Advanced settings. Legacy address-only settings migrate to Automatic once; versioned explicit debug overrides are preserved. Origin/Host checks, request limits, and per-IP rate limiting constrain the API. See [setup](setup.md) for the initial certificate identity check and phone trust limitations.
 
-## Planned mobile and monitoring changes
+## Mobile connections and deferred monitoring
 
-The current manual browser pairing and per-address certificates remain implemented behavior. QR enrollment, protected mobile storage, stable PC identity, discovery, multi-PC profiles, and remembered host startup are future work. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
+Manual browser pairing remains available. The desktop saves a public certificate reference in identity.json and reuses that exact certificate across selected-IP changes; it fails closed if the saved identity is missing or expired. Android now supports QR enrollment, protected saved profiles, and explicit PC selection. The QR carries a one-use secret and pinned leaf fingerprint; certificate verification precedes secret transmission. Shared pairing state atomically consumes both QR and manual paths. Desktop image rendering uses QRCoder; native Android decoding uses bundled ML Kit through mobile_scanner. Native Android NSD discovers _tapmypc._tcp hints; saved-pin HTTPS authentication validates candidates before updating stored addresses. Desktop advertising is limited to its selected trusted adapter. Connection preference persists, auto-starts by default, waits on Public/unidentified networks, and rebinds after network changes. Initial QR generation occurs only with no paired clients; subsequent enrollment is explicit. Certificate renewal and identity recovery remain future work. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
 
 Monitoring is deferred. The proposed bridge keeps PC Stats Tray and its website standalone, reads local cached snapshots, and serves them through TapMyPC. No monitoring dependency or elevated network host is introduced now. See [monitoring integration](monitoring-integration.md).
 

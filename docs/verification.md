@@ -1,5 +1,7 @@
 # Verification
 
+This is a chronological record. Earlier sections describe their build at the time; the v0.3.0 automatic-connections section records the latest delivered behavior and checks.
+
 ## First prototype checks
 
 Performed on the user's Windows development machine on November 17, 2026, without opening a visible application window or issuing native mutating controls while the user played a game.
@@ -75,4 +77,40 @@ No firewall rule, startup entry, network-profile change, certificate trust entry
 
 The user subsequently reported the corrected monitor controls work. This is user feedback, separate from the agent's read-only native probes.
 
-QR enrollment, automatic discovery/reconnection, mobile secure storage, multi-PC profiles, and remembered host startup are documented plans, not implemented or security-verified mobile features. Monitoring integration is explicitly deferred. See mobile-connections.md and monitoring-integration.md for boundaries and required future validation.
+At that planning checkpoint, QR enrollment, automatic discovery/reconnection, mobile secure storage, multi-PC profiles, and remembered host startup were plans. Subsequent implementation and checks are recorded below. Monitoring integration is explicitly deferred. See mobile-connections.md and monitoring-integration.md for boundaries and required future validation.
+
+## First Android client — November 18, 2026
+
+- Desktop controls and planning checkpoint committed/pushed as ef6e306 before mobile implementation.
+- Flutter analysis reported no issues; two Dart validation tests passed and the Android debug APK built.
+- Device integration test passed on the user's USB-connected Android 16 phone (23122PCD1G): wrong certificate pin rejected, subsequent valid enrollment succeeded, secure profile save/load passed, and the native UI connected and executed a simulated mute command.
+- Test used only the loopback simulator through adb reverse, with ephemeral certificate/code and restored prior profiles. No native PC control was exercised.
+- At this first-client checkpoint, mobile enrollment was manual address/fingerprint/code. QR, discovery, address-independent identity, Bluetooth transport, custom timer durations, and iOS builds remain future work. This test is not a full security audit.
+
+## QR pairing — November 18, 2026
+
+- Release build/publish passed without warnings/errors. All 42 backend tests and five Flutter tests passed.
+- Backend checks cover 256-bit QR secrets, shared QR/manual single-use state, expiry, regeneration, explicit closure, five-failure lockout, concurrent redemption, required API properties, normal authorization, replay rejection, and revocation.
+- Rendered the actual desktop pairing view model and dashboard offscreen; the QR, fallback code, expiry, and generate button fit the pairing card.
+- The USB-connected Android device decoded that desktop-generated QR PNG with the bundled native decoder, rejected a wrong TLS pin before submitting the secret, enrolled successfully, rejected replay, saved/loaded the secure profile, and connected in the native UI. Prior device profiles were restored.
+- No real PC controls were invoked. The test used an isolated loopback HTTPS host with simulated controllers and a temporary invitation; camera permission prompts and aiming the live camera at a monitor remain manual checks.
+- Automatic discovery, stable identity migration, Bluetooth transport, iOS, and monitoring remain outside this change.
+
+## Version visibility and QR setup guidance
+
+- Desktop and Android builds now declare 0.2.0, build 2. Desktop file/product metadata reports 0.2.0.2 / 0.2.0+2. Android reads versionName/versionCode from the installed package through its native channel rather than a duplicated display constant.
+- Desktop title bar shows the compiled version, the phone header shows its installed version, and authenticated status includes serverVersion for display on the phone.
+- Pairing instructions distinguish offline Start host from online Generate pairing QR. The existing URL remains for browser access; no QR is shown before a pairing invitation is generated.
+- Release solution build/publish and offscreen WPF layout/shortcut checks passed. Changes affect display/build metadata and additive status metadata; QR secret and authentication behavior are unchanged.
+
+- Android installed metadata was verified as versionName=0.2.0 and versionCode=2; the on-device header was visually confirmed as v0.2.0 (build 2). Flutter analysis is clean. Both versioned development builds were applied and reopened.
+
+## Automatic connections — v0.3.0 (build 3), November 18, 2026
+
+- .NET tests: 42 passed. Flutter tests: 7 passed. Flutter analyze: no issues. Release desktop publish and normal debug APK build succeeded.
+- Isolated WPF lifecycle harness passed: automatic startup, initial QR, successful pairing hides QR, persisted Stop survives a new view model, explicit resume, subsequent launch without QR, authenticated saved credential reconnect, and reuse of the exact certificate for another IP. Only simulated device controls and a temporary certificate/settings store were used; the harness removed its own test certificate afterward.
+- Read-only Windows network-category probe recognized the selected Private Wi-Fi adapter and rejected the untrusted virtual adapter. No firewall or network-category changes were made.
+- Connected Android 16 integration test passed with a simulated host on the local Wi-Fi address: actual desktop mDNS advertisement -> native Android NSD -> QR enrollment -> wrong-certificate rejection -> replay rejection -> remembered selection among two saved PCs -> automatic recovery from an unreachable saved address -> pinned authenticated LAN status -> protected address update -> in-app help dialog. No native PC control action was executed.
+- Inspected the rendered desktop dashboard after pairing: QR hidden, optional browser details collapsed, Add another phone and Stop connections visible, installed version shown.
+- Desktop staged update applied to the original executable path and launched. Normal Android APK installed after USB-install approval, launched, and visible version/package metadata confirmed as 0.3.0 / build 3. APK copied to artifacts/mobile/TapMyPC-debug.apk. A final lifecycle check also verified Stop connections persists while waiting on the untrusted virtual adapter.
+- Remaining manual coverage: live camera aiming/permission prompts, actual DHCP/network-switch timing on varied routers, sleep/resume and lengthy discovery loss, managed network policy, certificate renewal/replacement recovery, and long-term multi-PC operation. Automated tests do not constitute a production security audit.

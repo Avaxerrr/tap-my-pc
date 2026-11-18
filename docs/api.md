@@ -15,6 +15,7 @@ Browser requests must originate from the same HTTPS origin; no CORS access is gr
 | Method | Route | JSON request | Result |
 | --- | --- | --- | --- |
 | POST | `/api/v1/pair` | `{"code":"123456","name":"My Android"}` | 200 `{"token":"..."}` |
+| POST | `/api/v1/pair/qr` | `{"secret":"<64 hex characters>","name":"My Android"}` | 200 `{"token":"..."}` |
 | GET | `/api/v1/status` | None | 200 status object below |
 | PUT | `/api/v1/audio/volume` | `{"volume":35}` | 200 `{"accepted":true}` |
 | PUT | `/api/v1/audio/mute` | `{"muted":true}` | 200 `{"accepted":true}` |
@@ -53,6 +54,8 @@ Power actions: `Lock`, `Sleep`, `Hibernate`, `Shutdown`, `Restart`. Delay is an 
 Volume is an integer from 0 to 100. Missing required command properties, malformed JSON, invalid enum values, and numeric enum values are rejected. Device names must contain 1–60 characters after considering non-whitespace content.
 
 ### Status
+
+Status now includes optional serverVersion (for example 0.3.0+3), read from compiled API assembly metadata. Clients display it for comparison; it is informational, not an identity or protocol compatibility check.
 
 ```json
 {
@@ -134,14 +137,26 @@ Application errors use `{"error":"Human-readable message"}`. Framework-level mal
 
 On a network timeout, a command may already have been accepted. Read status before retrying a timer request. Volume/mute set explicit state and are idempotent; media commands are not. No general idempotency-key mechanism is implemented yet.
 
-## Planned protocol changes
+## QR enrollment v1 — implemented
 
-QR enrollment, stable PC discovery/identity metadata, and mobile multi-PC profiles are not implemented protocol additions. Existing bearer credentials already persist until revoked. Define and test enrollment and identity lifecycle separately; see [mobile connections](mobile-connections.md).
+POST /api/v1/pair/qr accepts JSON {secret:string,name:string}, with both fields required, and returns {token:string}. It is exempt from bearer authentication only for enrollment and retains HTTPS, Host/Origin validation, request-size limits, and rate limiting.
+
+Only the local desktop opens a pairing session. The desktop QR encodes a JSON object with type "tapmypc-pair", version 1, name, address (HTTPS origin), fingerprint (leaf certificate SHA-256 hex), secret (32 random bytes as 64 hex characters), and expiresAt (ISO 8601).
+
+The mobile client validates the schema/expiry and verifies the scanned certificate before submitting the secret. The resulting token is a separate persistent credential; neither the QR nor discovery contains that token. QR images are generated locally and never served by an unauthenticated GET endpoint.
+
+QR and six-digit code enrollment share a single five-minute window, five-invalid-attempt limit, and atomic single-use redemption. A successful QR redemption invalidates the manual code and vice versa. Regeneration or explicit closure invalidates prior invitations. Replays/expired secrets return 401; missing required properties return 400.
+
+QR identity is the exact leaf certificate. The desktop persists its certificate reference and reuses the same leaf across IP changes. Android verifies that pin before sending any credential to a discovered address. Automatic renewal and identity-replacement recovery remain unimplemented.
+
+## Discovery and remaining protocol work
+
+Desktop mDNS advertises _tapmypc._tcp on the selected trusted adapter, with v=1, fp=certificate SHA-256 fingerprint, and name=machine name in TXT records. Android NSD resolves saved-PC address hints, then verifies pinned HTTPS and authenticated status before updating the saved address. Advertisements never contain command tokens or pairing secrets and never authorize access. Certificate renewal and identity recovery remain future work; see [mobile connections](mobile-connections.md).
 
 Monitoring is explicitly deferred. This contract does not promise a metrics endpoint; the proposed future bridge is recorded in [monitoring integration](monitoring-integration.md).
 
 ## Flutter and Bluetooth
 
-Flutter will replace presentation/client code and store credentials using mobile secure storage. It must verify the host certificate identity through a deliberate pairing/pinning flow. Do not copy the simulator's validation exception into production.
+Flutter implements native presentation/client code and stores credentials using mobile secure storage. It verifies the host certificate identity through QR/manual pairing and exact certificate pinning on every connection. Do not copy the simulator's validation exception into production.
 
 Bluetooth will require its own connection and authorization protocol; it should call the same core services rather than depend on HTTP endpoints. Bluetooth framing, platform roles, and libraries have not been selected.

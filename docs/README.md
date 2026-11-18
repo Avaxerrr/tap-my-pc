@@ -7,7 +7,7 @@
 | [Implementation plan](implementation-plan.md) | Delivery phases, verification, and unresolved implementation choices |
 | [Setup](setup.md) | Build, launch, phone connection, certificate/firewall setup, simulator, and limitations |
 | [API contract](api.md) | Versioned routes, authentication, payloads, errors, and Flutter integration |
-| [Mobile connections](mobile-connections.md) | Planned QR pairing, discovery, persistent trust, multi-PC profiles, and network limits |
+| [Mobile connections](mobile-connections.md) | Implemented QR pairing, discovery, persistent trust, multi-PC profiles, network limits, and remaining identity recovery work |
 | [Monitoring integration](monitoring-integration.md) | Deferred standalone PC Stats Tray bridge and website preservation |
 | [Verification](verification.md) | Checks performed and remaining device testing |
 | [Action feedback](action-feedback.md) | Command progress, PC overlays, native volume keys, and UX behavior |

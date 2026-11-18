@@ -4,6 +4,7 @@ using System.Text;
 namespace TapMyPC.Core.Devices;
 
 public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt);
+public record PairingSession(string Code, string QrSecret, DateTimeOffset ExpiresAt);
 public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt);
 public interface IDeviceStore
 {
@@ -18,6 +19,7 @@ public sealed class PairingService
     private readonly TimeProvider clock;
     private List<PairedDevice> devices;
     private string? code;
+    private string? qrSecret;
     private DateTimeOffset expires;
     private int failedAttempts;
 
@@ -26,27 +28,51 @@ public sealed class PairingService
 
     public (string Code, DateTimeOffset ExpiresAt) OpenPairing()
     {
+        var session = OpenPairingSession();
+        return (session.Code, session.ExpiresAt);
+    }
+
+    public PairingSession OpenPairingSession()
+    {
         lock (gate)
         {
             code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+            qrSecret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             expires = clock.GetUtcNow().AddMinutes(5); failedAttempts = 0;
-            return (code, expires);
+            return new(code, qrSecret, expires);
         }
     }
 
-    public string Pair(string suppliedCode, string name)
+    public bool IsPairingOpen
+    {
+        get { lock (gate) return code is not null && clock.GetUtcNow() < expires && failedAttempts < 5; }
+    }
+
+    public void ClosePairing()
+    {
+        lock (gate) { code = null; qrSecret = null; }
+    }
+
+    public string Pair(string suppliedCode, string name) => Redeem(suppliedCode, name, false);
+    public string PairQr(string suppliedSecret, string name) => Redeem(suppliedSecret, name, true);
+
+    private string Redeem(string supplied, string name, bool qr)
     {
         if (string.IsNullOrWhiteSpace(name) || name.Length > 60) throw new ArgumentException("Device name must be 1–60 characters.");
         lock (gate)
         {
-            if (code is null || clock.GetUtcNow() >= expires || failedAttempts >= 5)
-                throw new UnauthorizedAccessException("Open a new pairing window on the PC.");
-            if (!CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(code), Encoding.UTF8.GetBytes(suppliedCode)))
-            { failedAttempts++; throw new UnauthorizedAccessException("Incorrect pairing code."); }
+            if (!IsPairingOpen) throw new UnauthorizedAccessException("Open a new pairing window on the PC.");
+            var expected = qr ? qrSecret : code;
+            if (expected is null || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expected), Encoding.UTF8.GetBytes(supplied)))
+            {
+                failedAttempts++;
+                throw new UnauthorizedAccessException(qr ? "QR pairing is invalid. Generate a new QR on the PC." : "Incorrect pairing code.");
+            }
             if (devices.Count >= 20) throw new InvalidOperationException("Remove an existing paired device first.");
             var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             var updated = devices.Append(new PairedDevice(Guid.NewGuid(), name.Trim(), Hash(token), clock.GetUtcNow())).ToList();
-            store.Save(updated); devices = updated; code = null;
+            store.Save(updated); devices = updated;
+            ClosePairing();
             return token;
         }
     }

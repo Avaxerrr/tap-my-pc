@@ -113,6 +113,26 @@ public sealed class ApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/shortcuts/" + id + "/launch", new { })).StatusCode);
         Assert.Single(shortcutLauncher.Launched);
     }
+    [Fact]
+    public async Task QrEnrollmentUsesTheOneTimeSecretAndReturnsANormalCredential()
+    {
+        var window = pairing.OpenPairingSession();
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/pair/qr", new { name = "Phone" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/v1/pair/qr", new { secret = window.Code, name = "Phone" })).StatusCode);
+        var response = await client.PostAsJsonAsync("/api/v1/pair/qr", new { secret = window.QrSecret, name = "QR phone" });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var token = payload.GetProperty("token").GetString()!;
+        Assert.True(pairing.Authorize(token));
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/v1/pair/qr", new { secret = window.QrSecret, name = "Replay" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/v1/pair", new { code = window.Code, name = "Replay" })).StatusCode);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var status = await client.GetStringAsync("/api/v1/status");
+        Assert.DoesNotContain(window.QrSecret, status);
+        pairing.Revoke(Assert.Single(pairing.Clients).Id);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/status")).StatusCode);
+    }
+
     private async Task Authenticate()
     {
         var response = await client.PostAsJsonAsync("/api/v1/pair", new { code = pairing.OpenPairing().Code, name = "Test phone" });

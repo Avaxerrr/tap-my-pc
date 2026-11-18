@@ -17,3 +17,5 @@ artifacts/
 **/devices.json
 
 **/shortcuts.json
+
+**/identity.json
