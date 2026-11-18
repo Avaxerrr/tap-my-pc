@@ -36,10 +36,10 @@ Audio output switching, locally approved app/website shortcuts, and per-monitor 
 
 Updated November 18, 2026, in the user's requested order:
 
-1. Complete certificate renewal/recovery before Bluetooth. The implementation is available in the new development builds; delivery and checks are recorded in [verification](verification.md).
+1. Implemented: certificate renewal/recovery before Bluetooth. Delivery and checks are recorded in [verification](verification.md).
 2. Implemented: Bluetooth as a secondary Android connection alongside Wi-Fi, including saved transport choice and physical-link validation. See [Bluetooth](bluetooth.md).
 3. Hardware monitoring in the app, preserving PC Stats Tray and its standalone website. See [monitoring integration](monitoring-integration.md).
-4. Remote wake, subject to hardware and supported power-state investigation.
+4. Remote wake remains unimplemented. Laptop Wi-Fi investigation is closed for the current configuration after failed sender/Wolow tests; future wake work can target the user's confirmed working desktop. See [wake investigation](wake-investigation.md).
 5. Reassess further features afterward. Media information is useful but lower priority; consider an earlier addition only if implementation is small.
 
 Certificates automatically renew with the same PC identity key. Updated Android profiles preserve pairing across renewal. A missing or unusable key requires a locally confirmed Reset connection identity, which revokes previous phone credentials and requires re-pairing. Pending PC timers continue during renewal/reset. See [mobile connections](mobile-connections.md) for legacy-profile migration limits.

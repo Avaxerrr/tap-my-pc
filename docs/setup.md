@@ -72,11 +72,11 @@ Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic 
 
 Use a network you control for initial LAN operation. Hotspot/USB networking require device tests. VPN/relay support is future work and needs a permitted route. Do not expose the command port publicly or disable firewall protections as a workaround. See [mobile connections](mobile-connections.md).
 
-Monitoring is planned after Bluetooth secondary connectivity and before remote wake. Its standalone app/website compatibility plan is in [monitoring integration](monitoring-integration.md).
+Hardware monitoring is the next implementation. Laptop Wi-Fi wake testing is closed for the current configuration; remote wake sending remains unimplemented. See [wake investigation](wake-investigation.md). The monitoring bridge preserves the standalone collector and website; see [monitoring integration](monitoring-integration.md).
 
 ## HTTPS identity and certificates
 
-The prototype creates an initial self-signed, one-year certificate in Current User / Personal, then persists its thumbprint in identity.json and reuses that exact certificate across address changes. Missing or expired identities fail closed and require explicit recovery; automatic certificate renewal is not implemented. Its private key stays in the Windows user key store. No root certificate is trusted automatically, and the app does not run an HTTP fallback.
+The prototype creates an initial self-signed, one-year certificate in Current User / Personal, then persists its thumbprint in identity.json and reuses that exact certificate across address changes. Certificates renew automatically with the same identity key within 30 days of expiry, including recovery from expiry when that key is usable. A missing/unusable key fails closed and requires confirmed local identity reset and re-pairing. Its private key stays in the Windows user key store. No root certificate is trusted automatically, and the app does not run an HTTP fallback.
 
 A phone browser will initially show a certificate warning. Before making a site-specific exception, verify that the address is the one displayed by the PC and compare the certificate's SHA-256 fingerprint with settings where the browser exposes it. Use Export public certificate if a trusted transfer or certificate inspection is needed; the exported `.cer` contains no private key. If the phone cannot verify the certificate identity, complete that setup separately rather than treating encryption alone as proof of identity. Do not broadly disable certificate validation.
 

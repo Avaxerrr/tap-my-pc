@@ -2,7 +2,7 @@
 
 Installed development build: **0.6.2 (build 12)**, streamlining first connection into one setup card while retaining encrypted Bluetooth secondary connectivity, protected Bluetooth metadata, and per-PC Automatic/Wi-Fi-only/Bluetooth-only selection. Certificate renewal/recovery is included. Installation results are recorded in [verification](../docs/verification.md). Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
 
-Configurable timer durations and iOS deployment are not implemented yet. Monitoring is planned after Bluetooth secondary connectivity and before remote wake. Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
+Configurable timer durations and iOS deployment are not implemented yet. Hardware monitoring is next. Laptop Wi-Fi wake investigation is closed for the current configuration; remote wake sending remains unimplemented. See [wake investigation](../docs/wake-investigation.md). Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
 
 ## QR pairing
 

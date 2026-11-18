@@ -1,6 +1,6 @@
 # Bluetooth secondary connection
 
-Implemented for the Windows host and Flutter Android client in desktop 0.6.0+10 and Android 0.6.1+11. The browser remains a Wi-Fi client; iOS is deferred.
+Current installed development builds are desktop 0.6.0+10 and Android 0.6.2+12. Bluetooth was introduced before the Android 0.6.2 onboarding polish. The browser remains a Wi-Fi client; iOS is deferred.
 
 ## Setup and normal use
 

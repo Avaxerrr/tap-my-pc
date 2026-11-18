@@ -2,7 +2,7 @@
 
 ## Current state
 
-Certificate lifecycle and Bluetooth secondary connectivity are implemented. Next priorities are hardware monitoring in the app, then remote wake investigation. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
+Certificate lifecycle and Bluetooth secondary connectivity are implemented. Hardware monitoring in the app is next. The laptop Wi-Fi wake investigation is closed for the current configuration; remote wake sending remains unimplemented and can later target the user's separately confirmed working desktop. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
 
 Previous installed desktop/server development build: **0.3.4 (build 7)**, removing the custom companion shadow for smoother dragging and showing a muted No phone connected badge until a remote is active, keeping app animations enabled independently of Windows effects, and removing the animation setting, alongside dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android is **0.4.3 (build 7)** with a desktop-matched UI, Remote/Devices/Power navigation, persistent timer/feedback presentation, saved accent themes, and installed version visibility. The Android polish patches keep selected navigation icons white in every accent theme, follow Android reduced motion automatically, and isolate optional device-list failures from verified PC connectivity. The desktop updater now preserves nested runtime dependencies; its earlier flat copy omitted the Windows monitoring library and caused monitor-list errors. QR pairing, pinned discovery/address recovery, and multi-PC selection are preserved. See [setup](setup.md) and [versioning](versioning.md).
 
@@ -14,7 +14,7 @@ The next usability pass is implemented: automatic network-address selection with
 
 Automated HTTPS and headless browser tests use simulated controls. The user subsequently confirmed phone connectivity over Wi-Fi after selecting the Wi-Fi listen address. Certificate trust, tray interaction, startup registration, and disruptive native controls still need further manual verification when the user is no longer gaming. The agent did not start or expose the real host during the initial verification.
 
-Bluetooth radio status and explicit on/off commands are now implemented over Wi-Fi, with Windows permission handling, compact PC feedback, and simulated tests. This does not implement Bluetooth as a transport. Shutdown already exists as both a direct confirmed action and a scheduled timer. Bedtime presets are deferred at the user's request.
+Bluetooth radio status and explicit on/off commands are implemented over Wi-Fi, with Windows permission handling, compact PC feedback, and simulated tests. Bluetooth transport is also implemented separately; radio changes are disabled and rejected over that transport. Shutdown already exists as both a direct confirmed action and a scheduled timer. Bedtime presets are deferred at the user's request.
 
 The compact desktop UI now uses the approved dark card design at 680 × 640 with embedded Inter fonts. Pairing, activity, and configuration use exclusive side panels; startup and notification preferences stay on the main screen. This presentation update preserves host commands and tray lifecycle.
 
@@ -62,7 +62,7 @@ The first Android client is implemented in mobile/ using the existing manual enr
 
 Reuse core behavior and rebuild presentation in Dart. Manual browser setup remains a fallback. See [mobile connections](mobile-connections.md).
 
-Monitoring is planned after Bluetooth. Preserve PC Stats Tray and its website using the [recorded bridge proposal](monitoring-integration.md). Presets/remote input stay deferred; investigate remote wake after monitoring.
+Monitoring is the next implementation after completed Bluetooth work. Preserve PC Stats Tray and its website using the [recorded bridge proposal](monitoring-integration.md). Presets/remote input stay deferred. The laptop wake investigation was brought forward and is now closed for its current configuration; monitoring remains next.
 
 ## Phase 5: Bluetooth secondary connection — implemented
 
@@ -74,9 +74,9 @@ Android saves Automatic/Wi-Fi-only/Bluetooth-only selection per PC. First enroll
 
 Implement the [PC Stats Tray bridge](monitoring-integration.md) and Android monitoring presentation. Keep the standalone collector and website intact, reuse cached samples, and show stale/unavailable data without disabling remote controls. Decide monitoring update rates and Bluetooth payload suitability during design.
 
-## Phase 7: Remote wake investigation
+## Phase 7: Remote wake — laptop investigation closed; sender planned
 
-Remote wake is a separate investigation. Test supported power states explicitly; Bluetooth or Wi-Fi connectivity while awake does not prove wake capability.
+Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable on the current Legion 5 Pro configuration after independent sender and Wolow failures, despite verified awake packet delivery and armed wake settings. Ethernet is documented by Lenovo but remains untested and impractical at this location. Remote wake sending is not implemented. Future implementation can target the user's desktop, whose Wi-Fi wake from sleep/hibernate is user-confirmed after enabling PCIe resume. See [remote wake investigation](wake-investigation.md) for evidence and limits. Hardware monitoring is next; no further laptop sleep test is pending.
 
 ## Open decisions
 
