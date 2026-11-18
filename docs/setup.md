@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current desktop/server development version: **0.3.2, build 5**. The desktop title bar reads the compiled version, and authenticated status reports `serverVersion: 0.3.2+5`. Android is **0.4.2, build 6**. Its header and Settings > About read installed package metadata; its version is independent of the PC version.
+Current desktop/server development version: **0.3.4, build 7**. The desktop title bar reads the compiled version, and authenticated status reports `serverVersion: 0.3.4+7`. Android is **0.4.3, build 7**. Its header and Settings > About read installed package metadata; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -82,22 +82,22 @@ Scope LocalAddress to the chosen Wi-Fi address as well if desired. Update the ru
 - Media commands send standard Windows media keys. The active media application decides how to handle them. Current track metadata is not implemented.
 - Display-off affects connected monitors through the Windows display-power message. Input/activity may wake them.
 - All power actions require confirmation. Shutdown/restart use a minimum ten-second cancellable delay; lock/sleep/hibernate use a minimum three seconds.
-- Silent TapMyPC notifications show remote activity without activating the window. The final ten seconds of a pending power action show a cancel button. Advanced settings can disable these custom notifications. This does not disable Windows' own media/volume overlays. Exclusive-fullscreen visibility still needs manual verification.
+- Silent TapMyPC notifications show remote activity without activating the window. The final ten seconds of a pending power action show a cancel button. The main-screen Show command notifications switch can disable these custom notifications. This does not disable Windows' own media/volume overlays. Exclusive-fullscreen visibility still needs manual verification.
 - There is one pending power action. Cancel it before scheduling a different one. The timer runs on the PC after browser disconnection and after stopping the API listener.
 - Exiting the process cancels the timer. Timers are not persisted, do not wake a sleeping PC, and cannot be canceled once execution begins.
 - Shutdown/restart never pass `/f`. Windows or unsaved work may block the transition. Sleep/hibernate use the existing user shutdown privilege, enabled temporarily during execution; no elevation prompt is requested.
 
 ## Audio outputs, shortcuts, and monitors
 
-The phone's Sound card lists connected audio outputs. Choose one and select Use output. This changes Windows default playback and communications roles; apps pinned to a specific device may keep using it. Unplugged/disconnected outputs are rejected. The isolated Windows adapter uses the IPolicyConfig compatibility interface, which is not a documented public Windows API; Windows updates may affect switching, and failures are surfaced.
+On Android, open Remote > Sound and tap the audio-output button, then choose a device in the Audio output sheet. The browser remote uses its output selector and Use output button. This changes Windows default playback and communications roles; apps pinned to a specific device may keep using it. Unplugged/disconnected outputs are rejected. The isolated Windows adapter uses the IPolicyConfig compatibility interface, which is not a documented public Windows API; Windows updates may affect switching, and failures are surfaced.
 
-In the PC app, expand App & website shortcuts. Enter a name, then choose an .exe/.lnk application or enter an http(s) website and Add website. Only locally approved entries appear on the phone. Remove an entry on the PC to reject future launches by its ID. Application arguments can be configured in a locally approved .lnk file; no remote command-line input is accepted. Shortcuts are saved in %LOCALAPPDATA%\TapMyPC\shortcuts.json. Missing applications produce an error when launched.
+In the PC app, open Configure > Quick launch shortcuts. Enter a name, then select Choose local app or .lnk, or enter an http(s) website and select Add URL. Only locally approved entries appear on the phone. Remove an entry on the PC to reject future launches by its ID. Application arguments can be configured in a locally approved .lnk file; no remote command-line input is accepted. Shortcuts are saved in %LOCALAPPDATA%\TapMyPC\shortcuts.json. Missing applications produce an error when launched.
 
-The phone's Your monitors card shows each display's brightness slider and power buttons. Unsupported controls are disabled with an explanation. Built-in brightness uses Windows WMI when supported; external monitors use DDC/CI, which may need enabling in the monitor's physical menu. Adapters, docks, drivers, HDR modes, and monitor firmware can affect support. All-monitors-off remains available separately.
+On Android, the Devices tab shows each display's brightness slider and power buttons. Unsupported controls are disabled with an explanation. Built-in brightness uses Windows WMI when supported; external monitors use DDC/CI, which may need enabling in the monitor's physical menu. Adapters, docks, drivers, HDR modes, and monitor firmware can affect support. All-monitors-off remains available separately.
 
 Individual off requests use DDC power-saving mode. Some monitors stop accepting DDC commands or disappear from Windows while off and require their physical button to wake; the UI reports an unreachable display rather than claiming it can turn it on. Commands report a request, and device refresh reads back the available state.
 
-Use Refresh devices on the phone after plugging/unplugging devices or editing shortcuts. Lists also refresh on connection and after relevant commands. Hardware queries are not part of the two-second status polling loop.
+On Android, use Settings > Refresh devices or pull to refresh after plugging/unplugging devices or editing shortcuts. Lists also refresh on connection and after commands. Output, monitor, and shortcut lists are separate from the two-second status poll; failed list reads retry on the existing ten-second foreground cadence.
 
 ## Bluetooth on/off
 
@@ -117,7 +117,7 @@ The dashboard opens at 680 × 640 with bundled Inter typography, a frameless tit
 
 ### Phone activity and PC notifications
 
-The connection card shows Remote connected and client names after authenticated activity. The title-bar dot changes to your accent and gently pulses while the dashboard is visible. After ten seconds without activity it returns to idle; stored pairings alone are not treated as connected. Browser requests and phone availability checks count, so the indicator does not imply that this PC is selected on the phone. Stopping connections or revoking a client clears its presence.
+The connection card shows a muted No phone connected badge while listening without an active remote. It switches to an accent-colored Remote connected badge and client names after authenticated activity. The title-bar dot changes to your accent and gently pulses while the dashboard is visible. After ten seconds without activity it returns to idle; stored pairings alone are not treated as connected. Browser requests and phone availability checks count, so the indicator does not imply that this PC is selected on the phone. Stopping connections or revoking a client clears its presence.
 
 The PC notification banner follows your desktop accent, Inter font, and corner styling, with a brief fade on appearance. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
 
@@ -125,7 +125,7 @@ The PC notification banner follows your desktop accent, Inter font, and corner s
 
 Configure > Appearance offers Blue, Mint, Purple, Teal, and Amber accents. Changes preview immediately and are saved in `%LOCALAPPDATA%\TapMyPC\appearance.json`; network preferences and paired devices are independent. Drawer transitions, feedback fades, and the connection pulse animate independently of Windows visual effects. There is no separate animation setting, and legacy motion values are ignored. No Windows visual settings are changed.
 
-Cards expand horizontally, up to a 1100-DIP dashboard width. At a window width of 1120 DIPs, essential preferences move beside the connection/pairing cards. Taller windows give panels and lists more usable space, while controls retain their natural height. Widgets have sharper corners; the outer frame remains rounded. The shadow is drawn by a non-activating companion surface and hides with the app or when maximized/minimized.
+Cards expand horizontally, up to a 1100-DIP dashboard width. At a window width of 1120 DIPs, essential preferences move beside the connection/pairing cards. Taller windows give panels and lists more usable space, while controls retain their natural height. Widgets have sharper corners; the outer frame remains rounded. The custom companion shadow is removed after the shadow-free version proved smoother to drag. This does not change Windows visual-effects settings.
 
 The application uses explicit ClearType/Ideal text formatting and per-monitor DPI awareness. The system font configuration is not changed; assess the live rendering on your monitor at its normal scaling. The tray and executable use the bundled multi-resolution TapMyPC icon, and the tray menu uses dark surfaces with the selected accent, modestly rounded edges, and vertically centered Inter text. The font is loaded privately without installing it in Windows.
 
@@ -142,6 +142,12 @@ dotnet publish src/TapMyPC.Desktop -c Release -r win-x64 --self-contained false 
 ```
 
 Run `TapMyPC.exe` from that folder. Keep its companion files together. This is a folder deployment, not an installer, and requires both .NET 10 Windows Desktop and ASP.NET Core runtimes on the target PC. The development machine already has them.
+
+## Update integrity checks
+
+The update script copies the complete publish tree, including nested runtime libraries, while preserving existing installation files and per-user settings. Run `tools/Test-Apply-Update.ps1` for the isolated copy regression check. Preserve the paths produced by publish: a runtime-specific publish can place dependencies at the root, while a portable publish can include nested runtime assets. In the repaired portable installation, missing `runtimes/win/lib/net10.0/System.Management.dll` caused monitor enumeration to fail even though authentication and basic status succeeded. Do not copy only the top-level files of a publish that includes subdirectories.
+
+Android keeps the PC connected when status succeeds but a device list fails. The affected section shows a warning and retries its read on the existing ten-second cadence or on manual refresh. Credentials rejected by any request still require pairing.
 
 ## Apply a staged update
 

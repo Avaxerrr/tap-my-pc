@@ -15,7 +15,6 @@ public partial class MainWindow : Window
     private IInputElement? returnFocus;
     private bool switchingDrawer;
 
-    private WindowShadow? shadow;
     private bool connectionPulsing;
     public MainWindow()
     {
@@ -23,8 +22,6 @@ public partial class MainWindow : Window
         SizeChanged += (_, _) => UpdateDashboardLayout();
         IsVisibleChanged += (_, _) => UpdateConnectionPulse();
         StateChanged += (_, _) => UpdateConnectionPulse();
-        SourceInitialized += (_, _) => shadow = new WindowShadow(this);
-        Closed += (_, _) => shadow?.Dispose();
     }
 
     private void UpdateDashboardLayout()

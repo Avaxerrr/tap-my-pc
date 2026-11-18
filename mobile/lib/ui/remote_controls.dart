@@ -9,6 +9,7 @@ typedef PowerCommand = Future<void> Function(String action, {int? delay});
 class RemoteControls extends StatelessWidget {
   final Map<String, dynamic>? status;
   final List<dynamic> outputs, shortcuts;
+  final String? outputsError, shortcutsError;
   final bool busy;
   final SendCommand send;
   final ValueChanged<double> onVolumePreview;
@@ -20,6 +21,8 @@ class RemoteControls extends StatelessWidget {
     required this.busy,
     required this.send,
     required this.onVolumePreview,
+    this.outputsError,
+    this.shortcutsError,
   });
   @override
   Widget build(BuildContext context) {
@@ -110,6 +113,14 @@ class RemoteControls extends StatelessWidget {
                   ),
                 ],
               ),
+              if (outputsError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Text(
+                    outputsError!,
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                ),
               const SizedBox(height: 14),
               OutlinedButton.icon(
                 onPressed: available && outputs.isNotEmpty
@@ -199,7 +210,12 @@ class RemoteControls extends StatelessWidget {
         SectionCard(
           title: 'Shortcuts',
           subtitle: 'Approved on your PC',
-          child: shortcuts.isEmpty
+          child: shortcutsError != null
+              ? Text(
+                  shortcutsError!,
+                  style: const TextStyle(color: AppColors.error),
+                )
+              : shortcuts.isEmpty
               ? const Text(
                   'Add apps and websites in the PC app’s Configure panel, then refresh here.',
                   style: TextStyle(color: AppColors.secondary),
@@ -231,6 +247,7 @@ class RemoteControls extends StatelessWidget {
 class DeviceControls extends StatelessWidget {
   final Map<String, dynamic>? status;
   final List<dynamic> monitors;
+  final String? monitorsError;
   final bool busy;
   final SendCommand send;
   final Future<void> Function(bool) onBluetooth;
@@ -243,6 +260,7 @@ class DeviceControls extends StatelessWidget {
     required this.send,
     required this.onBluetooth,
     required this.onBrightnessPreview,
+    this.monitorsError,
   });
   @override
   Widget build(BuildContext context) {
@@ -263,10 +281,11 @@ class DeviceControls extends StatelessWidget {
           ),
         ),
         if (monitors.isEmpty)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 20),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
             child: Text(
-              'Individual display controls appear here when supported.',
+              monitorsError ??
+                  'Individual display controls appear here when supported.',
               style: TextStyle(color: AppColors.secondary),
             ),
           ),

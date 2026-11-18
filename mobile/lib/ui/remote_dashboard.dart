@@ -13,6 +13,7 @@ class RemoteDashboard extends StatefulWidget {
   final String? feedback, serverTime;
   final bool busy, feedbackError;
   final List<dynamic> outputs, monitors, shortcuts;
+  final Map<String, String> deviceErrors;
   final String Function(PcProfile) profileStatus;
   final ValueChanged<PcProfile> onSelect;
   final Future<void> Function() onAdd, onForget, onRefresh;
@@ -45,6 +46,7 @@ class RemoteDashboard extends StatefulWidget {
     required this.onBluetooth,
     required this.onVolumePreview,
     required this.onBrightnessPreview,
+    this.deviceErrors = const {},
     this.feedback,
     this.feedbackError = false,
     this.pending,
@@ -570,6 +572,10 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                               child: switch (tab) {
                                 0 => RemoteControls(
                                   status: widget.status,
+                                  outputsError:
+                                      widget.deviceErrors['/audio/outputs'],
+                                  shortcutsError:
+                                      widget.deviceErrors['/shortcuts'],
                                   outputs: widget.outputs,
                                   shortcuts: widget.shortcuts,
                                   busy: widget.busy,
@@ -578,6 +584,8 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                 ),
                                 1 => DeviceControls(
                                   status: widget.status,
+                                  monitorsError:
+                                      widget.deviceErrors['/monitors'],
                                   monitors: widget.monitors,
                                   busy: widget.busy,
                                   send: widget.send,

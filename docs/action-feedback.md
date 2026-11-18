@@ -4,9 +4,9 @@
 
 - The web client immediately shows an action-specific sending message and spinner, marks the remote busy, and disables command controls during the request. Success and errors appear in a fixed notification visible even when scrolled away from the header.
 - Audio set/mute results include the actual endpoint state read after the operation. Media, display, and native volume-key results say requested/sent rather than claiming the target app or Windows completed an observable transition.
-- Power actions still require confirmation. Both interfaces show a pending countdown and cancellation. On the PC a silent, non-modal notification appears for scheduling, and the final ten seconds remain visible with a cancel button. The website keeps a sticky countdown banner.
-- Cancellation means a pending timer was removed before dispatch. Once dispatch begins, neither interface promises cancellation. If a scheduled action disconnects the PC, the phone says the action may have started and cannot confirm completion.
-- The dashboard provides command history in its Activity panel. All clients receive the same bounded in-memory activity feed through status, so the behavior is reusable by Flutter.
+- Power actions still require confirmation. Browser, Android, and desktop interfaces show a pending countdown and cancellation. On the PC a silent, non-modal notification appears for scheduling, and the final ten seconds remain visible with a cancel button. The website keeps a sticky countdown banner.
+- Cancellation means a pending timer was removed before dispatch. Once dispatch begins, cancellation is unavailable. A countdown reaching zero does not confirm that Windows completed the action; Android retains the last-known pending state offline with cancellation disabled until a successful status refresh.
+- The dashboard provides command history in its Activity panel. All clients receive the same bounded in-memory activity feed through status, including the Flutter Android client.
 
 ## Desktop presentation
 
@@ -14,7 +14,7 @@ The main screen prioritizes the phone link, host status, pairing, recent activit
 
 `FeedbackWindow` is an app-owned OSD, not a blocking dialog or a Windows toast. It uses a compact 360-DIP dark card with bundled Inter typography, modest corners, an action icon, action title/message, and an explicit phase label. The icon, border, Cancel action button, and countdown progress follow the selected desktop accent live; failures retain a distinct red treatment. The transparent banner uses grayscale text antialiasing. Repeated actions update the same card.
 
-Banners fade in only when the desktop motion preference allows animations. Routine notices remain for about 2.5 seconds and failures for seven seconds. Power countdowns add a Cancel action button and a custom-themed progress bar for the final ten seconds. ShowActivated=false and a WM_MOUSEACTIVATE hook prevent focus stealing. The banner stays out of the taskbar, makes no sound, and remains inside the primary monitor work area. Cancellation can be clicked without activating the banner. Visibility over exclusive-fullscreen games is not guaranteed and has not been tested.
+Banners use a brief fade when shown, independently of Windows visual-effects settings; there is no app animation preference. Routine notices remain for about 2.5 seconds and failures for seven seconds. Power countdowns add a Cancel action button and a custom-themed progress bar for the final ten seconds. ShowActivated=false and a WM_MOUSEACTIVATE hook prevent focus stealing. The banner stays out of the taskbar, makes no sound, and remains inside the primary monitor work area. Cancellation can be clicked without activating the banner. Visibility over exclusive-fullscreen games is not guaranteed and has not been tested.
 
 The main-screen notification preference can turn off custom PC notifications. Dashboard history and phone feedback remain available. Display-off commands are recorded and shown on the phone, but the custom overlay is suppressed for successful display-off requests to avoid showing new UI after monitors are told to sleep. Errors still produce a PC notification.
 
@@ -35,8 +35,8 @@ References: [Core Audio scalar-volume API](https://learn.microsoft.com/en-us/win
 - Desktop / Features / Settings: dashboard state and preferences.
 - Api: transport DTOs and response/status feedback; prototype JavaScript renders progress.
 
-No persistent action audit log, sound alerts, Windows Notification Center integration, media metadata, or Flutter presentation has been added.
+Flutter presentation lives in mobile/lib/ui/ and renders command feedback separately from status polling. No persistent action audit log, sound alerts, Windows Notification Center integration, or media metadata has been added.
 
 ## Main-window connection indicator
 
-The main connection card displays Remote connected (or the number of connected remotes) and their names. The title-bar dot changes from muted to the chosen accent and optionally pulses. It uses recent authenticated API traffic, expiring after ten seconds without activity. Saved pairings alone never light it; unauthorized/cross-origin traffic cannot light it. Availability checks and browser clients count, so this is a reachability cue rather than proof that this PC is selected for commands. Revocation and stopping connections clear it. No pulse animation remains active when the window is hidden/minimized or when motion is off.
+The main connection card displays a muted No phone connected badge while listening without recent authenticated clients. Active clients get an accent-colored Remote connected badge (or a remote count) and their names. The title-bar dot changes from muted to the chosen accent and gently pulses while active and visible. It uses recent authenticated API traffic, expiring after ten seconds without activity. Saved pairings alone never light it; unauthorized/cross-origin traffic cannot light it. Availability checks and browser clients count, so this is a reachability cue rather than proof that this PC is selected for commands. Revocation and stopping connections clear it. No pulse animation remains active when the window is hidden/minimized or the connection is idle. Successful authentication counts even if the subsequent operation fails, so the indicator does not guarantee that every device list or command succeeds. The custom main-window shadow has been removed for smoother dragging.

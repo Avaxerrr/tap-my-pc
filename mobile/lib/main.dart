@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'connection.dart';
@@ -59,7 +60,8 @@ class _TapMyPcAppState extends State<TapMyPcApp> with WidgetsBindingObserver {
 }
 
 class RemotePage extends StatefulWidget {
-  const RemotePage({super.key});
+  final PcApi Function(PcProfile) createApi;
+  const RemotePage({super.key, this.createApi = PcApi.new});
   @override
   State<RemotePage> createState() => _RemotePageState();
 }
@@ -77,6 +79,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   String? feedback, lastServerTime;
   bool feedbackError = false;
   Map<String, dynamic>? pendingSnapshot;
+  Map<String, String> deviceErrors = {};
   int epoch = 0;
   Timer? timer;
   StreamSubscription<Map<dynamic, dynamic>>? discoverySubscription;
@@ -94,8 +97,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     load();
     loadVersion();
     timer = Timer.periodic(const Duration(seconds: 2), (_) {
-      refresh();
-      if (++ticks % 5 == 0) probeSaved();
+      ticks++;
+      refresh(devices: deviceErrors.isNotEmpty && ticks % 5 == 0);
+      if (ticks % 5 == 0) probeSaved();
     });
   }
 
@@ -153,7 +157,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   void select(PcProfile profile) {
     epoch++;
     api?.close();
-    api = PcApi(profile);
+    api = widget.createApi(profile);
     setState(() {
       selected = profile;
       status = null;
@@ -161,6 +165,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       lastServerTime = null;
       feedback = null;
       feedbackError = false;
+      deviceErrors = {};
       outputs = [];
       monitors = [];
       shortcuts = [];
@@ -221,18 +226,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       }
       if (!mounted || generation != epoch) return;
       final activeClient = api!;
-      List<dynamic>? newOutputs, newMonitors, newShortcuts;
-      if (devices || status == null) {
-        final lists = await Future.wait([
-          activeClient.request('/audio/outputs'),
-          activeClient.request('/monitors'),
-          activeClient.request('/shortcuts'),
-        ]);
-        newOutputs = lists[0] as List;
-        newMonitors = lists[1] as List;
-        newShortcuts = lists[2] as List;
-      }
-      if (!mounted || generation != epoch) return;
+      final loadDevices = devices || status == null;
+      // A verified status response establishes connectivity. Optional device
+      // lists must not turn a reachable PC into an offline one.
       setState(() {
         status = next;
         final pending = next['scheduler']?['pending'];
@@ -241,11 +237,38 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
             : Map<String, dynamic>.from(pending);
         lastServerTime = next['serverTime'];
         verifiedAt[normalizePin(selected!.pin)] = DateTime.now();
-        if (newOutputs != null) outputs = newOutputs;
-        if (newMonitors != null) monitors = newMonitors;
-        if (newShortcuts != null) shortcuts = newShortcuts;
         message = 'Connected to ${selected!.name}';
       });
+      if (loadDevices) {
+        final errors = <String, String>{};
+        Future<List<dynamic>> loadList(String path, String label) async {
+          try {
+            return await activeClient.request(path) as List<dynamic>;
+          } catch (error) {
+            // Revoked credentials still invalidate the entire connection.
+            if (error is PcApiException && error.statusCode == 401) rethrow;
+            final detail = error is PcApiException
+                ? ' (HTTP ${error.statusCode})'
+                : '';
+            errors[path] =
+                '$label could not be loaded$detail. Pull to refresh.';
+            return [];
+          }
+        }
+
+        final lists = await Future.wait([
+          loadList('/audio/outputs', 'Audio outputs'),
+          loadList('/monitors', 'Individual display controls'),
+          loadList('/shortcuts', 'Shortcuts'),
+        ]);
+        if (!mounted || generation != epoch) return;
+        setState(() {
+          outputs = lists[0];
+          monitors = lists[1];
+          shortcuts = lists[2];
+          deviceErrors = errors;
+        });
+      }
     } catch (error) {
       if (mounted && generation == epoch) {
         setState(() {
@@ -264,8 +287,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
   }
 
-  String friendly(Object error) =>
-      error.toString().replaceFirst('Exception: ', '');
+  String friendly(Object error) => error is HttpException
+      ? error.message
+      : error.toString().replaceFirst('Exception: ', '');
   Future<void> command(String path, String method, Object? body) async {
     if (busy || status == null || api == null) return;
     final generation = epoch;
@@ -570,6 +594,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     feedbackError: feedbackError,
     pending: pendingSnapshot,
     serverTime: lastServerTime,
+    deviceErrors: deviceErrors,
     outputs: outputs,
     monitors: monitors,
     shortcuts: shortcuts,

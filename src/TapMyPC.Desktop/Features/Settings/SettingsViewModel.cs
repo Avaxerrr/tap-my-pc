@@ -169,7 +169,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
         : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
-    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "Ready for your phone";
+    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "No phone connected";
     public string HostButtonText => isChangingHost ? "Please wait…" : connectionsEnabled ? "Stop connections" : "Start connections";
     public bool CanEditConnection => server is null && !isChangingHost;
     public bool IsHosting => server is not null && !isChangingHost;

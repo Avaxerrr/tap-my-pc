@@ -1,6 +1,6 @@
 # TapMyPC Android client
 
-Current development release: **0.4.2 (build 6)**, simplifying Settings by following Android reduced motion automatically and retaining white selected navigation icons across all accent themes. Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
+Current development release: **0.4.3 (build 7)**, keeping a verified PC connected when an optional device list fails, with specific warnings and periodic read-only retries. Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
 
 Automatic certificate renewal, configurable timer durations, Bluetooth transport, and iOS deployment are not implemented yet. Monitoring stays deferred. Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
 
@@ -57,7 +57,7 @@ The reconnection_test.dart device test combines actual desktop mDNS advertisemen
 - **Remote:** volume and mute, an audio-output sheet, media transport, and locally approved shortcuts.
 - **Devices:** all-screen off, individual monitor capabilities/brightness/power, and Bluetooth radio control with disconnect confirmation.
 - **Power:** named-PC confirmation for every power action and the existing 30-minute timers. Pending actions remain above bottom navigation, including a last-known countdown offline; cancellation is disabled until reconnected.
-- The selected PC and connection feedback remain visible. PC switching, activity, and settings use focused sheets. Successful/failed command feedback is retained while status polling continues, and no action is automatically retried.
+- The selected PC and connection feedback remain visible. PC switching, activity, and settings use focused sheets. Successful/failed command feedback is retained while status polling continues, and no action is automatically retried. Optional device-list failures leave the verified connection and other controls usable; their specific warnings clear after a successful refresh. Failed lists retry on the existing ten-second polling cadence, and authentication rejection still requires pairing.
 - Settings offers the desktop's five accent palettes, saved independently of PC credentials, and transitions that automatically respect Android reduced motion; there is no separate animation setting. Static Inter fonts and their OFL are bundled; the launcher/splash use the TapMyPC mark and dark surfaces.
 - The header and Settings > About show version/build read from the installed Android package. PC serverVersion is shown separately. See [versioning](../docs/versioning.md).
 

@@ -137,6 +137,8 @@ Application errors use `{"error":"Human-readable message"}`. Framework-level mal
 | 429 | Rate limit exceeded |
 | 500 | Windows operation/internal error |
 
+A failure from an optional audio-output, monitor, or shortcut list does not invalidate a successful authenticated status response. Android keeps the PC connected and shows a warning for that list; status failure or 401 still disables control. The desktop presence indicator measures recent authentication, including requests whose operation subsequently returns an error, rather than endpoint success.
+
 On a network timeout, a command may already have been accepted. Read status before retrying a timer request. Volume/mute set explicit state and are idempotent; media commands are not. No general idempotency-key mechanism is implemented yet.
 
 ## QR enrollment v1 — implemented

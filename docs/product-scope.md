@@ -63,18 +63,18 @@ The Android development client implements QR and manual pinned enrollment, prote
 - The normal command listener cannot execute while the PC is asleep, hibernating, or shut down. Remote wake is a separate capability.
 - Unsupported features should report that they are unavailable rather than appear to succeed.
 
-The desktop displays recently active remote clients on the main connection card and title-bar indicator. Presence reflects authenticated activity in the last ten seconds; browser traffic and phone availability probes count. It is distinct from saved pairing and does not assert which PC is selected for control.
+The desktop displays recently active remote clients on the main connection card and title-bar indicator. While listening without an active client, a muted No phone connected badge distinguishes idle availability from an actual connection. Presence reflects authenticated activity in the last ten seconds; browser traffic and phone availability probes count, including authenticated requests whose operation fails. It is distinct from saved pairing and does not assert which PC is selected for control.
 
 ## Desktop personalization
 
 - Dark desktop surfaces with locally saved Blue, Mint, Purple, Teal, or Amber accents. These preferences apply to the desktop dashboard and tray menu, independently of phone clients.
 - Drawer transitions, feedback fades, and the visible connection pulse animate independently of Windows visual effects, without an app animation preference.
-- Compact default size with expanding cards, two columns on wide windows, natural control heights, and scrollable panels/lists on shorter windows. A custom shadow remains available when Windows shadow effects are disabled.
+- Compact default size with expanding cards, two columns on wide windows, natural control heights, and scrollable panels/lists on shorter windows. The custom window shadow is removed for smoother dragging.
 
 ## Android presentation
 
 - Match desktop's dark surfaces, Inter typography, modest corner radii, and Blue/Mint/Purple/Teal/Amber accents. Themes persist on the phone independently of the desktop.
-- Group controls into Remote, Devices, and Power; keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets.
+- Group controls into Remote, Devices, and Power; keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets. Device-list errors must not mark a PC offline when its authenticated status request succeeds; show a specific warning and retain working controls.
 - Keep a pending PC action visible across tabs, with a live countdown and cancellation when online. Retain last-known timer information offline without pretending cancellation is available.
 - Provide QR-first enrollment, manual fallback, visible version/build metadata, and native permission/failure feedback. Respect large text and compact screens; automatically follow system reduced-motion settings without a separate app animation preference.
 

@@ -6,7 +6,7 @@ A personal Windows PC remote for controlling audio, media, displays, and power f
 
 The Windows host uses C# and WPF, with a responsive browser remote and a native Flutter Android client. Communication uses the local network; iOS and Bluetooth transport remain planned.
 
-Current desktop/server development version: **0.3.2 (build 5)**. Android is **0.4.2 (build 6)**, with the desktop-matched dark design, grouped controls, saved accent themes, and a visible installed version. See [versioning guidelines](docs/versioning.md). The prototype includes a WPF tray/dashboard host, authenticated HTTPS API, audio output switching, approved app/website shortcuts, monitor controls, power timers, and command feedback. Android supports one-time QR pairing, protected saved profiles, automatic discovery/reconnection, and independent PC selection.
+Current desktop/server development version: **0.3.4 (build 7)**. Android is **0.4.3 (build 7)**, with the desktop-matched dark design, grouped controls, saved accent themes, and a visible installed version. See [versioning guidelines](docs/versioning.md). The prototype includes a WPF tray/dashboard host, authenticated HTTPS API, audio output switching, approved app/website shortcuts, monitor controls, power timers, and command feedback. Android supports one-time QR pairing, protected saved profiles, automatic discovery/reconnection, and independent PC selection.
 
 ## Run
 

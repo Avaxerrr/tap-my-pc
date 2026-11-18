@@ -14,8 +14,14 @@ if ($running.Count -gt 0) {
 # Preserve the original executable location so startup and program-scoped firewall rules remain applicable.
 # Only copy files produced by publish; never delete files or modify per-user settings.
 New-Item -ItemType Directory -Path $installedPath -Force | Out-Null
-Get-ChildItem -LiteralPath $stagedPath -File | ForEach-Object {
-    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $installedPath $_.Name) -Force
+Get-ChildItem -LiteralPath $stagedPath -File -Recurse | ForEach-Object {
+    $relativePath = $_.FullName.Substring($stagedPath.Length).TrimStart([char[]]"\/")
+    $destinationPath = [System.IO.Path]::GetFullPath((Join-Path $installedPath $relativePath))
+    if (-not $destinationPath.StartsWith($installedPath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw 'A published file resolved outside the installation directory.'
+    }
+    New-Item -ItemType Directory -Path ([System.IO.Path]::GetDirectoryName($destinationPath)) -Force | Out-Null
+    Copy-Item -LiteralPath $_.FullName -Destination $destinationPath -Force
 }
 Write-Output "Updated TapMyPC at $installedPath"
 if ($Launch) { Start-Process -FilePath $installedExecutable -WindowStyle Hidden }
