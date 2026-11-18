@@ -68,8 +68,15 @@ The desktop displays recently active remote clients on the main connection card 
 ## Desktop personalization
 
 - Dark desktop surfaces with locally saved Blue, Mint, Purple, Teal, or Amber accents. These preferences apply to the desktop dashboard and tray menu, independently of phone clients.
-- Drawer animation preference: Follow Windows, On, or Off. An explicit On works with Windows animations disabled; default follows the Windows client-area animation preference.
+- Drawer transitions, feedback fades, and the visible connection pulse animate independently of Windows visual effects, without an app animation preference.
 - Compact default size with expanding cards, two columns on wide windows, natural control heights, and scrollable panels/lists on shorter windows. A custom shadow remains available when Windows shadow effects are disabled.
+
+## Android presentation
+
+- Match desktop's dark surfaces, Inter typography, modest corner radii, and Blue/Mint/Purple/Teal/Amber accents. Themes persist on the phone independently of the desktop.
+- Group controls into Remote, Devices, and Power; keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets.
+- Keep a pending PC action visible across tabs, with a live countdown and cancellation when online. Retain last-known timer information offline without pretending cancellation is available.
+- Provide QR-first enrollment, manual fallback, visible version/build metadata, and native permission/failure feedback. Respect large text and compact screens; automatically follow system reduced-motion settings without a separate app animation preference.
 
 ## Boundaries
 

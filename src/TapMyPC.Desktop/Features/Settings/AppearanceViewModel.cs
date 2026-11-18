@@ -8,7 +8,7 @@ namespace TapMyPC.Desktop.Features.Settings;
 
 public sealed record AccentPalette(string Name, string Fill, string Hover, string Soft, string Border, string Text, string Foreground);
 
-public sealed class AppearanceViewModel : INotifyPropertyChanged, IDisposable
+public sealed class AppearanceViewModel : INotifyPropertyChanged
 {
     public static IReadOnlyList<AccentPalette> Palettes { get; } = [
         new("Blue", "#0875DF", "#0969C6", "#122338", "#25466A", "#8EC6FF", "#FFFFFF"),
@@ -18,9 +18,8 @@ public sealed class AppearanceViewModel : INotifyPropertyChanged, IDisposable
         new("Amber", "#F0B454", "#DAA048", "#302719", "#65502C", "#F5CB86", "#291B07")
     ];
     public IReadOnlyList<string> AccentChoices { get; } = Palettes.Select(p => p.Name).ToArray();
-    public IReadOnlyList<string> MotionChoices { get; } = ["Follow Windows", "On", "Off"];
     private readonly LocalSettings settings;
-    private string accent = "Blue", motion = "Follow Windows", status = "";
+    private string accent = "Blue", status = "";
     public AppearanceViewModel(LocalSettings settings)
     {
         this.settings = settings;
@@ -28,10 +27,8 @@ public sealed class AppearanceViewModel : INotifyPropertyChanged, IDisposable
         {
             var saved = settings.ReadAppearance();
             accent = AccentChoices.Contains(saved.Accent) ? saved.Accent : "Blue";
-            motion = MotionChoices.Contains(saved.Motion) ? saved.Motion : "Follow Windows";
         }
         catch (Exception ex) { status = $"Could not read appearance preferences: {ex.Message}"; }
-        SystemParameters.StaticPropertyChanged += SystemSettingChanged;
     }
     public string Accent
     {
@@ -42,28 +39,13 @@ public sealed class AppearanceViewModel : INotifyPropertyChanged, IDisposable
             accent = value; Save(); Notify(); Notify(nameof(Palette));
         }
     }
-    public string Motion
-    {
-        get => motion;
-        set
-        {
-            if (motion == value || !MotionChoices.Contains(value)) return;
-            motion = value; Save(); Notify(); Notify(nameof(AnimationsEnabled));
-        }
-    }
     public AccentPalette Palette => Palettes.First(p => p.Name == accent);
-    public bool AnimationsEnabled => motion == "On" || (motion == "Follow Windows" && SystemParameters.ClientAreaAnimation);
     public string Status { get => status; private set { status = value; Notify(); } }
     private void Save()
     {
-        try { settings.SaveAppearance(new(accent, motion)); Status = ""; }
+        try { settings.SaveAppearance(new(accent)); Status = ""; }
         catch (Exception ex) { Status = $"Preview applied, but preferences could not be saved: {ex.Message}"; }
     }
-    private void SystemSettingChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(SystemParameters.ClientAreaAnimation)) Notify(nameof(AnimationsEnabled));
-    }
-    public void Dispose() => SystemParameters.StaticPropertyChanged -= SystemSettingChanged;
     public event PropertyChangedEventHandler? PropertyChanged;
     private void Notify([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     public static void Apply(ResourceDictionary resources, AccentPalette palette)

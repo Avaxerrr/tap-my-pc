@@ -4,7 +4,7 @@ using TapMyPC.Core.Shortcuts;
 
 namespace TapMyPC.Windows.Settings;
 
-public record AppearanceSettings(string Accent = "Blue", string Motion = "Follow Windows");
+public record AppearanceSettings(string Accent = "Blue");
 
 public record HostIdentity(string CertificateThumbprint);
 public record HostSettings(string Address = "auto", int Port = 45831, bool ShowNotifications = true, int Version = 3, bool ConnectionsEnabled = true);

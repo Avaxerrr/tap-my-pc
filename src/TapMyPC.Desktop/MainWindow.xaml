@@ -7,7 +7,6 @@
  WindowStyle="None" WindowStartupLocation="CenterScreen" Background="#0B0C0E" Foreground="#F5F5F7"
  FontFamily="./Assets/Fonts/#Inter 18pt 18pt" FontSize="13"
  TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType" UseLayoutRounding="True"
- presentation:DrawerTransition.AnimationsEnabled="{Binding Appearance.AnimationsEnabled, FallbackValue=False}"
  PreviewKeyDown="Window_PreviewKeyDown" DataContextChanged="Window_DataContextChanged">
 <shell:WindowChrome.WindowChrome>
   <shell:WindowChrome CaptionHeight="52"
@@ -791,10 +790,7 @@
             <Border Style="{StaticResource GroupedCard}" Padding="16">
               <StackPanel>
                 <TextBlock Text="Accent color" FontSize="12" Margin="0,0,0,6"/>
-                <ComboBox ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding Accent}" AutomationProperties.Name="Accent color" Margin="0,0,0,14"/>
-                <TextBlock Text="Drawer animations" FontSize="12" Margin="0,0,0,6"/>
-                <ComboBox ItemsSource="{Binding MotionChoices}" SelectedItem="{Binding Motion}" AutomationProperties.Name="Drawer animations"/>
-                <TextBlock Text="Follow Windows respects your system animation setting. Choose On to enable drawer motion independently." FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,0"/>
+                <ComboBox ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding Accent}" AutomationProperties.Name="Accent color"/>
                 <TextBlock Text="{Binding Status}" FontSize="11.5" Margin="0,8,0,0" Foreground="{DynamicResource AccentText}"/>
               </StackPanel>
             </Border>

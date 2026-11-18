@@ -4,33 +4,58 @@ import 'package:flutter/services.dart';
 import 'connection.dart';
 import 'pairing_page.dart';
 import 'discovery.dart';
+import 'ui/app_theme.dart';
+import 'ui/remote_dashboard.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const TapMyPcApp());
 }
 
-class TapMyPcApp extends StatelessWidget {
+class TapMyPcApp extends StatefulWidget {
   const TapMyPcApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'TapMyPC',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xffc9efaa),
-        brightness: Brightness.dark,
-      ),
-      scaffoldBackgroundColor: const Color(0xff101718),
-      cardTheme: const CardThemeData(
-        color: Color(0xff192325),
-        margin: EdgeInsets.only(bottom: 16),
+  State<TapMyPcApp> createState() => _TapMyPcAppState();
+}
+
+class _TapMyPcAppState extends State<TapMyPcApp> with WidgetsBindingObserver {
+  final appearance = AppearanceController();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(appearance.load());
+  }
+
+  @override
+  void didChangeAccessibilityFeatures() => setState(() {});
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: appearance,
+    builder: (context, _) => AppearanceScope(
+      controller: appearance,
+      child: MaterialApp(
+        title: 'TapMyPC',
+        debugShowCheckedModeBanner: false,
+        theme: appTheme(appearance.palette),
+        themeAnimationDuration:
+            WidgetsBinding
+                .instance
+                .platformDispatcher
+                .accessibilityFeatures
+                .disableAnimations
+            ? Duration.zero
+            : const Duration(milliseconds: 180),
+        home: const RemotePage(),
       ),
     ),
-    home: const RemotePage(),
   );
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    appearance.dispose();
+    super.dispose();
+  }
 }
 
 class RemotePage extends StatefulWidget {
@@ -49,6 +74,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   String message = 'Add your first PC to get started.';
   bool busy = false, refreshing = false, foreground = true;
   String appVersion = '';
+  String? feedback, lastServerTime;
+  bool feedbackError = false;
+  Map<String, dynamic>? pendingSnapshot;
   int epoch = 0;
   Timer? timer;
   StreamSubscription<Map<dynamic, dynamic>>? discoverySubscription;
@@ -129,6 +157,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     setState(() {
       selected = profile;
       status = null;
+      pendingSnapshot = null;
+      lastServerTime = null;
+      feedback = null;
+      feedbackError = false;
       outputs = [];
       monitors = [];
       shortcuts = [];
@@ -203,6 +235,11 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       if (!mounted || generation != epoch) return;
       setState(() {
         status = next;
+        final pending = next['scheduler']?['pending'];
+        pendingSnapshot = pending == null
+            ? null
+            : Map<String, dynamic>.from(pending);
+        lastServerTime = next['serverTime'];
         verifiedAt[normalizePin(selected!.pin)] = DateTime.now();
         if (newOutputs != null) outputs = newOutputs;
         if (newMonitors != null) monitors = newMonitors;
@@ -235,31 +272,60 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     final client = api!;
     setState(() {
       busy = true;
-      message = 'Sending to ${selected!.name}…';
+      feedback = null;
+      feedbackError = false;
     });
     try {
       final result = await client.request(path, method: method, body: body);
       if (!mounted || generation != epoch) return;
-      final text =
-          result['feedback']?['message'] ??
-          (method == 'DELETE' ? 'Timer canceled' : 'Action scheduled');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(text), duration: const Duration(seconds: 3)),
-      );
+      setState(() {
+        feedback =
+            result['feedback']?['message'] ??
+            (method == 'DELETE' ? 'Timer canceled.' : 'Action scheduled.');
+        if (method == 'DELETE') pendingSnapshot = null;
+      });
     } catch (error) {
       if (mounted && generation == epoch) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${friendly(error)} No automatic retry was sent.'),
-          ),
-        );
+        setState(() {
+          feedbackError = true;
+          feedback = '${friendly(error)} No automatic retry was sent.';
+        });
       }
     } finally {
-      if (mounted) {
+      if (mounted && generation == epoch) {
         setState(() => busy = false);
         await refresh(devices: true);
       }
     }
+  }
+
+  Future<void> setBluetooth(bool enabled) async {
+    if (busy || selected == null || status == null) return;
+    final generation = epoch;
+    if (!enabled) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text('Turn off Bluetooth on ${selected!.name}?'),
+          content: const Text(
+            'Bluetooth headphones, mice, and keyboards will disconnect.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: const Text('Turn off'),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    if (!mounted || generation != epoch) return;
+    await command('/bluetooth', 'PUT', {'enabled': enabled});
   }
 
   Future<void> power(String action, {int? delay}) async {
@@ -491,339 +557,38 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     ),
   );
 
-  Widget section(String title, List<Widget> children) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 16),
-          ...children,
-        ],
-      ),
+  @override
+  Widget build(BuildContext context) => RemoteDashboard(
+    profiles: profiles,
+    selected: selected,
+    status: status,
+    message: message,
+    appVersion: appVersion,
+    discoveryMessage: discoveryMessage,
+    busy: busy,
+    feedback: feedback,
+    feedbackError: feedbackError,
+    pending: pendingSnapshot,
+    serverTime: lastServerTime,
+    outputs: outputs,
+    monitors: monitors,
+    shortcuts: shortcuts,
+    profileStatus: profileStatus,
+    onSelect: select,
+    onAdd: addPc,
+    onForget: forget,
+    onRefresh: () => refresh(devices: true),
+    onHelp: explainConnections,
+    send: command,
+    power: power,
+    onBluetooth: setBluetooth,
+    onVolumePreview: (value) =>
+        setState(() => status!['audio']['volume'] = value.round()),
+    onBrightnessPreview: (id, value) => setState(
+      () => monitors.firstWhere((m) => m['id'] == id)['brightness'] = value
+          .round(),
     ),
   );
-  Widget action(String label, VoidCallback run, {bool supported = true}) =>
-      OutlinedButton(
-        onPressed: !busy && status != null && supported ? run : null,
-        child: Text(label),
-      );
-  @override
-  Widget build(BuildContext context) {
-    final audio = status?['audio'];
-    final caps = status?['capabilities'] ?? {};
-    final pending = status?['scheduler']?['pending'];
-    return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('TapMyPC.'),
-            if (appVersion.isNotEmpty)
-              Text(appVersion, style: const TextStyle(fontSize: 12)),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: explainConnections,
-            icon: const Icon(Icons.help_outline),
-            tooltip: "How connections work",
-          ),
-          IconButton(
-            onPressed: busy ? null : addPc,
-            icon: const Icon(Icons.add),
-            tooltip: 'Add PC',
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => refresh(devices: true),
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            Text(
-              'YOUR PC, A TAP AWAY',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            if (profiles.isNotEmpty)
-              DropdownButton<PcProfile>(
-                isExpanded: true,
-                value: selected,
-                hint: const Text('Select PC'),
-                items: profiles
-                    .map(
-                      (p) => DropdownMenuItem(
-                        value: p,
-                        child: Text('${p.name} · ${profileStatus(p)}'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: busy
-                    ? null
-                    : (p) {
-                        if (p != null) select(p);
-                      },
-              ),
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(message, key: const Key('connection-status')),
-            ),
-            if (status?['serverVersion'] != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  'PC v${status!['serverVersion']}',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ),
-            Text(
-              discoveryMessage,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            const SizedBox(height: 12),
-            if (busy) const LinearProgressIndicator(),
-            if (profiles.isEmpty)
-              section('Your PCs, together.', [
-                const Text(
-                  'Pair once with each PC. Your connections are saved securely on this phone.',
-                ),
-                const SizedBox(height: 20),
-                FilledButton(
-                  onPressed: addPc,
-                  child: const Text('Add your PC'),
-                ),
-              ]),
-            if (selected != null) ...[
-              if (pending != null)
-                section('Upcoming on ${selected!.name}', [
-                  Text(
-                    '${pending['action']} · ${DateTime.parse(pending['dueAt']).toLocal()}',
-                  ),
-                  action(
-                    'Cancel action',
-                    () => command('/power/${pending['id']}', 'DELETE', null),
-                  ),
-                ]),
-              section('Sound', [
-                Text(
-                  audio == null ? 'Unavailable' : '${audio['volume']}%',
-                  style: Theme.of(context).textTheme.headlineLarge,
-                ),
-                Slider(
-                  value: ((audio?['volume'] ?? 0) as num).toDouble().clamp(
-                    0,
-                    100,
-                  ),
-                  min: 0,
-                  max: 100,
-                  onChanged: busy || audio == null
-                      ? null
-                      : (v) => setState(
-                          () => status!['audio']['volume'] = v.round(),
-                        ),
-                  onChangeEnd: (v) =>
-                      command('/audio/volume', 'PUT', {'volume': v.round()}),
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    action(
-                      '− Volume',
-                      () =>
-                          command('/audio/step', 'POST', {'direction': 'Down'}),
-                      supported: caps['audio'] == true,
-                    ),
-                    action(
-                      audio?['muted'] == true ? 'Unmute' : 'Mute',
-                      () => command('/audio/mute', 'PUT', {
-                        'muted': audio?['muted'] != true,
-                      }),
-                      supported: caps['audio'] == true,
-                    ),
-                    action(
-                      '+ Volume',
-                      () => command('/audio/step', 'POST', {'direction': 'Up'}),
-                      supported: caps['audio'] == true,
-                    ),
-                  ],
-                ),
-                for (final output in outputs)
-                  action(
-                    '${output['isDefault'] == true ? '✓ ' : ''}${output['name']}',
-                    () => command('/audio/output', 'PUT', {'id': output['id']}),
-                  ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final item in {
-                      'Previous': 'Previous',
-                      'PlayPause': 'Play / pause',
-                      'Next': 'Next',
-                    }.entries)
-                      action(
-                        item.value,
-                        () => command('/media', 'POST', {'action': item.key}),
-                        supported: caps['media'] == true,
-                      ),
-                  ],
-                ),
-              ]),
-              section('Power & timers', [
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    action(
-                      'Monitors off',
-                      () => command('/display/off', 'POST', {}),
-                      supported: caps['display'] == true,
-                    ),
-                    for (final item in [
-                      'Lock',
-                      'Sleep',
-                      'Hibernate',
-                      'Shutdown',
-                      'Restart',
-                    ])
-                      action(
-                        item,
-                        () => power(item),
-                        supported: item == 'Sleep'
-                            ? caps['sleep'] == true
-                            : item == 'Hibernate'
-                            ? caps['hibernate'] == true
-                            : true,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Text('Schedule after 30 minutes'),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final item in ['Sleep', 'Hibernate', 'Shutdown'])
-                      action(
-                        '$item · 30m',
-                        () => power(item, delay: 1800),
-                        supported: item == 'Sleep'
-                            ? caps['sleep'] == true
-                            : item == 'Hibernate'
-                            ? caps['hibernate'] == true
-                            : true,
-                      ),
-                  ],
-                ),
-              ]),
-              section('Bluetooth', [
-                Text(status?['bluetooth']?['state'] ?? 'Unavailable'),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final enabled in [true, false])
-                      action(
-                        enabled ? 'Turn on' : 'Turn off',
-                        () async {
-                          if (!enabled) {
-                            final ok = await showDialog<bool>(
-                              context: context,
-                              builder: (c) => AlertDialog(
-                                title: const Text('Turn off Bluetooth?'),
-                                content: const Text(
-                                  'Bluetooth headphones, mice, and keyboards will disconnect.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(c),
-                                    child: const Text('Cancel'),
-                                  ),
-                                  FilledButton(
-                                    onPressed: () => Navigator.pop(c, true),
-                                    child: const Text('Turn off'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (ok != true) return;
-                          }
-                          await command('/bluetooth', 'PUT', {
-                            'enabled': enabled,
-                          });
-                        },
-                        supported: status?['bluetooth']?['canControl'] == true,
-                      ),
-                  ],
-                ),
-              ]),
-              for (final monitor in monitors)
-                section(monitor['name'], [
-                  Text(
-                    monitor['brightness'] == null
-                        ? 'Brightness unavailable'
-                        : 'Brightness ${monitor['brightness']}%',
-                  ),
-                  Slider(
-                    value: ((monitor['brightness'] ?? 50) as num)
-                        .toDouble()
-                        .clamp(0, 100),
-                    min: 0,
-                    max: 100,
-                    onChanged:
-                        busy ||
-                            status == null ||
-                            monitor['canSetBrightness'] != true
-                        ? null
-                        : (v) =>
-                              setState(() => monitor['brightness'] = v.round()),
-                    onChangeEnd: (v) => command('/monitors/brightness', 'PUT', {
-                      'id': monitor['id'],
-                      'brightness': v.round(),
-                    }),
-                  ),
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      for (final enabled in [true, false])
-                        action(
-                          enabled ? 'Turn on' : 'Turn off',
-                          () => command('/monitors/power', 'PUT', {
-                            'id': monitor['id'],
-                            'enabled': enabled,
-                          }),
-                          supported: monitor['canSetPower'] == true,
-                        ),
-                    ],
-                  ),
-                  if (monitor['message'] != null) Text(monitor['message']),
-                ]),
-              section('Shortcuts', [
-                if (shortcuts.isEmpty)
-                  const Text(
-                    'Approve apps and websites in the PC app, then refresh here.',
-                  ),
-                for (final shortcut in shortcuts)
-                  action(
-                    shortcut['name'],
-                    () => command(
-                      '/shortcuts/${shortcut['id']}/launch',
-                      'POST',
-                      {},
-                    ),
-                  ),
-              ]),
-              TextButton(
-                onPressed: busy ? null : () => refresh(devices: true),
-                child: const Text('Refresh devices'),
-              ),
-              TextButton(
-                onPressed: busy ? null : forget,
-                child: const Text('Forget selected PC'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   void dispose() {

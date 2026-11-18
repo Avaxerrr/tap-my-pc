@@ -1,0 +1,8 @@
+<resources>
+ <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+  <item name="android:windowSplashScreenBackground">@color/tapmypc_background</item>
+  <item name="android:windowSplashScreenAnimatedIcon">@drawable/tapmypc_icon</item>
+  <item name="android:windowSplashScreenIconBackgroundColor">@color/tapmypc_background</item>
+  <item name="android:windowBackground">@color/tapmypc_background</item>
+ </style>
+</resources>

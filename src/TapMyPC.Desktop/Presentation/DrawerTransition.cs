@@ -10,23 +10,13 @@ public static class DrawerTransition
 {
     public static readonly DependencyProperty IsOpenProperty = DependencyProperty.RegisterAttached(
         "IsOpen", typeof(bool), typeof(DrawerTransition), new PropertyMetadata(false, Changed));
-    public static readonly DependencyProperty AnimationsEnabledProperty = DependencyProperty.RegisterAttached(
-        "AnimationsEnabled", typeof(bool), typeof(DrawerTransition),
-        new FrameworkPropertyMetadata(SystemParameters.ClientAreaAnimation, FrameworkPropertyMetadataOptions.Inherits, MotionChanged));
     public static void SetIsOpen(DependencyObject element, bool value) => element.SetValue(IsOpenProperty, value);
     public static bool GetIsOpen(DependencyObject element) => (bool)element.GetValue(IsOpenProperty);
-    public static void SetAnimationsEnabled(DependencyObject element, bool value) => element.SetValue(AnimationsEnabledProperty, value);
-    public static bool GetAnimationsEnabled(DependencyObject element) => (bool)element.GetValue(AnimationsEnabledProperty);
-    private static void MotionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        if (!(bool)e.NewValue && d is Grid grid && grid.ReadLocalValue(IsOpenProperty) != DependencyProperty.UnsetValue)
-            Snap(grid);
-    }
     private static void Changed(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not Grid { Children.Count: >= 2 } grid) return;
         var open = (bool)e.NewValue;
-        if (!GetAnimationsEnabled(grid) || !grid.IsLoaded) { Snap(grid); return; }
+        if (!grid.IsLoaded) { Snap(grid); return; }
         var backdrop = (FrameworkElement)grid.Children[0];
         var sheet = (FrameworkElement)grid.Children[1];
         if (sheet.RenderTransform is not TranslateTransform) sheet.RenderTransform = new TranslateTransform();

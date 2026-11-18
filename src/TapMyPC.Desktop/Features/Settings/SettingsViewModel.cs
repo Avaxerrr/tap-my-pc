@@ -428,7 +428,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public async Task ShutdownAsync()
     {
         shuttingDown = true;
-        Appearance.Dispose();
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
         refreshTimer.Stop();
         scheduler.Activity.Published -= OnActivity;

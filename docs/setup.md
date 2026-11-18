@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current desktop/server development version: **0.3.1, build 4**. The desktop title bar reads the compiled version, and authenticated status reports `serverVersion: 0.3.1+4`. Android package metadata remains **0.3.0, build 3**; verifying/improving the visible Android version is deferred to its UI overhaul.
+Current desktop/server development version: **0.3.2, build 5**. The desktop title bar reads the compiled version, and authenticated status reports `serverVersion: 0.3.2+5`. Android is **0.4.2, build 6**. Its header and Settings > About read installed package metadata; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -113,17 +113,17 @@ Startup is off by default. The checkbox writes a per-user Run entry that launche
 
 Host preferences and paired-client hashes live in `%LOCALAPPDATA%\TapMyPC\host.json` and `devices.json`. The same directory contains `identity.json` with the public certificate thumbprint reference. Certificate keys are stored separately in the Windows user certificate/key stores. Do not edit these files while the app is running. Corrupt or inaccessible configuration is reported rather than silently discarded.
 
-The dashboard opens at 680 × 640 with bundled Inter typography, a frameless title bar, and minimize, maximize/restore, and hide-to-tray buttons. Sign-in startup and command notifications are on the main screen. Pair a Phone opens QR/manual setup; Activity opens command history; Configure contains shortcuts, paired devices, and Advanced Network & Security. Only one panel opens at a time; Escape, its close button, or the dimmed backdrop dismisses it. Newly generated QR invitations open the pairing panel automatically. The latest feedback appears on a smaller, wrapping line beneath the network address; pending-action cancellation remains on the main screen.
+The dashboard opens at 680 Ã— 640 with bundled Inter typography, a frameless title bar, and minimize, maximize/restore, and hide-to-tray buttons. Sign-in startup and command notifications are on the main screen. Pair a Phone opens QR/manual setup; Activity opens command history; Configure contains shortcuts, paired devices, and Advanced Network & Security. Only one panel opens at a time; Escape, its close button, or the dimmed backdrop dismisses it. Newly generated QR invitations open the pairing panel automatically. The latest feedback appears on a smaller, wrapping line beneath the network address; pending-action cancellation remains on the main screen.
 
 ### Phone activity and PC notifications
 
-The connection card shows Remote connected and client names after authenticated activity. The title-bar dot changes to your accent and gently pulses when animations are enabled. After ten seconds without activity it returns to idle; stored pairings alone are not treated as connected. Browser requests and phone availability checks count, so the indicator does not imply that this PC is selected on the phone. Stopping connections or revoking a client clears its presence.
+The connection card shows Remote connected and client names after authenticated activity. The title-bar dot changes to your accent and gently pulses while the dashboard is visible. After ten seconds without activity it returns to idle; stored pairings alone are not treated as connected. Browser requests and phone availability checks count, so the indicator does not imply that this PC is selected on the phone. Stopping connections or revoking a client clears its presence.
 
-The PC notification banner now follows your desktop accent, Inter font, corner styling, and motion preference. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
+The PC notification banner follows your desktop accent, Inter font, and corner styling, with a brief fade on appearance. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
 
 ### Appearance and resizing
 
-Configure > Appearance offers Blue, Mint, Purple, Teal, and Amber accents and a drawer animation preference. Changes preview immediately and are saved in `%LOCALAPPDATA%\TapMyPC\appearance.json`; network preferences and paired devices are independent. Follow Windows is the motion default. Select On for drawer animations even when Windows animations are disabled, or Off for immediate transitions. No Windows visual settings are changed.
+Configure > Appearance offers Blue, Mint, Purple, Teal, and Amber accents. Changes preview immediately and are saved in `%LOCALAPPDATA%\TapMyPC\appearance.json`; network preferences and paired devices are independent. Drawer transitions, feedback fades, and the connection pulse animate independently of Windows visual effects. There is no separate animation setting, and legacy motion values are ignored. No Windows visual settings are changed.
 
 Cards expand horizontally, up to a 1100-DIP dashboard width. At a window width of 1120 DIPs, essential preferences move beside the connection/pairing cards. Taller windows give panels and lists more usable space, while controls retain their natural height. Widgets have sharper corners; the outer frame remains rounded. The shadow is drawn by a non-activating companion surface and hides with the app or when maximized/minimized.
 

@@ -1,6 +1,6 @@
-# TapMyPC Android client — first development build
+# TapMyPC Android client
 
-Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
+Current development release: **0.4.2 (build 6)**, simplifying Settings by following Android reduced motion automatically and retaining white selected navigation icons across all accent themes. Native Flutter client for the existing authenticated HTTPS API. Current scope: QR/manual pinned certificate enrollment, protected saved PC profiles, automatic saved-PC discovery and address recovery, PC selection, audio/output/media controls, power confirmations and 30-minute timers, Bluetooth radio control, monitor controls, and approved shortcuts.
 
 Automatic certificate renewal, configurable timer durations, Bluetooth transport, and iOS deployment are not implemented yet. Monitoring stays deferred. Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
 
@@ -51,3 +51,16 @@ Open both apps on a reachable trusted LAN after pairing once. Android remembers 
 Stop connections on the PC persists across restarts. Start connections resumes. Public/isolated networks may prevent control; discovery cannot bypass blocked traffic. Bluetooth transport remains deferred.
 
 The reconnection_test.dart device test combines actual desktop mDNS advertisement, Android NSD, one-time QR enrollment, wrong-pin/replay rejection, stale-address recovery, protected storage, remembered selection, and the in-app help dialog. Run with the same temporary QR fixture plus TEST_LAN_ADDRESS; the simulator must be reachable from the phone. Restore saved profiles and selection after device tests.
+
+## Android presentation
+
+- **Remote:** volume and mute, an audio-output sheet, media transport, and locally approved shortcuts.
+- **Devices:** all-screen off, individual monitor capabilities/brightness/power, and Bluetooth radio control with disconnect confirmation.
+- **Power:** named-PC confirmation for every power action and the existing 30-minute timers. Pending actions remain above bottom navigation, including a last-known countdown offline; cancellation is disabled until reconnected.
+- The selected PC and connection feedback remain visible. PC switching, activity, and settings use focused sheets. Successful/failed command feedback is retained while status polling continues, and no action is automatically retried.
+- Settings offers the desktop's five accent palettes, saved independently of PC credentials, and transitions that automatically respect Android reduced motion; there is no separate animation setting. Static Inter fonts and their OFL are bundled; the launcher/splash use the TapMyPC mark and dark surfaces.
+- The header and Settings > About show version/build read from the installed Android package. PC serverVersion is shown separately. See [versioning](../docs/versioning.md).
+
+`flutter test` includes presentation/action-routing, offline/busy, PC selection, timer cancellation, appearance persistence, and small-screen/large-text checks. Visual previews are generated under ignored `artifacts/mobile-ui/`.
+
+`integration_test/ui_overhaul_test.dart` uses a loopback simulator fixture (`TEST_ADDRESS`, `TEST_PIN`, `TEST_CODE`) to verify pinned enrollment, installed version, mute, explicit Bluetooth disable confirmation, a 30-minute timer and cancellation, theme persistence, help, and QR/manual enrollment layout. It saves simulated UI screenshots in the test app temporary directory. During this overhaul it is run in an isolated build copy with applicationId `dev.tapmypc.tapmypc_mobile.uitest`; the normal app's saved PCs are not changed. Do not target the real Windows control host in unattended device tests.

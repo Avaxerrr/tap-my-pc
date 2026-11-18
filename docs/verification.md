@@ -123,7 +123,7 @@ At that planning checkpoint, QR enrollment, automatic discovery/reconnection, mo
 - Newly generated invitations automatically open the pairing panel; input labels, switch accessibility names, keyboard focus outlines, dark network controls, and local command feedback were retained or added. Transport and Windows command behavior are unchanged.
 - Published to TapMyPC-next, applied through tools/Apply-Update.ps1 to the usual executable path, and launched the updated app; the process reported responding. User preferences and paired devices were preserved. Live phone/native command interaction remains a manual check.
 
-## Desktop polish � November 18, 2026
+## Desktop polish — November 18, 2026
 
 - Release desktop build passed. The existing behavior/API suite passed all 42 tests.
 - The isolated compiled-WPF harness verified persisted appearance choices without modifying saved host preferences, live accent/motion updates through the actual SettingsViewModel, animated opening/closing and rapid reversal, panel switching, disabling motion mid-transition, expanded and compact layouts, network label/dropdown behavior, Escape/backdrop dismissal, font resource resolution, and hide-to-tray. No native command was executed, and no real host was started by the harness.
@@ -154,3 +154,34 @@ At that planning checkpoint, QR enrollment, automatic discovery/reconnection, mo
 - Desktop/server version is now 0.3.1, build 4. Directory.Build.props keeps Version and BuildNumber authoritative and derives assembly 0.3.1.0, file 0.3.1.4, and informational/product 0.3.1+4 metadata. Current release summaries were updated without rewriting historical verification entries.
 - This release consolidates the accepted desktop dashboard/tray polish, themed PC notification banners, and authenticated remote-presence indicator. Android package metadata remains 0.3.0+3; no Android source, package, or version-display changes were made. API routes remain /api/v1.
 - All 46 tests passed. Release publish succeeded; staged desktop and API DLLs both reported file 0.3.1.4 and product 0.3.1+4. After the user exited the old app normally, applied the staged update and reopened it. Installed DLL metadata matched, and read-only UI Automation confirmed the visible heading TAPMYPC v0.3.1 (build 4). The process reported responding.
+
+## Android UI overhaul — 0.4.0 (build 4)
+
+- Replaced the long mixed control list with Remote/Devices/Power navigation, a persistent selected-PC card, dedicated output/PC/activity/settings sheets, compact rectangular controls, Inter typography, and desktop-matched dark surfaces. Added independent saved Blue/Mint/Purple/Teal/Amber accents, system/On/Off motion, visible installed version/build, and matching launcher/splash styling.
+- Existing certificate pinning, QR/manual enrollment, protected profile keys, discovery, exact command targets, explicit Bluetooth/power confirmation, and no-command-replay rules remain in place. Command feedback now survives status polling. Pending PC action information stays visible above navigation, including a last-known countdown with cancellation disabled offline. Desktop/server remains 0.3.1 (build 4), and the API is unchanged.
+- Flutter analyze: no issues. Flutter unit/widget tests: 15 passed. New coverage includes appearance persistence without changing credential keys, empty/connected/offline/busy states, audio/output routing, navigation, persistent cancellation, PC selection, and a 320-DIP screen with enlarged text. Inspected rendered controls, settings, PC selection, and large-text previews under artifacts/mobile-ui.
+- Native Android 16 integration test passed in a separate temporary applicationId (dev.tapmypc.tapmypc_mobile.uitest), against a loopback-only simulated host forwarded through adb. Verified wrong-pin rejection, enrollment, installed metadata, mute, Bluetooth-off confirmation, 30-minute scheduling and cancellation, theme persistence, help, and QR/manual layout. No real PC command was executed. The test app was uninstalled and its adb forwarding removed afterward; normal-app data was not cleared.
+- Built the normal debug APK from the source-synchronized C:/temp/TapMyPC-mobile-build copy. Installed it in place with adb install -r and launched it. Android package metadata reports versionName=0.4.0 and versionCode=4; visually confirmed the visible v0.4.0 (build 4) heading and new native onboarding. Copied the distributable development APK to artifacts/mobile/TapMyPC-debug.apk. Desktop binaries and Android credentials/storage schema were not modified.
+- Remaining manual checks: camera aiming/permission UX, varied phones/tablets and accessibility settings, longer foreground/background recovery, and native controls against the actual PC. This remains a debug-signed development APK; release signing and iOS deployment are not implemented.
+
+## Android navigation contrast fix - 0.4.1 (build 5)
+
+- Set an explicit bottom-navigation icon theme: selected icons are white, and inactive icons use the secondary text color. This avoids a dark Material default over the dark accent indicator in all five palettes.
+- Added a rendered navigation regression check for selected/inactive icon colors across every palette. All 16 Flutter tests passed; Flutter analyze reported no issues. Inspected the regenerated Remote preview with its white selected icon.
+- Built the debug APK from the synchronized C:/temp/TapMyPC-mobile-build source copy, copied it to artifacts/mobile/TapMyPC-debug.apk, installed in place using adb install -r, and launched it. Installed package metadata reports versionName=0.4.1 and versionCode=5.
+- Bundled Inter and the existing Follow system/On/Off motion behavior are unchanged. Follow system uses Android's reduced-motion preference for app transitions; appearance is independent of the Windows app.
+
+## Android automatic motion - 0.4.2 (build 6)
+
+- Removed the Animations dropdown and app-level motion preference. Retained Flutter control transitions and the existing tab/theme transitions, with app motion automatically following Android accessibility preferences. System preference changes apply while the app is running.
+- Existing appearance storage remains compatible: saved accent values load, legacy motion fields are ignored, and future saves contain only the accent. Paired-PC storage is unchanged.
+- All 18 Flutter tests passed and Flutter analyze found no issues. Coverage verifies live system reduced-motion changes, removal of the dropdown, and loading an accent from legacy appearance data without retaining the motion field. Inspected the regenerated Settings preview.
+- Built the debug APK from the source-synchronized temporary build directory, copied it to artifacts/mobile/TapMyPC-debug.apk, installed it in place, and reopened it. Installed package metadata confirms versionName=0.4.2 and versionCode=6.
+
+## Desktop animations enabled - 0.3.2 (build 5)
+
+- Removed the drawer-animation dropdown, saved motion field, Windows motion subscription, and presentation-level enable switches. Drawers, feedback fades, and the visible connection pulse now animate independently of Windows visual effects. Hidden/minimized or inactive connection indicators still have no animation clock.
+- Existing appearance files keep their accent and ignore legacy Motion values. Changes to the accent save only the supported appearance field; network preferences, credentials, command behavior, and Android binaries are unaffected by this desktop patch.
+- Release solution build passed with zero warnings/errors; all 46 .NET tests passed. An isolated WPF smoke harness verified legacy accent loading, accent-only persistence, animated drawer open/close, hit testing, and clock cleanup while Windows ClientAreaAnimation was False. It did not start the command host or invoke Windows operations.
+- Published to artifacts/publish/TapMyPC-next. Both desktop and API DLLs reported file version 0.3.2.5 and product 0.3.2+5. The installed app was already closed, so tools/Apply-Update.ps1 -Launch applied the update and reopened it without stopping a running host. Installed metadata matched; UI Automation confirmed TAPMYPC v0.3.2 (build 5), an accent chooser, and no Drawer animations setting. The process reported responding.
+- The accompanying Android UI changes remain 0.4.2 (build 6), previously installed and verified with 18 passing Flutter tests and clean analysis. The two app versions remain independent, with no API contract changes.

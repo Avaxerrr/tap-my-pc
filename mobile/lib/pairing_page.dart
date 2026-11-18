@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'connection.dart';
 import 'pairing_invitation.dart';
+import 'ui/app_theme.dart';
 
 class PairPage extends StatefulWidget {
   const PairPage({super.key});
@@ -77,100 +78,130 @@ class _PairPageState extends State<PairPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Add PC')),
-    body: ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Icon(
-          Icons.qr_code_scanner,
-          size: 72,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Scan. Pair. You’re in.',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 12),
-        const Text(
-          'Start the host in TapMyPC on your PC, then select Generate pairing QR. Scan that QR here. Both devices need a reachable local connection.',
-        ),
-        const SizedBox(height: 24),
-        FilledButton.icon(
-          onPressed: busy ? null : scan,
-          icon: const Icon(Icons.camera_alt_outlined),
-          label: Text(invitation == null ? 'Scan PC QR' : 'Scan another QR'),
-        ),
-        if (invitation != null)
-          Card(
-            margin: const EdgeInsets.symmetric(vertical: 20),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    invitation!.name,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(invitation!.address),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Pair only with a QR displayed by your PC. Its certificate will be verified before pairing.',
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: busy ? null : () => pair(qr: true),
-                    child: Text(busy ? 'Pairing…' : 'Pair with this PC'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        if (error.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(
-              error,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
-        if (busy) const LinearProgressIndicator(),
-        const SizedBox(height: 20),
-        ExpansionTile(
-          title: const Text('Enter details manually'),
+    body: Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 640),
+        child: ListView(
+          padding: const EdgeInsets.all(24),
           children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: Text(
-                'Copy the address and SHA-256 fingerprint from the PC’s Advanced settings, then generate a pairing code.',
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.qr_code_scanner,
+                  size: 28,
+                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                ),
               ),
             ),
-            for (final field in [
-              (name, 'PC name'),
-              (address, 'HTTPS address'),
-              (pin, 'SHA-256 fingerprint'),
-              (code, 'Pairing code'),
-            ])
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: TextField(
-                  controller: field.$1,
-                  enabled: !busy,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: field.$2,
-                    border: const OutlineInputBorder(),
+            const SizedBox(height: 24),
+            Text(
+              'Scan. Pair. You’re in.',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Open Pair a Phone in the PC app, then scan its temporary QR here. Both devices need a reachable local network.',
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: busy ? null : scan,
+              icon: const Icon(Icons.camera_alt_outlined),
+              label: Text(
+                invitation == null ? 'Scan PC QR' : 'Scan another QR',
+              ),
+            ),
+            if (invitation != null)
+              Card(
+                margin: const EdgeInsets.symmetric(vertical: 20),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        invitation!.name,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(invitation!.address),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Pair only with a QR displayed by your PC. Its certificate will be verified before pairing.',
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                        onPressed: busy ? null : () => pair(qr: true),
+                        child: Text(busy ? 'Pairing…' : 'Pair with this PC'),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            OutlinedButton(
-              onPressed: busy ? null : pair,
-              child: const Text('Pair manually'),
+            if (error.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  error,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            if (busy) const LinearProgressIndicator(),
+            const SizedBox(height: 20),
+            ExpansionTile(
+              title: const Text(
+                'Enter details manually',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: const BorderSide(color: AppColors.border),
+              ),
+              collapsedShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: const BorderSide(color: AppColors.border),
+              ),
+              backgroundColor: AppColors.surface,
+              collapsedBackgroundColor: AppColors.surface,
+              childrenPadding: const EdgeInsets.all(16),
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    'Copy the address and SHA-256 fingerprint from the PC’s Advanced settings, then generate a pairing code.',
+                  ),
+                ),
+                for (final field in [
+                  (name, 'PC name'),
+                  (address, 'HTTPS address'),
+                  (pin, 'SHA-256 fingerprint'),
+                  (code, 'Pairing code'),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: TextField(
+                      controller: field.$1,
+                      enabled: !busy,
+                      autocorrect: false,
+                      decoration: InputDecoration(labelText: field.$2),
+                    ),
+                  ),
+                OutlinedButton(
+                  onPressed: busy ? null : pair,
+                  child: const Text('Pair manually'),
+                ),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     ),
   );
   @override
@@ -233,17 +264,37 @@ class _ScanPairPageState extends State<ScanPairPage>
     body: Column(
       children: [
         Expanded(
-          child: MobileScanner(
-            controller: controller,
-            onDetect: detected,
-            errorBuilder: (context, error) => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Camera unavailable. Allow camera access in Android settings, or go back and enter the PC details manually.',
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              MobileScanner(
+                controller: controller,
+                onDetect: detected,
+                errorBuilder: (context, error) => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Camera unavailable. Allow camera access in Android settings, or go back and enter the PC details manually.',
+                    ),
+                  ),
                 ),
               ),
-            ),
+              IgnorePointer(
+                child: Center(
+                  child: Container(
+                    width: 240,
+                    height: 240,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         SafeArea(

@@ -113,7 +113,7 @@ public partial class MainWindow : Window
     private void UpdateConnectionPulse()
     {
         var active = DataContext is SettingsViewModel { HasConnectedClients: true };
-        var animate = active && DataContext is SettingsViewModel vm && vm.Appearance.AnimationsEnabled
+        var animate = active
             && IsVisible && WindowState != WindowState.Minimized;
         if (animate == connectionPulsing)
         {

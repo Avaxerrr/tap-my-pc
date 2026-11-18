@@ -25,7 +25,7 @@ public partial class FeedbackWindow : Window
         {
             BeginAnimation(OpacityProperty, null);
             Opacity = 1;
-            if (IsVisible && (appearance?.AnimationsEnabled ?? SystemParameters.ClientAreaAnimation))
+            if (IsVisible)
                 BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         };
     }
@@ -34,8 +34,6 @@ public partial class FeedbackWindow : Window
     {
         if (appearance is null) return;
         if (e.PropertyName == nameof(AppearanceViewModel.Palette)) AppearanceViewModel.Apply(Resources, appearance.Palette);
-        if (e.PropertyName == nameof(AppearanceViewModel.AnimationsEnabled) && !appearance.AnimationsEnabled)
-        { BeginAnimation(OpacityProperty, null); Opacity = 1; }
     }
 
     private static IntPtr PreventActivation(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
