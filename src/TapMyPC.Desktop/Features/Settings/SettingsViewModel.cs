@@ -47,12 +47,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private X509Certificate2? certificate;
     private string address;
     private string port;
-    private string message = "Your network address is selected automatically. Start the host, then generate and scan a pairing QR below.";
+    private string message = "Your network address is selected automatically. Start connections, then select Pair a Phone to scan a pairing QR.";
     private BitmapSource? pairingQrImage;
     private string pairingCode = "— — — — — —";
     private string pairingExpiry = "Generate a QR when your phone is ready.";
     private string fingerprint = "Available after starting the host.";
-    private string remoteUrl = "Start host, then generate a pairing QR below";
+    private string remoteUrl = "Start connections, then select Pair a Phone";
     private string networkSummary = "Detecting your network…";
     private DateTimeOffset? pairingExpires;
     private string pending = "No power action scheduled";
@@ -67,6 +67,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         this.outputs = outputs; this.shortcuts = shortcuts; this.monitors = monitors;
         ShortcutSettings = shortcuts is null ? null : new ShortcutsViewModel(shortcuts);
         this.settings = settings;
+        Appearance = new AppearanceViewModel(settings);
         this.pairing = pairing;
         this.scheduler = scheduler;
         var saved = settings.ReadHost();
@@ -134,6 +135,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         NetworkChange.NetworkAddressChanged += OnNetworkChanged;
     }
 
+    public AppearanceViewModel Appearance { get; }
     public ShortcutsViewModel? ShortcutSettings { get; }
     public ObservableCollection<NetworkAddress> NetworkChoices { get; } = [];
     public ObservableCollection<PairedClient> Devices { get; } = [];
@@ -408,6 +410,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public async Task ShutdownAsync()
     {
         shuttingDown = true;
+        Appearance.Dispose();
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
         refreshTimer.Stop();
         scheduler.Activity.Published -= OnActivity;

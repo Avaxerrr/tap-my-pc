@@ -39,7 +39,7 @@ public partial class App : Application
                 new WindowsAudioOutputs(), new ShortcutCatalog(settings, new WindowsShortcutLauncher(), scheduler.Activity), new WindowsMonitorController());
             feedback = new FeedbackPresenter(scheduler, () => settingsViewModel.ShowNotifications, Dispatcher);
             MainWindow = new MainWindow { DataContext = settingsViewModel };
-            tray = new TrayIcon(ShowSettings, ExitAsync);
+            tray = new TrayIcon(ShowSettings, ExitAsync, settingsViewModel.Appearance);
             if (!e.Args.Contains("--tray")) ShowSettings();
             await settingsViewModel.InitializeAsync();
         }

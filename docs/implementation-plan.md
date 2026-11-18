@@ -14,6 +14,10 @@ Automated HTTPS and headless browser tests use simulated controls. The user subs
 
 Bluetooth radio status and explicit on/off commands are now implemented over Wi-Fi, with Windows permission handling, compact PC feedback, and simulated tests. This does not implement Bluetooth as a transport. Shutdown already exists as both a direct confirmed action and a scheduled timer. Bedtime presets are deferred at the user's request.
 
+The compact desktop UI now uses the approved dark card design at 680 × 640 with embedded Inter fonts. Pairing, activity, and configuration use exclusive side panels; startup and notification preferences stay on the main screen. This presentation update preserves host commands and tray lifecycle.
+
+The desktop polish pass adds sharper widgets, non-overlapping shortcut feedback, explicit text smoothing and per-monitor DPI handling, scrollbar hover/drag feedback, reversible drawer animations with a system/On/Off policy, locally saved accent palettes, an independent outer shadow, a branded tray/app icon and dark tray menu, and responsive wide/vertical layouts. Host commands, authentication, and timer semantics are unchanged.
+
 ## Phase 1: Foundation and first remote command
 
 1. Select a supported .NET SDK and establish the solution boundaries described in [architecture](architecture.md).

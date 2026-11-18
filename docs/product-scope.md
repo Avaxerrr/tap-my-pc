@@ -63,6 +63,12 @@ The Android development client implements QR and manual pinned enrollment, prote
 - The normal command listener cannot execute while the PC is asleep, hibernating, or shut down. Remote wake is a separate capability.
 - Unsupported features should report that they are unavailable rather than appear to succeed.
 
+## Desktop personalization
+
+- Dark desktop surfaces with locally saved Blue, Mint, Purple, Teal, or Amber accents. These preferences apply to the desktop dashboard and tray menu, independently of phone clients.
+- Drawer animation preference: Follow Windows, On, or Off. An explicit On works with Windows animations disabled; default follows the Windows client-area animation preference.
+- Compact default size with expanding cards, two columns on wide windows, natural control heights, and scrollable panels/lists on shorter windows. A custom shadow remains available when Windows shadow effects are disabled.
+
 ## Boundaries
 
 The initial release is for a trusted local network, with authenticated clients. Public internet access, arbitrary remote shell execution, full remote desktop streaming, and a custom Windows driver are outside the initial scope.

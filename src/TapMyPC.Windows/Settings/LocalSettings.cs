@@ -4,6 +4,8 @@ using TapMyPC.Core.Shortcuts;
 
 namespace TapMyPC.Windows.Settings;
 
+public record AppearanceSettings(string Accent = "Blue", string Motion = "Follow Windows");
+
 public record HostIdentity(string CertificateThumbprint);
 public record HostSettings(string Address = "auto", int Port = 45831, bool ShowNotifications = true, int Version = 3, bool ConnectionsEnabled = true);
 
@@ -22,6 +24,9 @@ public sealed class LocalSettings(string? directoryPath = null, string? legacyDi
         // The original UI persisted an address without a mode. Migrate it to automatic selection once.
         return document.RootElement.TryGetProperty("Version", out _) ? settings : settings with { Address = "auto" };
     }
+    public AppearanceSettings ReadAppearance() => Read<AppearanceSettings>("appearance.json") ?? new();
+    public void SaveAppearance(AppearanceSettings appearance) => Write("appearance.json", appearance);
+
     public HostIdentity? ReadIdentity() => Read<HostIdentity>("identity.json");
     public void SaveIdentity(HostIdentity identity) => Write("identity.json", identity);
     public void SaveHost(HostSettings settings) => Write("host.json", settings);

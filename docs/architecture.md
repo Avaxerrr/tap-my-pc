@@ -117,6 +117,12 @@ The desktop subscribes on its Dispatcher for dashboard activity and silent non-a
 
 Account for Windows Firewall, network interface selection, and router client isolation during setup. Do not silently expose the API on every network or configure public internet access. Any firewall changes must be explicit and scoped to the intended local-network access.
 
+## Desktop appearance
+
+Desktop presentation owns live accent resources, drawer transitions, responsive layout, and a separate non-activating shadow surface. The content window stays opaque with explicit ClearType rendering and per-monitor DPI awareness; shadow effects never wrap the text surface. Windows-specific shadow-window input styles remain in Windows/Interop. Shadow visibility follows the main window, including tray hiding and maximize/minimize.
+
+AppearanceViewModel persists accent and motion preferences through LocalSettings in appearance.json, separately from connection preferences and credentials. The motion policy is Follow Windows (default), On, or Off; drawer transitions use translation/opacity and settle immediately when motion is disabled. Shared drawer behavior supports all three panels without changing command handlers. Tray menu colors use the same palette; the multi-resolution app/tray icon is bundled locally.
+
 ## Resource expectations
 
 Aim for near-idle CPU while waiting for requests and modest memory use. Measure a release build with settings closed and open; prior discussion of tens of MB to around 100 MB was a rough estimate, not a verified target or guarantee.

@@ -12,7 +12,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- WPF owns startup and DPI awareness; WinForms is used only for NotifyIcon. -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/TapMyPC.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,5 +28,10 @@
 
   <ItemGroup>
     <PackageReference Include="QRCoder" Version="1.8.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets/Fonts/*.ttf" />
+    <Resource Include="Assets/TapMyPC.ico" />
+    <None Update="Assets/Fonts/Inter-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" TargetPath="Inter-OFL.txt" />
   </ItemGroup>
 </Project>

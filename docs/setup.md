@@ -113,7 +113,15 @@ Startup is off by default. The checkbox writes a per-user Run entry that launche
 
 Host preferences and paired-client hashes live in `%LOCALAPPDATA%\TapMyPC\host.json` and `devices.json`. The same directory contains `identity.json` with the public certificate thumbprint reference. Certificate keys are stored separately in the Windows user certificate/key stores. Do not edit these files while the app is running. Corrupt or inaccessible configuration is reported rather than silently discarded.
 
-The dashboard has a custom frameless title bar with minimize, maximize/restore, and hide-to-tray buttons. Technical connection overrides, certificate tools, sign-in startup, notifications, and paired-device management are under Advanced settings.
+The dashboard opens at 680 × 640 with bundled Inter typography, a frameless title bar, and minimize, maximize/restore, and hide-to-tray buttons. Sign-in startup and command notifications are on the main screen. Pair a Phone opens QR/manual setup; Activity opens command history; Configure contains shortcuts, paired devices, and Advanced Network & Security. Only one panel opens at a time; Escape, its close button, or the dimmed backdrop dismisses it. Newly generated QR invitations open the pairing panel automatically. The latest feedback appears on a smaller, wrapping line beneath the network address; pending-action cancellation remains on the main screen.
+
+### Appearance and resizing
+
+Configure > Appearance offers Blue, Mint, Purple, Teal, and Amber accents and a drawer animation preference. Changes preview immediately and are saved in `%LOCALAPPDATA%\TapMyPC\appearance.json`; network preferences and paired devices are independent. Follow Windows is the motion default. Select On for drawer animations even when Windows animations are disabled, or Off for immediate transitions. No Windows visual settings are changed.
+
+Cards expand horizontally, up to a 1100-DIP dashboard width. At a window width of 1120 DIPs, essential preferences move beside the connection/pairing cards. Taller windows give panels and lists more usable space, while controls retain their natural height. Widgets have sharper corners; the outer frame remains rounded. The shadow is drawn by a non-activating companion surface and hides with the app or when maximized/minimized.
+
+The application uses explicit ClearType/Ideal text formatting and per-monitor DPI awareness. The system font configuration is not changed; assess the live rendering on your monitor at its normal scaling. The tray and executable use the bundled multi-resolution TapMyPC icon, and the tray menu uses dark surfaces with the selected accent.
 
 ### Upgrade from PC Remote
 

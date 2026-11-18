@@ -114,3 +114,22 @@ At that planning checkpoint, QR enrollment, automatic discovery/reconnection, mo
 - Inspected the rendered desktop dashboard after pairing: QR hidden, optional browser details collapsed, Add another phone and Stop connections visible, installed version shown.
 - Desktop staged update applied to the original executable path and launched. Normal Android APK installed after USB-install approval, launched, and visible version/package metadata confirmed as 0.3.0 / build 3. APK copied to artifacts/mobile/TapMyPC-debug.apk. A final lifecycle check also verified Stop connections persists while waiting on the untrusted virtual adapter.
 - Remaining manual coverage: live camera aiming/permission prompts, actual DHCP/network-switch timing on varied routers, sleep/resume and lengthy discovery loss, managed network policy, certificate renewal/replacement recovery, and long-term multi-PC operation. Automated tests do not constitute a production security audit.
+
+## Compact desktop design — November 18, 2026
+
+- Applied the approved dark card layout at 680 × 640 (minimum 640 × 560), with bundled static Inter Regular/Medium/SemiBold/Bold and its OFL license. No system font installation is needed.
+- Release build and publish passed without warnings. An isolated harness instantiated the compiled MainWindow with sample data and verified embedded-font resolution, exclusive pairing/activity/configuration panels, Escape and backdrop dismissal, network selection label/dropdown, compact dimensions, and close-to-tray behavior. No real device commands or host were started by that harness.
+- Rendered the compiled default view, all panels, expanded advanced settings, a demonstration QR, and the minimum window size with long feedback and a pending action. Content scrolls when needed; the pending-action Cancel control remains available.
+- Newly generated invitations automatically open the pairing panel; input labels, switch accessibility names, keyboard focus outlines, dark network controls, and local command feedback were retained or added. Transport and Windows command behavior are unchanged.
+- Published to TapMyPC-next, applied through tools/Apply-Update.ps1 to the usual executable path, and launched the updated app; the process reported responding. User preferences and paired devices were preserved. Live phone/native command interaction remains a manual check.
+
+## Desktop polish � November 18, 2026
+
+- Release desktop build passed. The existing behavior/API suite passed all 42 tests.
+- The isolated compiled-WPF harness verified persisted appearance choices without modifying saved host preferences, live accent/motion updates through the actual SettingsViewModel, animated opening/closing and rapid reversal, panel switching, disabling motion mid-transition, expanded and compact layouts, network label/dropdown behavior, Escape/backdrop dismissal, font resource resolution, and hide-to-tray. No native command was executed, and no real host was started by the harness.
+- Shadow lifecycle checks verified non-activation/taskbar exclusion, minimize/restore handling, and hiding alongside the main window. The tray icon loaded from the compiled resource, and the custom dark menu rendered successfully with standard menu controls retained for navigation/dismissal.
+- Visually inspected rendered compact/wide layouts in Blue and Mint and the Configure panel. Shortcut feedback is on its own wrapping row; lists grow within a bounded fraction of window height. Motion defaults to Follow Windows; persisted On/Off overrides are independent of system effects.
+- Live text smoothness at the user's display scaling and the perceived shadow strength still require user assessment. The offscreen screenshots do not reproduce monitor subpixel rendering.
+
+- Published and applied the polish build through tools/Apply-Update.ps1 to the usual executable path, then launched it. The updated TapMyPC main window was present and its process reported responding.
+- Moved main-card command/pairing feedback to its own 11.5-DIP wrapping line below the 13-DIP network summary. The compiled layout harness verified that feedback is smaller and positioned below the address; release build/publish passed. The updated release is staged in TapMyPC-next while the existing installed app remains running.
