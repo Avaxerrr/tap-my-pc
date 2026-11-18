@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'certificate_identity.dart';
+import 'phone_identity.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 String normalizePin(String value) =>
@@ -220,6 +221,13 @@ class PcApi {
     req.followRedirects = false;
     if (profile.token.isNotEmpty) {
       req.headers.set('Authorization', 'Bearer ${profile.token}');
+      final name = await PhoneIdentity.name();
+      if (name != null) {
+        req.headers.set(
+          'X-TapMyPC-Device-Name',
+          base64Encode(utf8.encode(name)),
+        );
+      }
     }
     if (body != null) {
       req.headers.contentType = ContentType.json;

@@ -56,6 +56,14 @@ internal static class Program
             window.Show();
             await vm.InitializeAsync();
             Check(vm.IsHosting, "Initial test listener");
+            pairing.Authorize(oldToken, RemoteTransport.Bluetooth, "POCO test phone");
+            await Task.Delay(1100);
+            Check(vm.ConnectionSummary == "POCO test phone · Bluetooth", "Active phone name and actual Bluetooth transport");
+            vm.SelectedDevice = vm.Devices.Single(); vm.DeviceName = "My test phone"; vm.RenameDevice.Execute(null);
+            Check(pairing.Clients.Single().Name == "My test phone", "Paired phone rename command");
+            pairing.Authorize(oldToken, RemoteTransport.WiFi, "OS-reported name");
+            await Task.Delay(1100);
+            Check(vm.ConnectionSummary == "My test phone · Wi-Fi", "Custom name and switched Wi-Fi transport");
             if (Environment.GetCommandLineArgs().Contains("--bluetooth")) Check(vm.BluetoothConnectionSummary.StartsWith("Bluetooth ready"), "Bluetooth transport starts with global connections");
             vm.RequestIdentityReset.Execute(null);
             Check(vm.IdentityResetRequested, "Reset confirmation opens");

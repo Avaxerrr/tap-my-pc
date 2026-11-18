@@ -1,6 +1,6 @@
 # Bluetooth secondary connection
 
-Implemented for the Windows host and Flutter Android client in desktop 0.5.0+9 and Android 0.6.0+10. The browser remains a Wi-Fi client; iOS is deferred.
+Implemented for the Windows host and Flutter Android client in desktop 0.6.0+10 and Android 0.6.1+11. The browser remains a Wi-Fi client; iOS is deferred.
 
 ## Setup and normal use
 
@@ -8,11 +8,19 @@ Implemented for the Windows host and Flutter Android client in desktop 0.5.0+9 a
 2. Pair/reconnect over Wi-Fi once. Authenticated status supplies the PC's Bluetooth address and service identifier, saved with that PC's protected profile. Existing credentials and certificate identity are reused.
 3. On Android open Settings > Connection for the selected PC. Allow Nearby devices when requested. Choose Automatic, Wi-Fi only, or Bluetooth only. Complete Windows/Android system Bluetooth pairing if prompted; Phone Bluetooth settings opens the native settings screen.
 4. Automatic starts with Wi-Fi and tries Bluetooth during connection recovery. It retains a healthy Bluetooth connection; reselect Automatic, reopen the app, or reselect the PC to start with Wi-Fi again. Wi-Fi only and Bluetooth only never silently use the other transport.
-5. The phone labels an active Bluetooth connection. The PC shows Bluetooth readiness and counts authenticated traffic from either transport in its existing remote badge.
+5. The phone labels an active Bluetooth connection. The PC shows Bluetooth readiness separately from each active phone's name and actual authenticated transport, for example POCO X6 5G · Bluetooth. Readiness is availability, not the current connection.
 
 Initial enrollment requires reachable trusted Wi-Fi. An already enrolled phone with saved Bluetooth metadata can control the PC without a LAN. Saved pairing cannot wake a sleeping PC; remote wake is separate work.
 
-Start/Stop connections controls both listeners and remains remembered. Public/unidentified LANs pause Wi-Fi without disabling Bluetooth for already paired phones. Turning off a PC/phone radio or moving out of range disconnects Bluetooth. Turning off the PC radio through Bluetooth can lose the response even when the radio command was applied; reconnect over Wi-Fi or turn the radio on locally. No command is automatically replayed.
+Start/Stop connections controls both listeners and remains remembered. Public/unidentified LANs pause Wi-Fi without disabling Bluetooth for already paired phones. Turning off a PC/phone radio or moving out of range disconnects Bluetooth. PC radio changes are disabled in the Android UI and rejected by the Bluetooth API listener. Switch to Wi-Fi to change radio power. Over Wi-Fi the card shows PC Bluetooth: On/Off and offers only the applicable action; unknown/unavailable/mixed states offer no guessed action. No command is automatically replayed.
+
+## Phone names and active transport
+
+New Android enrollment uses the OS device name, falling back to the model without requiring Bluetooth permission. Existing paired phones report that name during authenticated requests and update the saved label without re-pairing or changing credentials. The phone name is display metadata, not proof of identity.
+
+In desktop Configure > Authorized phones, select a phone, edit Phone name, and select Save phone name. This local override persists and takes priority over future OS-reported names. Each PC owns its own custom labels.
+
+Transport labels reflect the listener that last authenticated that client. Requests cannot choose or spoof their transport label. Presence still means authenticated activity within ten seconds, including availability probes and commands that later fail; it is not proof of the phone's selected PC or a permanent socket.
 
 ## Transport and identity
 

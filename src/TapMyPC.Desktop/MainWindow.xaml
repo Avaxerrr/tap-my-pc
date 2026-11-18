@@ -887,6 +887,9 @@
                        BorderBrush="{StaticResource BorderHairline}"
                        MinHeight="56"
                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ListViewportHeight}}" />
+              <TextBlock Text="Phone name" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,12,0,6" />
+              <TextBox Text="{Binding DeviceName, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" AutomationProperties.Name="Paired phone name" />
+              <Button Content="Save phone name" Command="{Binding RenameDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,8,0,0" />
               <Button Content="Revoke selected access" Command="{Binding RevokeDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,10,0,0" />
             </StackPanel>
           </Border>

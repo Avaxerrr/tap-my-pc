@@ -38,7 +38,7 @@ public sealed class BluetoothConnectionHost(LocalSettings settings, PairingServi
             await StopAsync();
             certificate = new CertificateIdentity(settings, pairing).Load(IPAddress.Loopback);
             api = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler,
-                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors, bluetoothConnection: () => Info);
+                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors, bluetoothConnection: () => Info, transport: RemoteTransport.Bluetooth);
             var uri = new Uri(api.Urls.Single());
             transport = await WindowsRfcommServer.StartAsync(new IPEndPoint(IPAddress.Loopback, uri.Port));
             Info = transport.Info;

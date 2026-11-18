@@ -63,6 +63,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private bool isChangingHost;
     private bool identityResetRequested;
     private string certificateSummary = "Certificate details appear when connections start.";
+    private PairedClient? selectedDevice;
+    private string deviceName = "";
     private IReadOnlyList<PairedClient> connectedClients = Array.Empty<PairedClient>();
 
     public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, bool enableBluetoothTransport = true)
@@ -119,6 +121,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         RequestIdentityReset = new RelayCommand(() => { identityResetRequested = true; Notify(nameof(IdentityResetRequested)); });
         CancelIdentityReset = new RelayCommand(() => { identityResetRequested = false; Notify(nameof(IdentityResetRequested)); });
         ConfirmIdentityReset = new AsyncCommand(ResetIdentityAsync);
+        RenameDevice = new RelayCommand(() => {
+            try {
+                if (SelectedDevice is null) { Message = "Select a paired device to rename."; return; }
+                pairing.Rename(SelectedDevice.Id, DeviceName);
+                Message = "Phone name saved. This name takes priority over the phone’s reported name.";
+                Tick();
+            } catch (Exception ex) { Message = ex.Message; }
+        });
         RevokeDevice = new RelayCommand(() =>
         {
             try
@@ -149,7 +159,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public ObservableCollection<NetworkAddress> NetworkChoices { get; } = [];
     public ObservableCollection<PairedClient> Devices { get; } = [];
     public ObservableCollection<ActionNotice> Activity { get; } = [];
-    public PairedClient? SelectedDevice { get; set; }
+    public PairedClient? SelectedDevice {
+        get => selectedDevice;
+        set { selectedDevice = value; deviceName = value?.Name ?? ""; Notify(); Notify(nameof(DeviceName)); }
+    }
+    public string DeviceName { get => deviceName; set { deviceName = value; Notify(); } }
+    public RelayCommand RenameDevice { get; }
     public string Address { get => address; set { address = value; Notify(); } }
     public string Port { get => port; set { port = value; Notify(); } }
     public string Message { get => message; private set { message = value; Notify(); } }
@@ -180,7 +195,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string Pending => pending;
     public bool HasPending => scheduler.State.Pending is not null;
     public bool HasConnectedClients => connectedClients.Count > 0;
-    public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => c.Name));
+    public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => $"{c.Name} · {(c.Transport == RemoteTransport.Bluetooth ? "Bluetooth" : "Wi-Fi")}"));
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
         : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
@@ -445,10 +460,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             Notify(nameof(PairingExpiry));
         }
         var clients = pairing.Clients;
-        if (!Devices.Select(d => d.Id).SequenceEqual(clients.Select(d => d.Id)))
+        if (!Devices.SequenceEqual(clients))
         {
+            var selectedId = SelectedDevice?.Id;
             Devices.Clear();
             foreach (var client in clients) Devices.Add(client);
+            SelectedDevice = clients.FirstOrDefault(c => c.Id == selectedId);
             if (pairingExpires is not null && clients.Count > pairedCount)
             {
                 pairingExpires = null;

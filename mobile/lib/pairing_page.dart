@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'connection.dart';
+import 'phone_identity.dart';
 import 'pairing_invitation.dart';
 import 'ui/app_theme.dart';
 
@@ -64,7 +65,10 @@ class _PairPageState extends State<PairPage> {
         final result = await client.request(
           '/pair',
           method: 'POST',
-          body: {'name': 'TapMyPC Android', 'code': code.text.trim()},
+          body: {
+            'name': await PhoneIdentity.name() ?? 'Android phone',
+            'code': code.text.trim(),
+          },
         );
         profile = client.verifiedProfile.withToken(result['token']);
       }

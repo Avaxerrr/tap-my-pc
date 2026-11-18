@@ -43,6 +43,34 @@ public sealed class ApiTests : IAsyncLifetime
     public async Task DisposeAsync() { client.Dispose(); await app.StopAsync(); await app.DisposeAsync(); scheduler.Dispose(); certificate.Dispose(); }
 
     [Fact]
+    public async Task ActualListenerDeterminesTransportAndBluetoothRadioChangesAreRejected()
+    {
+        await Authenticate();
+        client.DefaultRequestHeaders.Add("X-TapMyPC-Transport", "Bluetooth");
+        client.DefaultRequestHeaders.Add("X-TapMyPC-Device-Name", Convert.ToBase64String(Encoding.UTF8.GetBytes("我的手機")));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
+        Assert.Equal(RemoteTransport.WiFi, Assert.Single(pairing.ActiveClients).Transport);
+        Assert.Equal("我的手機", Assert.Single(pairing.Clients).Name);
+        await using var btApp = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler,
+            bluetooth: bluetooth, transport: RemoteTransport.Bluetooth);
+        using var btClient = new HttpClient(new HttpClientHandler {
+            ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert?.Thumbprint == certificate.Thumbprint
+        }) { BaseAddress = new Uri(btApp.Urls.Single()) };
+        btClient.DefaultRequestHeaders.Authorization = client.DefaultRequestHeaders.Authorization;
+        var blocked = await btClient.PutAsJsonAsync("/api/v1/bluetooth", new { enabled = false });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, blocked.StatusCode);
+        Assert.Contains("Switch to Wi-Fi", await blocked.Content.ReadAsStringAsync());
+        Assert.Empty(bluetooth.Changes);
+        Assert.Equal(RemoteTransport.Bluetooth, Assert.Single(pairing.ActiveClients).Transport);
+        client.DefaultRequestHeaders.Remove("X-TapMyPC-Device-Name");
+        client.DefaultRequestHeaders.Add("X-TapMyPC-Device-Name", "invalid base64");
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
+        Assert.Equal("我的手機", Assert.Single(pairing.Clients).Name);
+        Assert.Equal(RemoteTransport.WiFi, Assert.Single(pairing.ActiveClients).Transport);
+        await btApp.StopAsync();
+    }
+
+    [Fact]
     public async Task BluetoothConnectionMetadataRequiresAuthentication()
     {
         var unauthorized = await client.GetAsync("/api/v1/status");

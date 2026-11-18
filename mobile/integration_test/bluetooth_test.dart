@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:tapmypc_mobile/connection.dart';
+import 'package:tapmypc_mobile/phone_identity.dart';
 import 'package:tapmypc_mobile/bluetooth_connection.dart';
 import 'package:tapmypc_mobile/selected_connection.dart';
 import 'package:tapmypc_mobile/pairing_invitation.dart';
@@ -57,6 +58,19 @@ void main() {
         api = BluetoothPcApi(saved);
         expect((await api.request('/status'))['audio']['volume'], 35);
         expect(api.verifiedProfile.keyPin, saved.keyPin);
+        final identityState = await step('state');
+        expect(
+          identityState['clientDetails'].single['name'],
+          await PhoneIdentity.name(),
+        );
+        expect(identityState['clientDetails'].single['transport'], 'Bluetooth');
+        await expectLater(
+          api.request('/bluetooth', method: 'PUT', body: {'enabled': false}),
+          throwsA(
+            isA<PcApiException>().having((e) => e.statusCode, 'status', 422),
+          ),
+        );
+        expect((await step('state'))['radioChanges'], 0);
         await api.request('/audio/mute', method: 'PUT', body: {'muted': true});
         expect((await api.request('/status'))['audio']['muted'], true);
         final timer = await api.request(
@@ -118,6 +132,22 @@ void main() {
           find.text('Connected to Bluetooth test PC · Bluetooth'),
           findsOneWidget,
         );
+        await tester.tap(find.text('Devices').last);
+        await tester.pumpAndSettle();
+        expect(find.text('PC Bluetooth: On'), findsOneWidget);
+        expect(
+          find.text('Switch to Wi-Fi to change the PC’s Bluetooth.'),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<OutlinedButton>(
+                find.widgetWithText(OutlinedButton, 'Turn off'),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect((await step('state'))['radioChanges'], 0);
         await tester.tap(find.byTooltip('Settings'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('Connection'));

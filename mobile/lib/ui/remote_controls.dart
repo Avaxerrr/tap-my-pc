@@ -245,6 +245,7 @@ class RemoteControls extends StatelessWidget {
 }
 
 class DeviceControls extends StatelessWidget {
+  final bool usingBluetooth;
   final Map<String, dynamic>? status;
   final List<dynamic> monitors;
   final String? monitorsError;
@@ -254,6 +255,7 @@ class DeviceControls extends StatelessWidget {
   final void Function(String, double) onBrightnessPreview;
   const DeviceControls({
     super.key,
+    this.usingBluetooth = false,
     required this.status,
     required this.monitors,
     required this.busy,
@@ -266,6 +268,9 @@ class DeviceControls extends StatelessWidget {
   Widget build(BuildContext context) {
     final available = !busy && status != null;
     final bluetooth = status?['bluetooth'];
+    final radioState = bluetooth?['state'] as String?;
+    final knownState = radioState == 'On' || radioState == 'Off';
+    final radioEnabled = radioState == 'On';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -346,29 +351,35 @@ class DeviceControls extends StatelessWidget {
           ),
         SectionCard(
           title: 'Bluetooth',
-          subtitle: bluetooth?['state'] ?? 'Unavailable',
+          subtitle: 'PC Bluetooth: ${radioState ?? 'Unavailable'}',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'Control the PC’s Bluetooth radio. Turning it off disconnects Bluetooth control.',
+              Text(
+                usingBluetooth
+                    ? 'Switch to Wi-Fi to change the PC’s Bluetooth.'
+                    : 'Control the PC’s Bluetooth radio over Wi-Fi.',
                 style: TextStyle(color: AppColors.secondary),
               ),
               const SizedBox(height: 14),
-              ActionGrid(
-                children: [
-                  for (final enabled in [true, false])
-                    ActionTile(
-                      label: enabled ? 'Turn on' : 'Turn off',
-                      icon: enabled
-                          ? Icons.bluetooth
-                          : Icons.bluetooth_disabled,
-                      onPressed: available && bluetooth?['canControl'] == true
-                          ? () => onBluetooth(enabled)
-                          : null,
-                    ),
-                ],
-              ),
+              if (knownState)
+                ActionTile(
+                  label: radioEnabled ? 'Turn off' : 'Turn on',
+                  icon: radioEnabled
+                      ? Icons.bluetooth_disabled
+                      : Icons.bluetooth,
+                  onPressed:
+                      available &&
+                          !usingBluetooth &&
+                          bluetooth?['canControl'] == true
+                      ? () => onBluetooth(!radioEnabled)
+                      : null,
+                )
+              else
+                const Text(
+                  'Bluetooth controls are unavailable until the PC reports an On or Off state.',
+                  style: TextStyle(color: AppColors.secondary),
+                ),
               if (bluetooth?['message'] != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),

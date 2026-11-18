@@ -75,6 +75,12 @@ The Android development client implements QR and manual pinned enrollment, prote
 
 The desktop displays recently active remote clients on the main connection card and title-bar indicator. While listening without an active client, a muted No phone connected badge distinguishes idle availability from an actual connection. Presence reflects authenticated activity in the last ten seconds; browser traffic and phone availability probes count, including authenticated requests whose operation fails. It is distinct from saved pairing and does not assert which PC is selected for control.
 
+## Phone identity and radio presentation
+
+- Desktop active remote labels show the phone's OS name/model or locally saved custom name, followed by its actual most-recent authenticated Wi-Fi/Bluetooth transport. Listener readiness stays separate.
+- Existing Android pairings update their reported name through authenticated traffic without re-pairing. PC-side names can be edited in Configure > Authorized phones and take precedence over reported names.
+- Mobile shows PC Bluetooth: On/Off. Over Wi-Fi it offers only the applicable action; unavailable/unknown/mixed state disables changes. Radio changes are disabled while actually connected over Bluetooth, including Automatic fallback, with a switch-to-Wi-Fi explanation. The Bluetooth API listener enforces the same restriction.
+
 ## Desktop personalization
 
 - Dark desktop surfaces with locally saved Blue, Mint, Purple, Teal, or Amber accents. These preferences apply to the desktop dashboard and tray menu, independently of phone clients.

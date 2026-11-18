@@ -22,7 +22,8 @@ settings.SaveIdentity(new(certificate.Thumbprint));
 var device = new FakeDevice();
 var pairing = new PairingService(settings, TimeProvider.System);
 using var scheduler = new PowerScheduler(device, TimeProvider.System);
-var bluetooth = new BluetoothConnectionHost(settings, pairing, scheduler, device, new FakeBluetooth(), null, null, null);
+var radio = new FakeBluetooth();
+var bluetooth = new BluetoothConnectionHost(settings, pairing, scheduler, device, radio, null, null, null);
 WebApplication? wifi = null;
 var key = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
 var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -43,7 +44,7 @@ control.MapPost("/test/{action}", async (HttpContext context, string action) => 
             pairing.RevokeAll(); return Results.Ok(new { revoked = true });
         case "state":
             return Results.Ok(new { bluetooth = bluetooth.Info, device.Audio, MediaCount = device.MediaActions.Count,
-                ActiveClients = pairing.ActiveClients.Count, Pending = scheduler.State.Pending });
+                ActiveClients = pairing.ActiveClients.Count, ClientDetails = pairing.ActiveClients.Select(c => new { c.Name, Transport = c.Transport.ToString() }), RadioChanges = radio.Changes.Count, Pending = scheduler.State.Pending });
         case "stop":
             done.TrySetResult(); return Results.Ok(new { stopped = true });
         default: return Results.BadRequest();
@@ -54,7 +55,7 @@ try
     await bluetooth.EnsureAsync();
     if (!bluetooth.Info.Available) throw new InvalidOperationException(bluetooth.Info.Message);
     wifi = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler,
-        bluetooth: new FakeBluetooth(), bluetoothConnection: () => bluetooth.Info);
+        bluetooth: radio, bluetoothConnection: () => bluetooth.Info);
     await control.StartAsync();
     var address = wifi.Urls.Single();
     var session = pairing.OpenPairingSession();

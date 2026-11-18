@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'connection.dart';
+import 'phone_identity.dart';
 
 class PairingInvitation {
   final String name, address, fingerprint, secret;
@@ -68,7 +69,10 @@ class PairingInvitation {
       final result = await client.request(
         '/pair/qr',
         method: 'POST',
-        body: {'secret': secret, 'name': 'TapMyPC Android'},
+        body: {
+          'secret': secret,
+          'name': await PhoneIdentity.name() ?? 'Android phone',
+        },
       );
       final token = result['token'];
       if (token is! String || !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(token)) {

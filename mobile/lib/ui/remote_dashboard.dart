@@ -13,6 +13,7 @@ class RemoteDashboard extends StatefulWidget {
   final String message, appVersion, discoveryMessage;
   final String? feedback, serverTime;
   final bool busy, feedbackError;
+  final bool usingBluetooth;
   final List<dynamic> outputs, monitors, shortcuts;
   final Map<String, String> deviceErrors;
   final String Function(PcProfile) profileStatus;
@@ -42,6 +43,7 @@ class RemoteDashboard extends StatefulWidget {
     required this.onAdd,
     required this.onForget,
     this.onRecover,
+    this.usingBluetooth = false,
     this.onConnection,
     required this.onRefresh,
     required this.onHelp,
@@ -273,6 +275,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
             const Divider(),
             Text('ABOUT TAPMYPC', style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 10),
+
             Text(
               widget.appVersion.isEmpty
                   ? 'Reading installed version…'
@@ -568,6 +571,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                   onVolumePreview: widget.onVolumePreview,
                                 ),
                                 1 => DeviceControls(
+                                  usingBluetooth: widget.usingBluetooth,
                                   status: widget.status,
                                   monitorsError:
                                       widget.deviceErrors['/monitors'],

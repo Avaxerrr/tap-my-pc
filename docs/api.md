@@ -153,6 +153,12 @@ QR and six-digit code enrollment share a single five-minute window, five-invalid
 
 QR identity is the exact leaf certificate. The desktop persists its certificate reference and reuses the same leaf across IP changes. Android verifies that pin before sending any credential to a discovered address. After a verified connection Android derives and stores the peer certificate's SHA-256 SubjectPublicKeyInfo pin. Valid same-key renewals preserve saved credentials; a key reset requires local confirmation and fresh enrollment. QR v1 and HTTP routes are unchanged.
 
+## Client display metadata and Bluetooth radio safety
+
+Authenticated requests may include X-TapMyPC-Device-Name containing a Base64-encoded UTF-8 phone name. The server bounds the header to 512 characters and accepts only a trimmed 1–60-character name without control characters. Invalid hints are ignored. The hint updates only that credential's paired-client label unless the PC has saved a custom name. It never authorizes access, changes credentials, or determines connection transport. Older clients/servers may omit/ignore it.
+
+Transport classification comes from the listener composition, not request data. PUT /api/v1/bluetooth returns 422 with a switch-to-Wi-Fi message on the Bluetooth listener and does not call the radio controller. Wi-Fi radio control remains available subject to reported hardware capability and explicit desired state.
+
 ## Bluetooth connection metadata
 
 Authenticated status includes optional bluetoothConnection: {available:boolean,address:string|null,serviceId:string,message:string|null}. The service UUID is 8cf69287-4d5e-47f1-97c8-0a4ec3b5d290; address is the PC adapter MAC. Clients learn address hints only through an authenticated, identity-verified connection. Availability failure does not invalidate Wi-Fi controls.

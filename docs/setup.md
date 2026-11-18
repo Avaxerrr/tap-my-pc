@@ -2,11 +2,19 @@
 
 ## Versions and QR visibility
 
-Current installed development versions: desktop/server **0.5.0, build 9** (status reports `serverVersion: 0.5.0+9`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its dashboard header and Settings > About read installed package metadata; the first-connection header omits the version; its version is independent of the PC version.
+Current installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
 Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build.props`; Android has its own declaration in `mobile/pubspec.yaml`. Follow [versioning guidelines](versioning.md) automatically for future deliverables. Version numbers need not match across the two apps when API compatibility is unchanged.
+
+## Phone names and connection feedback
+
+The desktop's active remote line shows the phone name and actual connection, for example POCO X6 5G · Bluetooth. Wi-Fi address and Bluetooth ready describe listener availability separately. Existing phones update their name on their next authenticated request after the Android update.
+
+To customize a name, open Configure > Authorized phones, select the phone, edit Phone name, and select Save phone name. The override remains local to this PC and is not overwritten by the phone.
+
+The mobile Devices tab shows PC Bluetooth: On/Off. Wi-Fi offers Turn off when on and Turn on when off. Bluetooth connections disable these changes with a switch-to-Wi-Fi message; unknown/unavailable/mixed states also prevent changes.
 
 ## Bluetooth secondary connection
 

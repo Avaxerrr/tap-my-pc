@@ -52,6 +52,12 @@ Stop connections on the PC persists across restarts. Start connections resumes. 
 
 The reconnection_test.dart device test combines actual desktop mDNS advertisement, Android NSD, one-time QR enrollment, wrong-pin/replay rejection, stale-address recovery, protected storage, remembered selection, and the in-app help dialog. Run with the same temporary QR fixture plus TEST_LAN_ADDRESS; the simulator must be reachable from the phone. Restore saved profiles and selection after device tests.
 
+## Phone names and radio controls
+
+The Android OS device name (model fallback) identifies the phone during pairing and authenticated reconnection. Existing credentials remain valid. PC-side custom names take priority. The desktop shows the phone and its actual most-recent authenticated transport.
+
+Devices shows PC Bluetooth: On/Off and one applicable action on Wi-Fi. Actual Bluetooth connections disable radio changes, including Automatic fallback. Unknown/unavailable/mixed states cannot offer a guessed action. No new Android permission is needed for the device-name lookup.
+
 ## Bluetooth secondary connection
 
 Connect to the PC over Wi-Fi once to save authenticated Bluetooth metadata. Open Settings > Connection, allow Nearby devices, and choose Automatic, Wi-Fi only, or Bluetooth only. Phone Bluetooth settings opens Android settings for radio power/system pairing. Both radios must be on. Already enrolled profiles can then control without LAN access. The phone labels active Bluetooth control; commands never retry across transports. Initial QR/manual enrollment stays on Wi-Fi.

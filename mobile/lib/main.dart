@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'connection.dart';
+import 'phone_identity.dart';
 import 'bluetooth_connection.dart';
 import 'selected_connection.dart';
 import 'pairing_page.dart';
@@ -150,6 +151,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     foreground = state == AppLifecycleState.resumed;
     if (foreground) {
+      PhoneIdentity.refresh();
       startDiscovery();
       refresh();
       unawaited(probeSaved());
@@ -347,6 +349,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   }
 
   Future<void> setBluetooth(bool enabled) async {
+    if (api?.isBluetooth == true) {
+      setState(() => message = 'Switch to Wi-Fi to change the PC’s Bluetooth.');
+      return;
+    }
     if (busy || selected == null || status == null) return;
     final generation = epoch;
     if (!enabled) {
@@ -372,6 +378,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       if (ok != true) return;
     }
     if (!mounted || generation != epoch) return;
+    if (api?.isBluetooth == true) return;
     await command('/bluetooth', 'PUT', {'enabled': enabled});
   }
 
@@ -798,6 +805,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     send: command,
     power: power,
     onBluetooth: setBluetooth,
+    usingBluetooth: api?.isBluetooth ?? false,
     onVolumePreview: (value) =>
         setState(() => status!['audio']['volume'] = value.round()),
     onBrightnessPreview: (id, value) => setState(

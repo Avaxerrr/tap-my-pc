@@ -21,8 +21,16 @@ namespace TapMyPC.Api;
 
 public static class ApiHost
 {
+    private static string? ReadDeviceName(string encoded)
+    {
+        if (string.IsNullOrEmpty(encoded) || encoded.Length > 512) return null;
+        try { return new System.Text.UTF8Encoding(false, true).GetString(Convert.FromBase64String(encoded)); }
+        catch (FormatException) { return null; }
+        catch (System.Text.DecoderFallbackException) { return null; }
+    }
+
     public static async Task<WebApplication> StartAsync(IPAddress address, int port, X509Certificate2 certificate,
-        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null)
+        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(ApiHost).Assembly.FullName });
         builder.Logging.ClearProviders();
@@ -76,7 +84,7 @@ public static class ApiHost
             if (context.Request.Path.StartsWithSegments("/api") && context.Request.Path != "/api/v1/pair" && context.Request.Path != "/api/v1/pair/qr")
             {
                 var auth = context.Request.Headers.Authorization.ToString();
-                if (!auth.StartsWith("Bearer ", StringComparison.Ordinal) || !pairing.Authorize(auth[7..]))
+                if (!auth.StartsWith("Bearer ", StringComparison.Ordinal) || !pairing.Authorize(auth[7..], transport, ReadDeviceName(context.Request.Headers["X-TapMyPC-Device-Name"].ToString())))
                 { context.Response.StatusCode = 401; await context.Response.WriteAsJsonAsync(new { error = "Pair this device with the PC." }); return; }
             }
             await next();
@@ -115,6 +123,7 @@ public static class ApiHost
         app.MapPost("/api/v1/display/off", () => Results.Ok(new { accepted = true, feedback = commands.DisplaysOff() }));
         app.MapPut("/api/v1/bluetooth", async (BluetoothRequest request) =>
         {
+            if (transport == RemoteTransport.Bluetooth) throw new NotSupportedException("Switch to Wi-Fi to change the PC's Bluetooth radio.");
             if (bluetooth is null) throw new NotSupportedException("Bluetooth control is unavailable.");
             return Results.Ok(new { accepted = true, feedback = await new BluetoothCommands(bluetooth, scheduler.Activity).SetEnabledAsync(request.Enabled) });
         });

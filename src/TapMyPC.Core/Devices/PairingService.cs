@@ -3,9 +3,10 @@ using System.Text;
 
 namespace TapMyPC.Core.Devices;
 
-public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt);
+public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt, bool NameCustomized = false);
+public enum RemoteTransport { WiFi, Bluetooth }
 public record PairingSession(string Code, string QrSecret, DateTimeOffset ExpiresAt);
-public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt);
+public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt, RemoteTransport? Transport = null);
 public interface IDeviceStore
 {
     IReadOnlyList<PairedDevice> Load();
@@ -18,7 +19,7 @@ public sealed class PairingService
     private readonly IDeviceStore store;
     private readonly TimeProvider clock;
     private List<PairedDevice> devices;
-    private readonly Dictionary<Guid, DateTimeOffset> lastAuthenticated = new();
+    private readonly Dictionary<Guid, (DateTimeOffset SeenAt, RemoteTransport Transport)> lastAuthenticated = new();
     public static TimeSpan PresenceTimeout { get; } = TimeSpan.FromSeconds(10);
     private string? code;
     private string? qrSecret;
@@ -79,7 +80,7 @@ public sealed class PairingService
         }
     }
 
-    public bool Authorize(string token)
+    public bool Authorize(string token, RemoteTransport transport = RemoteTransport.WiFi, string? reportedName = null)
     {
         if (token.Length != 64) return false;
         var hash = Hash(token);
@@ -87,7 +88,15 @@ public sealed class PairingService
         {
             var device = devices.FirstOrDefault(d => CryptographicOperations.FixedTimeEquals(Convert.FromHexString(d.TokenHash), Convert.FromHexString(hash)));
             if (device is null) return false;
-            lastAuthenticated[device.Id] = clock.GetUtcNow();
+            if (!device.NameCustomized && IsValidName(reportedName) && device.Name != reportedName!.Trim())
+            {
+                var renamed = device with { Name = reportedName!.Trim() };
+                var updated = devices.Select(d => d.Id == device.Id ? renamed : d).ToList();
+                try { store.Save(updated); devices = updated; }
+                catch (IOException) { /* Optional display metadata cannot interrupt valid commands. */ }
+                catch (UnauthorizedAccessException) { }
+            }
+            lastAuthenticated[device.Id] = (clock.GetUtcNow(), transport);
             return true;
         }
     }
@@ -103,12 +112,26 @@ public sealed class PairingService
             lock (gate)
             {
                 var now = clock.GetUtcNow();
-                return devices.Where(d => lastAuthenticated.TryGetValue(d.Id, out var seen) && now - seen < PresenceTimeout)
-                    .Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt)).ToArray();
+                return devices.Where(d => lastAuthenticated.TryGetValue(d.Id, out var seen) && now - seen.SeenAt < PresenceTimeout)
+                    .Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt, lastAuthenticated[d.Id].Transport)).ToArray();
             }
         }
     }
     public void ClearPresence() { lock (gate) lastAuthenticated.Clear(); }
+
+    public void Rename(Guid id, string name)
+    {
+        if (!IsValidName(name)) throw new ArgumentException("Phone name must be 1–60 characters without control characters.");
+        lock (gate)
+        {
+            if (!devices.Any(d => d.Id == id)) throw new InvalidOperationException("Select an existing paired device.");
+            var updated = devices.Select(d => d.Id == id ? d with { Name = name.Trim(), NameCustomized = true } : d).ToList();
+            store.Save(updated); devices = updated;
+        }
+    }
+
+    private static bool IsValidName(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && value.Trim().Length <= 60 && !value.Any(char.IsControl);
 
     public void RevokeAll()
     {

@@ -1,6 +1,6 @@
 # Mobile connections and trust
 
-Current installed development versions: desktop/server **0.5.0 (build 9)** and Android **0.6.0 (build 10)**, adding encrypted Bluetooth secondary connectivity and saved transport preferences, including the earlier certificate work. Installation results are recorded in verification.md. QR enrollment, saved PC discovery/reconnection, stable certificate identity across IP changes, and remembered desktop connection state were introduced in the earlier 0.3.0 work. Monitoring is planned after Bluetooth secondary connectivity and before remote wake. See [setup](setup.md) and [verification](verification.md) for current delivery evidence.
+Current installed development versions: desktop/server **0.6.0 (build 10)** and Android **0.6.1 (build 11)**, adding encrypted Bluetooth secondary connectivity and saved transport preferences, including the earlier certificate work. Installation results are recorded in verification.md. QR enrollment, saved PC discovery/reconnection, stable certificate identity across IP changes, and remembered desktop connection state were introduced in the earlier 0.3.0 work. Monitoring is planned after Bluetooth secondary connectivity and before remote wake. See [setup](setup.md) and [verification](verification.md) for current delivery evidence.
 
 ## Current Android enrollment
 
