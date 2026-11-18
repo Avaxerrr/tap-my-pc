@@ -133,3 +133,10 @@ At that planning checkpoint, QR enrollment, automatic discovery/reconnection, mo
 
 - Published and applied the polish build through tools/Apply-Update.ps1 to the usual executable path, then launched it. The updated TapMyPC main window was present and its process reported responding.
 - Moved main-card command/pairing feedback to its own 11.5-DIP wrapping line below the 13-DIP network summary. The compiled layout harness verified that feedback is smaller and positioned below the address; release build/publish passed. The updated release is staged in TapMyPC-next while the existing installed app remains running.
+
+## Tray menu typography and corners
+
+- Tray menu now loads the bundled static Inter font privately for GDI+ measurement and drawing, avoiding the prior Segoe UI choice and GDI font fallback. No system font installation or font-setting changes are required.
+- Rows have explicit DPI-scaled heights, text is vertically centered, and popup/hover surfaces use modest rounded corners. Native ContextMenuStrip behavior and Open/Exit actions remain intact; the main-window shadow is unchanged.
+- Release build and compiled UI harness passed. The tray-specific check confirmed the Inter family, rounded window region, centered text bounds, and themed hover rendering. Inspected the resulting normal/selected menu screenshots.
+- Reduced tray menu dimensions to the measured Inter text width plus modest padding, removing the fixed minimum width. Row heights now follow font metrics with compact vertical padding (33 px instead of 45 px at the verification display's DPI). Rendered menu and compiled alignment/font checks passed; release publish staged while the installed app remains running.

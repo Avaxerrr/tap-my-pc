@@ -95,7 +95,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             Notify(nameof(PairingQrImage)); Notify(nameof(HasPairingQr)); Notify(nameof(PairingHint)); Notify(nameof(PairingButtonText));
             pairingCode = window.Code;
             pairingExpires = window.ExpiresAt;
-            Message = "Scan this QR in the TapMyPC Android app. The code below also works for browser pairing.";
+            Message = "Scan this QR in the TapMyPC Android app.\nThe code below also works for browser pairing.";
             Tick();
             Notify(nameof(PairingCode));
         });

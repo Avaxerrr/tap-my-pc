@@ -121,7 +121,7 @@ Configure > Appearance offers Blue, Mint, Purple, Teal, and Amber accents and a 
 
 Cards expand horizontally, up to a 1100-DIP dashboard width. At a window width of 1120 DIPs, essential preferences move beside the connection/pairing cards. Taller windows give panels and lists more usable space, while controls retain their natural height. Widgets have sharper corners; the outer frame remains rounded. The shadow is drawn by a non-activating companion surface and hides with the app or when maximized/minimized.
 
-The application uses explicit ClearType/Ideal text formatting and per-monitor DPI awareness. The system font configuration is not changed; assess the live rendering on your monitor at its normal scaling. The tray and executable use the bundled multi-resolution TapMyPC icon, and the tray menu uses dark surfaces with the selected accent.
+The application uses explicit ClearType/Ideal text formatting and per-monitor DPI awareness. The system font configuration is not changed; assess the live rendering on your monitor at its normal scaling. The tray and executable use the bundled multi-resolution TapMyPC icon, and the tray menu uses dark surfaces with the selected accent, modestly rounded edges, and vertically centered Inter text. The font is loaded privately without installing it in Windows.
 
 ### Upgrade from PC Remote
 
