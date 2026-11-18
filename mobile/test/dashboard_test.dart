@@ -71,6 +71,7 @@ void main() {
   Future<AppearanceController> render(
     WidgetTester tester, {
     bool empty = false,
+    Future<void> Function()? add,
     bool offline = false,
     bool busy = false,
     bool pending = false,
@@ -145,7 +146,7 @@ void main() {
             ],
             profileStatus: (p) => p == home ? 'Connected' : 'Available',
             onSelect: select ?? (_) {},
-            onAdd: () async {},
+            onAdd: add ?? () async {},
             onForget: () async {},
             onRefresh: () async {},
             onHelp: () {},
@@ -289,12 +290,49 @@ void main() {
       );
     }
   });
-  testWidgets('Empty state and installed version are visible', (tester) async {
-    await render(tester, empty: true);
+  testWidgets('Welcome focuses on pairing and keeps version in About', (
+    tester,
+  ) async {
+    var adds = 0;
+    await render(
+      tester,
+      empty: true,
+      add: () async {
+        adds++;
+      },
+    );
+    expect(find.text('Connect your PC'), findsOneWidget);
     expect(find.text('Add your PC'), findsOneWidget);
-    expect(find.text('v0.4.2 (build 6)'), findsOneWidget);
+    expect(find.byKey(const Key('app-version')), findsNothing);
+    expect(find.text('Your PCs, together.'), findsNothing);
+    expect(find.text('Add your first PC to get started.'), findsNothing);
     await screenshot(tester, 'welcome');
+    await tester.tap(find.text('Add your PC'));
+    expect(adds, 1);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('v0.4.2 (build 6)'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+  testWidgets('Welcome remains usable on a small phone with large text', (
+    tester,
+  ) async {
+    var adds = 0;
+    await render(
+      tester,
+      empty: true,
+      size: const Size(320, 640),
+      scale: 1.8,
+      add: () async {
+        adds++;
+      },
+    );
+    await tester.ensureVisible(find.text('Add your PC'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Add your PC'));
+    expect(adds, 1);
+    expect(tester.takeException(), isNull);
+    await screenshot(tester, 'welcome-large-text');
   });
   testWidgets(
     'Remote controls route explicit actions and open the output sheet',

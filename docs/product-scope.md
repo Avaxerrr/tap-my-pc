@@ -86,7 +86,7 @@ The desktop displays recently active remote clients on the main connection card 
 - Match desktop's dark surfaces, Inter typography, modest corner radii, and Blue/Mint/Purple/Teal/Amber accents. Themes persist on the phone independently of the desktop.
 - Group controls into Remote, Devices, and Power; keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets. Device-list errors must not mark a PC offline when its authenticated status request succeeds; show a specific warning and retain working controls.
 - Keep a pending PC action visible across tabs, with a live countdown and cancellation when online. Retain last-known timer information offline without pretending cancellation is available.
-- Provide QR-first enrollment, manual fallback, visible version/build metadata, and native permission/failure feedback. Respect large text and compact screens; automatically follow system reduced-motion settings without a separate app animation preference.
+- Provide a focused first-connection card with one Add your PC action, QR-first enrollment, manual fallback, version/build metadata in Settings > About, and native permission/failure feedback. Respect large text and compact screens; automatically follow system reduced-motion settings without a separate app animation preference.
 
 ## Boundaries
 

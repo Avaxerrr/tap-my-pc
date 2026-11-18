@@ -4,6 +4,7 @@ import 'app_theme.dart';
 import 'widgets.dart';
 import 'remote_controls.dart';
 import 'pending_banner.dart';
+import 'pc_welcome.dart';
 
 class RemoteDashboard extends StatefulWidget {
   final List<PcProfile> profiles;
@@ -337,7 +338,9 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
     final largeText = MediaQuery.textScalerOf(context).scale(14) / 14 > 1.4;
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: largeText ? 96 : 72,
+        toolbarHeight: widget.profiles.isEmpty
+            ? (largeText ? 80 : 64)
+            : (largeText ? 96 : 72),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -349,16 +352,17 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                 letterSpacing: -0.4,
               ),
             ),
-            Text(
-              widget.appVersion.isEmpty
-                  ? 'Reading version…'
-                  : widget.appVersion,
-              key: const Key('app-version'),
-              style: const TextStyle(
-                fontSize: 10.5,
-                color: AppColors.secondary,
+            if (widget.profiles.isNotEmpty)
+              Text(
+                widget.appVersion.isEmpty
+                    ? 'Reading version…'
+                    : widget.appVersion,
+                key: const Key('app-version'),
+                style: const TextStyle(
+                  fontSize: 10.5,
+                  color: AppColors.secondary,
+                ),
               ),
-            ),
           ],
         ),
         actions: [
@@ -516,63 +520,10 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                       children: [
                         if (widget.profiles.isEmpty) ...[
-                          const SizedBox(height: 32),
-                          Container(
-                            alignment: Alignment.centerLeft,
-                            child: Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(
-                                Icons.touch_app_outlined,
-                                size: 32,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onPrimaryContainer,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            'Your PC,\na tap away.',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.headlineMedium?.copyWith(fontSize: 34),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Sound, screens, and a quieter end to the day. All from your phone.',
-                            style: TextStyle(color: AppColors.secondary),
-                          ),
-                          const SizedBox(height: 28),
-                          SectionCard(
-                            title: 'Your PCs, together.',
-                            subtitle: 'Pair once. Reconnect automatically.',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                const Text(
-                                  'Open TapMyPC on your Windows PC, then scan its pairing QR. Both devices need a reachable local network.',
-                                  style: TextStyle(color: AppColors.secondary),
-                                ),
-                                const SizedBox(height: 20),
-                                FilledButton.icon(
-                                  onPressed: widget.onAdd,
-                                  icon: const Icon(Icons.add, size: 18),
-                                  label: const Text('Add your PC'),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            widget.message,
-                            key: const Key('connection-status'),
-                            style: Theme.of(context).textTheme.bodySmall,
+                          const SizedBox(height: 20),
+                          PcWelcome(
+                            onAdd: widget.busy ? null : widget.onAdd,
+                            message: widget.message,
                           ),
                         ] else if (widget.selected != null) ...[
                           Padding(

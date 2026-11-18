@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current installed development versions: desktop/server **0.5.0, build 9** (status reports `serverVersion: 0.5.0+9`) and Android **0.6.0, build 10**. Installation results are recorded in verification.md. Its header and Settings > About read installed package metadata; its version is independent of the PC version.
+Current installed development versions: desktop/server **0.5.0, build 9** (status reports `serverVersion: 0.5.0+9`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its dashboard header and Settings > About read installed package metadata; the first-connection header omits the version; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
