@@ -63,6 +63,8 @@ The Android development client implements QR and manual pinned enrollment, prote
 - The normal command listener cannot execute while the PC is asleep, hibernating, or shut down. Remote wake is a separate capability.
 - Unsupported features should report that they are unavailable rather than appear to succeed.
 
+The desktop displays recently active remote clients on the main connection card and title-bar indicator. Presence reflects authenticated activity in the last ten seconds; browser traffic and phone availability probes count. It is distinct from saved pairing and does not assert which PC is selected for control.
+
 ## Desktop personalization
 
 - Dark desktop surfaces with locally saved Blue, Mint, Purple, Teal, or Amber accents. These preferences apply to the desktop dashboard and tray menu, independently of phone clients.

@@ -3,21 +3,39 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using TapMyPC.Core.Feedback;
+using TapMyPC.Desktop.Features.Settings;
+using System.ComponentModel;
 
 namespace TapMyPC.Desktop.Features.Feedback;
 
 public partial class FeedbackWindow : Window
 {
     public event Action? CancelRequested;
-    public FeedbackWindow()
+    private readonly AppearanceViewModel? appearance;
+    public FeedbackWindow(AppearanceViewModel? appearance = null)
     {
+        this.appearance = appearance;
         InitializeComponent();
+        AppearanceViewModel.Apply(Resources, appearance?.Palette ?? AppearanceViewModel.Palettes[0]);
+        if (appearance is not null) appearance.PropertyChanged += AppearanceChanged;
+        Closed += (_, _) => { if (appearance is not null) appearance.PropertyChanged -= AppearanceChanged; };
         SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(PreventActivation);
         SizeChanged += (_, _) => Reposition();
         IsVisibleChanged += (_, _) =>
         {
-            if (IsVisible) BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
+            BeginAnimation(OpacityProperty, null);
+            Opacity = 1;
+            if (IsVisible && (appearance?.AnimationsEnabled ?? SystemParameters.ClientAreaAnimation))
+                BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         };
+    }
+
+    private void AppearanceChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (appearance is null) return;
+        if (e.PropertyName == nameof(AppearanceViewModel.Palette)) AppearanceViewModel.Apply(Resources, appearance.Palette);
+        if (e.PropertyName == nameof(AppearanceViewModel.AnimationsEnabled) && !appearance.AnimationsEnabled)
+        { BeginAnimation(OpacityProperty, null); Opacity = 1; }
     }
 
     private static IntPtr PreventActivation(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -28,7 +46,7 @@ public partial class FeedbackWindow : Window
 
     public void Present(ActionNotice item, double? remaining = null)
     {
-        Heading.Text = $"TapMyPC · {item.Title}";
+        Heading.Text = item.Title;
         Detail.Text = item.Message;
         var failed = item.Phase == ActionPhase.Failed;
         ActionIcon.Text = failed ? "\uE783" : remaining is not null ? "\uE823" : item.Title switch
@@ -43,8 +61,15 @@ public partial class FeedbackWindow : Window
             "Displays" => "\uE7F4",
             _ => "\uE73E"
         };
-        ActionIcon.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(failed ? "#FFB4AB" : "#C9EFAA"));
-        IconBackground.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(failed ? "#49302E" : "#2D3D33"));
+        PhaseLabel.Text = remaining is <= 10 ? "Starting soon" : item.Phase switch
+        {
+            ActionPhase.Running => "Sending", ActionPhase.Succeeded => "Done", ActionPhase.Requested => "Requested",
+            ActionPhase.Scheduled => "Scheduled", ActionPhase.Canceled => "Canceled", _ => "Failed"
+        };
+        ActionIcon.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, failed ? "ErrorText" : "AccentText");
+        PhaseLabel.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, failed ? "ErrorText" : "AccentText");
+        IconBackground.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, failed ? "ErrorSoft" : "AccentSoft");
+        FeedbackCard.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, failed ? "ErrorBorder" : "AccentBorder");
         CountdownRow.Visibility = remaining is null ? Visibility.Collapsed : Visibility.Visible;
         CountdownBar.Visibility = remaining is <= 10 ? Visibility.Visible : Visibility.Collapsed;
         CountdownBar.Value = Math.Clamp(remaining ?? 0, 0, 10);

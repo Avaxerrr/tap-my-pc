@@ -10,6 +10,8 @@ Pairing codes can only be generated locally in WPF. Codes are single-use, last f
 
 Browser requests must originate from the same HTTPS origin; no CORS access is granted. Native clients may omit Origin. Host must match the bound address (localhost is also accepted for loopback). Request bodies are limited to 4096 bytes. Rate limit: 120 requests per minute per source IP, shared by assets and API calls. There are no credential-bearing query parameters.
 
+Successful authenticated requests also refresh a transient desktop presence indicator for the corresponding paired client. Presence expires after ten seconds without activity and is cleared on revocation or desktop listener stop. Pairing alone and rejected authentication do not count. Native availability probes and browser traffic count as activity; this does not indicate a permanent connection or which PC is selected. No additional request/header, endpoint, persisted credential field, or status payload change is required.
+
 ## Routes
 
 | Method | Route | JSON request | Result |
@@ -55,7 +57,7 @@ Volume is an integer from 0 to 100. Missing required command properties, malform
 
 ### Status
 
-Status now includes optional serverVersion (for example 0.3.0+3), read from compiled API assembly metadata. Clients display it for comparison; it is informational, not an identity or protocol compatibility check.
+Status includes optional serverVersion (currently 0.3.1+4 for the desktop/server release), read from compiled API assembly metadata. Clients display it for comparison; it is informational, not an identity or protocol compatibility check.
 
 ```json
 {

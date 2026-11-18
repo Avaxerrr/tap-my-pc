@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using TapMyPC.Desktop.Features.Settings;
 using TapMyPC.Desktop.Presentation;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 
 namespace TapMyPC.Desktop;
 
@@ -15,10 +16,13 @@ public partial class MainWindow : Window
     private bool switchingDrawer;
 
     private WindowShadow? shadow;
+    private bool connectionPulsing;
     public MainWindow()
     {
         InitializeComponent();
         SizeChanged += (_, _) => UpdateDashboardLayout();
+        IsVisibleChanged += (_, _) => UpdateConnectionPulse();
+        StateChanged += (_, _) => UpdateConnectionPulse();
         SourceInitialized += (_, _) => shadow = new WindowShadow(this);
         Closed += (_, _) => shadow?.Dispose();
     }
@@ -103,16 +107,37 @@ public partial class MainWindow : Window
             AppearanceViewModel.Apply(Resources, current.Appearance.Palette);
             if (current.HasPairingQr) PairDrawerToggle.IsChecked = true;
         }
+        UpdateConnectionPulse();
+    }
+
+    private void UpdateConnectionPulse()
+    {
+        var active = DataContext is SettingsViewModel { HasConnectedClients: true };
+        var animate = active && DataContext is SettingsViewModel vm && vm.Appearance.AnimationsEnabled
+            && IsVisible && WindowState != WindowState.Minimized;
+        if (animate == connectionPulsing)
+        {
+            if (!animate) ConnectionHalo.Opacity = active ? 0.18 : 0;
+            return;
+        }
+        connectionPulsing = animate;
+        ConnectionHalo.BeginAnimation(OpacityProperty, null);
+        if (animate)
+            ConnectionHalo.BeginAnimation(OpacityProperty, new DoubleAnimation(0.12, 0.45, TimeSpan.FromMilliseconds(1200))
+            { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase() });
+        else ConnectionHalo.Opacity = active ? 0.18 : 0;
     }
 
     private void AppearanceChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AppearanceViewModel.Palette) && sender is AppearanceViewModel appearance)
             AppearanceViewModel.Apply(Resources, appearance.Palette);
+        UpdateConnectionPulse();
     }
 
     private void SettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(SettingsViewModel.HasConnectedClients)) UpdateConnectionPulse();
         // First-time setup generates its QR automatically; keep it discoverable in the new layout.
         if (e.PropertyName == nameof(SettingsViewModel.HasPairingQr) && DataContext is SettingsViewModel { HasPairingQr: true })
             PairDrawerToggle.IsChecked = true;

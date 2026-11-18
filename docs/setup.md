@@ -2,11 +2,11 @@
 
 ## Versions and QR visibility
 
-Current development version: 0.3.0, build 3. The desktop title bar and Android app header show their installed version/build. When connected, Android also shows the PC-reported serverVersion; 0.3.0+3 means version 0.3.0, build 3.
+Current desktop/server development version: **0.3.1, build 4**. The desktop title bar reads the compiled version, and authenticated status reports `serverVersion: 0.3.1+4`. Android package metadata remains **0.3.0, build 3**; verifying/improving the visible Android version is deferred to its UI overhaul.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
-Desktop assembly/product/file versions are declared in Directory.Build.props. Android version/build comes from mobile/pubspec.yaml and is read from installed package metadata. Increment the build when distributing an update, keep the two version declarations aligned for coordinated builds, and verify installed metadata after deployment.
+Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build.props`; Android has its own declaration in `mobile/pubspec.yaml`. Follow [versioning guidelines](versioning.md) automatically for future deliverables. Version numbers need not match across the two apps when API compatibility is unchanged.
 
 ## Build and launch
 
@@ -114,6 +114,12 @@ Startup is off by default. The checkbox writes a per-user Run entry that launche
 Host preferences and paired-client hashes live in `%LOCALAPPDATA%\TapMyPC\host.json` and `devices.json`. The same directory contains `identity.json` with the public certificate thumbprint reference. Certificate keys are stored separately in the Windows user certificate/key stores. Do not edit these files while the app is running. Corrupt or inaccessible configuration is reported rather than silently discarded.
 
 The dashboard opens at 680 × 640 with bundled Inter typography, a frameless title bar, and minimize, maximize/restore, and hide-to-tray buttons. Sign-in startup and command notifications are on the main screen. Pair a Phone opens QR/manual setup; Activity opens command history; Configure contains shortcuts, paired devices, and Advanced Network & Security. Only one panel opens at a time; Escape, its close button, or the dimmed backdrop dismisses it. Newly generated QR invitations open the pairing panel automatically. The latest feedback appears on a smaller, wrapping line beneath the network address; pending-action cancellation remains on the main screen.
+
+### Phone activity and PC notifications
+
+The connection card shows Remote connected and client names after authenticated activity. The title-bar dot changes to your accent and gently pulses when animations are enabled. After ten seconds without activity it returns to idle; stored pairings alone are not treated as connected. Browser requests and phone availability checks count, so the indicator does not imply that this PC is selected on the phone. Stopping connections or revoking a client clears its presence.
+
+The PC notification banner now follows your desktop accent, Inter font, corner styling, and motion preference. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
 
 ### Appearance and resizing
 

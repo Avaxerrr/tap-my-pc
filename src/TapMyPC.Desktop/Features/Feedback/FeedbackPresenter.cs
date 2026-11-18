@@ -1,6 +1,7 @@
 using System.Windows.Threading;
 using TapMyPC.Core.Feedback;
 using TapMyPC.Core.Timers;
+using TapMyPC.Desktop.Features.Settings;
 
 namespace TapMyPC.Desktop.Features.Feedback;
 
@@ -10,14 +11,15 @@ public sealed class FeedbackPresenter : IDisposable
     private readonly PowerScheduler scheduler;
     private readonly Func<bool> enabled;
     private readonly Dispatcher dispatcher;
-    private readonly FeedbackWindow window = new();
+    private readonly FeedbackWindow window;
     private readonly DispatcherTimer timer;
     private DateTimeOffset hideAt;
     private ActionNotice? current;
     private bool disposed;
 
-    public FeedbackPresenter(PowerScheduler scheduler, Func<bool> enabled, Dispatcher dispatcher)
+    public FeedbackPresenter(PowerScheduler scheduler, Func<bool> enabled, Dispatcher dispatcher, AppearanceViewModel? appearance = null)
     {
+        window = new FeedbackWindow(appearance);
         this.scheduler = scheduler; this.enabled = enabled; this.dispatcher = dispatcher;
         scheduler.Activity.Published += OnNotice;
         window.CancelRequested += Cancel;

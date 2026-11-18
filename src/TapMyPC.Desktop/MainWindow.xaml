@@ -350,7 +350,15 @@
   <Grid Grid.Row="0" Margin="24,0,12,0">
     <!-- App Brand -->
     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-      <Ellipse Width="8" Height="8" Fill="{DynamicResource AccentBlue}" Margin="0,0,10,0" />
+      <Grid Width="18" Height="18" Margin="0,0,6,0" shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="{Binding ConnectionHint}" AutomationProperties.Name="{Binding ConnectionHint}">
+        <Ellipse x:Name="ConnectionHalo" Width="18" Height="18" Fill="{DynamicResource AccentBlue}" Opacity="0" IsHitTestVisible="False"/>
+        <Ellipse Width="7" Height="7" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Ellipse.Style><Style TargetType="Ellipse">
+            <Setter Property="Fill" Value="{StaticResource TextMuted}"/>
+            <Style.Triggers><DataTrigger Binding="{Binding HasConnectedClients}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBlue}"/></DataTrigger></Style.Triggers>
+          </Style></Ellipse.Style>
+        </Ellipse>
+      </Grid>
       <TextBlock Text="{Binding AppHeading}"
                  Foreground="{StaticResource TextSecondary}"
                  FontSize="12.5"
@@ -430,6 +438,10 @@
               </StackPanel>
             </Border>
 
+            <TextBlock Text="{Binding ConnectionSummary}" FontSize="11.5" Foreground="{DynamicResource AccentText}"
+                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,-4,0,10"
+                       ToolTip="{Binding ConnectionHint}"
+                       Visibility="{Binding HasConnectedClients, Converter={StaticResource BoolVisibility}}"/>
             <TextBlock Text="Your PC, a tap away."
                        FontSize="24"
                        FontWeight="SemiBold"

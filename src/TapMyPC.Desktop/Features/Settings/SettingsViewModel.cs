@@ -59,6 +59,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private bool startupEnabled;
     private bool showNotifications;
     private bool isChangingHost;
+    private IReadOnlyList<PairedClient> connectedClients = Array.Empty<PairedClient>();
 
     public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null)
     {
@@ -147,7 +148,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public BitmapSource? PairingQrImage => pairingQrImage;
     public bool HasPairingQr => pairingQrImage is not null;
     public string VersionLabel => "v" + (typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown").Replace("+", " (build ") + ")";
-    public string AppHeading => $"◉   TAPMYPC    {VersionLabel}";
+    public string AppHeading => $"TAPMYPC    {VersionLabel}";
     public string PairingButtonText => HasPairingQr ? "Refresh pairing QR" : pairing.Clients.Count > 0 ? "Add another phone" : "Show pairing QR";
     public string PairingHint => !IsHosting
         ? "Connections are stopped. Start connections to pair or reconnect a phone."
@@ -163,7 +164,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string NetworkSummary => networkSummary;
     public string Pending => pending;
     public bool HasPending => scheduler.State.Pending is not null;
-    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : "Ready for your phone";
+    public bool HasConnectedClients => connectedClients.Count > 0;
+    public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => c.Name));
+    public string ConnectionHint => HasConnectedClients
+        ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
+        : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
+    public string HostStatus => isChangingHost ? "Updating host…" : server is null ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "Ready for your phone";
     public string HostButtonText => isChangingHost ? "Please wait…" : connectionsEnabled ? "Stop connections" : "Start connections";
     public bool CanEditConnection => server is null && !isChangingHost;
     public bool IsHosting => server is not null && !isChangingHost;
@@ -292,6 +298,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         pairingExpiry = "Pairings are remembered. Start connections to reconnect.";
         advertisement?.Dispose(); advertisement = null;
         if (server is not null) { await server.StopAsync(); await server.DisposeAsync(); server = null; }
+        pairing.ClearPresence();
+        RefreshPresence();
         listeningAddress = null; certificate?.Dispose(); certificate = null;
         remoteUrl = "Browser address available when connections are running";
         Notify(nameof(PairingCode)); Notify(nameof(PairingExpiry));
@@ -325,6 +333,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private void NotifyHost()
     {
         foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText) }) Notify(name);
+        RefreshPresence();
     }
 
     private void SavePreferences()
@@ -362,8 +371,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         foreach (var item in recent) Activity.Add(item);
     }
 
+    private void RefreshPresence()
+    {
+        var active = server is null || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
+        if (connectedClients.SequenceEqual(active)) return;
+        connectedClients = active;
+        foreach (var name in new[] { nameof(HasConnectedClients), nameof(ConnectionSummary), nameof(ConnectionHint), nameof(HostStatus) }) Notify(name);
+    }
+
     private void Tick()
     {
+        RefreshPresence();
         if (++networkCheck % 10 == 0) _ = CheckNetworkAsync();
         if (!pairing.IsPairingOpen) ClearPairingQr();
         if (pairingExpires is { } expiry)

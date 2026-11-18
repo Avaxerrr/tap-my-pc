@@ -6,15 +6,17 @@
 - Audio set/mute results include the actual endpoint state read after the operation. Media, display, and native volume-key results say requested/sent rather than claiming the target app or Windows completed an observable transition.
 - Power actions still require confirmation. Both interfaces show a pending countdown and cancellation. On the PC a silent, non-modal notification appears for scheduling, and the final ten seconds remain visible with a cancel button. The website keeps a sticky countdown banner.
 - Cancellation means a pending timer was removed before dispatch. Once dispatch begins, neither interface promises cancellation. If a scheduled action disconnects the PC, the phone says the action may have started and cannot confirm completion.
-- The dashboard shows a small recent-activity list. All clients receive the same bounded in-memory activity feed through status, so the behavior is reusable by Flutter.
+- The dashboard provides command history in its Activity panel. All clients receive the same bounded in-memory activity feed through status, so the behavior is reusable by Flutter.
 
 ## Desktop presentation
 
 The main screen prioritizes the phone link, host status, pairing, recent activity, and pending power action. Technical settings are collapsed under Advanced. The WPF title bar is frameless using WindowChrome; it retains native caption dragging/resizing and provides minimize, maximize/restore, and hide-to-tray buttons. Interactive maximize/resize behavior still needs manual testing.
 
-`FeedbackWindow` is an app-owned OSD, not a blocking dialog or a Windows toast. Routine notifications now use a compact 320-pixel card with an action icon, small caption, and message; repeated actions update the same card. They fade in without activating and remain for about three seconds; errors use a red icon and remain for seven seconds. Power countdowns add a Cancel button and a progress bar for the final ten seconds. It uses ShowActivated=false plus a WM_MOUSEACTIVATE hook that refuses activation. It stays out of the taskbar, makes no sound, and is positioned inside the primary monitor work area. Its cancellation button can be clicked without activating it. Visibility over exclusive-fullscreen games is not guaranteed and has not been tested.
+`FeedbackWindow` is an app-owned OSD, not a blocking dialog or a Windows toast. It uses a compact 360-DIP dark card with bundled Inter typography, modest corners, an action icon, action title/message, and an explicit phase label. The icon, border, Cancel action button, and countdown progress follow the selected desktop accent live; failures retain a distinct red treatment. The transparent banner uses grayscale text antialiasing. Repeated actions update the same card.
 
-Advanced settings can turn off custom PC notifications. Dashboard history and phone feedback remain available. Display-off commands are recorded and shown on the phone, but the custom overlay is suppressed for successful display-off requests to avoid showing new UI after monitors are told to sleep. Errors still produce a PC notification.
+Banners fade in only when the desktop motion preference allows animations. Routine notices remain for about 2.5 seconds and failures for seven seconds. Power countdowns add a Cancel action button and a custom-themed progress bar for the final ten seconds. ShowActivated=false and a WM_MOUSEACTIVATE hook prevent focus stealing. The banner stays out of the taskbar, makes no sound, and remains inside the primary monitor work area. Cancellation can be clicked without activating the banner. Visibility over exclusive-fullscreen games is not guaranteed and has not been tested.
+
+The main-screen notification preference can turn off custom PC notifications. Dashboard history and phone feedback remain available. Display-off commands are recorded and shown on the phone, but the custom overlay is suppressed for successful display-off requests to avoid showing new UI after monitors are told to sleep. Errors still produce a PC notification.
 
 ## Windows volume/media overlay
 
@@ -34,3 +36,7 @@ References: [Core Audio scalar-volume API](https://learn.microsoft.com/en-us/win
 - Api: transport DTOs and response/status feedback; prototype JavaScript renders progress.
 
 No persistent action audit log, sound alerts, Windows Notification Center integration, media metadata, or Flutter presentation has been added.
+
+## Main-window connection indicator
+
+The main connection card displays Remote connected (or the number of connected remotes) and their names. The title-bar dot changes from muted to the chosen accent and optionally pulses. It uses recent authenticated API traffic, expiring after ten seconds without activity. Saved pairings alone never light it; unauthorized/cross-origin traffic cannot light it. Availability checks and browser clients count, so this is a reachability cue rather than proof that this PC is selected for commands. Revocation and stopping connections clear it. No pulse animation remains active when the window is hidden/minimized or when motion is off.

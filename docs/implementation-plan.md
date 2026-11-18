@@ -2,7 +2,7 @@
 
 ## Current state
 
-Coordinated development build: 0.3.0 (build 3), with automatic trusted-network connections, one-time QR setup, native Android discovery/address recovery, remembered multi-PC selection, and in-app connection help. See [setup](setup.md).
+Desktop/server development build: **0.3.1 (build 4)**, consolidating dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android package metadata remains **0.3.0 (build 3)** with automatic trusted-network connections, one-time QR setup, discovery/address recovery, and remembered multi-PC selection. Android UI and version visibility are the next work item. See [setup](setup.md) and [versioning](versioning.md).
 
 The app is branded **TapMyPC**, with the tagline **Your PC, a tap away.** The solution, project namespaces, executable, tray, dashboard, web UI, and documentation use this name. Compatibility code preserves the pre-rename preferences, paired-client credentials, certificates, and single-instance behavior.
 
@@ -17,6 +17,8 @@ Bluetooth radio status and explicit on/off commands are now implemented over Wi-
 The compact desktop UI now uses the approved dark card design at 680 × 640 with embedded Inter fonts. Pairing, activity, and configuration use exclusive side panels; startup and notification preferences stay on the main screen. This presentation update preserves host commands and tray lifecycle.
 
 The desktop polish pass adds sharper widgets, non-overlapping shortcut feedback, explicit text smoothing and per-monitor DPI handling, scrollbar hover/drag feedback, reversible drawer animations with a system/On/Off policy, locally saved accent palettes, an independent outer shadow, a branded tray/app icon and dark tray menu, and responsive wide/vertical layouts. Host commands, authentication, and timer semantics are unchanged.
+
+PC notification banners now share the desktop's Inter typography, dark surfaces, accent palette, modest corners, and motion preference, while preserving silent non-activation and countdown cancellation. The main connection card and title-bar dot now show recent authenticated remote presence, with a ten-second inactivity timeout and a pulse only while the dashboard is visible and motion is enabled.
 
 ## Phase 1: Foundation and first remote command
 

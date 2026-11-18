@@ -37,7 +37,7 @@ public partial class App : Application
             settingsViewModel = new SettingsViewModel(device, settings, pairing, scheduler,
                 new WindowsBluetoothController(action => Dispatcher.InvokeAsync(action).Task.Unwrap()),
                 new WindowsAudioOutputs(), new ShortcutCatalog(settings, new WindowsShortcutLauncher(), scheduler.Activity), new WindowsMonitorController());
-            feedback = new FeedbackPresenter(scheduler, () => settingsViewModel.ShowNotifications, Dispatcher);
+            feedback = new FeedbackPresenter(scheduler, () => settingsViewModel.ShowNotifications, Dispatcher, settingsViewModel.Appearance);
             MainWindow = new MainWindow { DataContext = settingsViewModel };
             tray = new TrayIcon(ShowSettings, ExitAsync, settingsViewModel.Appearance);
             if (!e.Args.Contains("--tray")) ShowSettings();

@@ -117,6 +117,12 @@ The desktop subscribes on its Dispatcher for dashboard activity and silent non-a
 
 Account for Windows Firewall, network interface selection, and router client isolation during setup. Do not silently expose the API on every network or configure public internet access. Any firewall changes must be explicit and scoped to the intended local-network access.
 
+## Remote presence
+
+PairingService keeps an in-memory last-authenticated timestamp per paired client. Successful API authentication refreshes it; stored pairings, rejected credentials, pairing itself, and blocked cross-origin/Host requests do not establish presence. ActiveClients expires entries after ten seconds, and revocation/desktop listener stop clear them. Presence is not persisted or returned in remote status, and introduces no new polling or mobile protocol requirement.
+
+The desktop samples this state on its existing one-second timer. The main connection card shows Remote connected and client names, while the title-bar dot uses the selected accent and an optional subtle pulse. The pulse respects the appearance motion policy and has no animation clock when hidden/minimized or idle. Activity from browser clients and native availability probes also counts; this indicates recent authenticated reachability, not an enduring socket or proof that this PC is selected on the phone.
+
 ## Desktop appearance
 
 Desktop presentation owns live accent resources, drawer transitions, responsive layout, and a separate non-activating shadow surface. The content window stays opaque with explicit ClearType rendering and per-monitor DPI awareness; shadow effects never wrap the text surface. Windows-specific shadow-window input styles remain in Windows/Interop. Shadow visibility follows the main window, including tray hiding and maximize/minimize.

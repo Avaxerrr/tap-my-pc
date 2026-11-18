@@ -18,6 +18,8 @@ public sealed class PairingService
     private readonly IDeviceStore store;
     private readonly TimeProvider clock;
     private List<PairedDevice> devices;
+    private readonly Dictionary<Guid, DateTimeOffset> lastAuthenticated = new();
+    public static TimeSpan PresenceTimeout { get; } = TimeSpan.FromSeconds(10);
     private string? code;
     private string? qrSecret;
     private DateTimeOffset expires;
@@ -81,11 +83,32 @@ public sealed class PairingService
     {
         if (token.Length != 64) return false;
         var hash = Hash(token);
-        lock (gate) return devices.Any(d => CryptographicOperations.FixedTimeEquals(Convert.FromHexString(d.TokenHash), Convert.FromHexString(hash)));
+        lock (gate)
+        {
+            var device = devices.FirstOrDefault(d => CryptographicOperations.FixedTimeEquals(Convert.FromHexString(d.TokenHash), Convert.FromHexString(hash)));
+            if (device is null) return false;
+            lastAuthenticated[device.Id] = clock.GetUtcNow();
+            return true;
+        }
     }
 
     public IReadOnlyList<PairedClient> Clients
     { get { lock (gate) return devices.Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt)).ToArray(); } }
+
+    // Ephemeral presence comes from authenticated activity, never from stored pairing alone.
+    public IReadOnlyList<PairedClient> ActiveClients
+    {
+        get
+        {
+            lock (gate)
+            {
+                var now = clock.GetUtcNow();
+                return devices.Where(d => lastAuthenticated.TryGetValue(d.Id, out var seen) && now - seen < PresenceTimeout)
+                    .Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt)).ToArray();
+            }
+        }
+    }
+    public void ClearPresence() { lock (gate) lastAuthenticated.Clear(); }
 
     public void Revoke(Guid id)
     {
@@ -93,6 +116,7 @@ public sealed class PairingService
         {
             var updated = devices.Where(d => d.Id != id).ToList();
             store.Save(updated); devices = updated;
+            lastAuthenticated.Remove(id);
         }
     }
 

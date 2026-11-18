@@ -43,6 +43,28 @@ public sealed class ApiTests : IAsyncLifetime
     public async Task DisposeAsync() { client.Dispose(); await app.StopAsync(); await app.DisposeAsync(); scheduler.Dispose(); certificate.Dispose(); }
 
     [Fact]
+    public async Task OnlyAuthenticatedTrafficUpdatesRemotePresence()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/status")).StatusCode);
+        Assert.Empty(pairing.ActiveClients);
+        await Authenticate();
+        Assert.Empty(pairing.ActiveClients);
+        using var crossOrigin = new HttpRequestMessage(HttpMethod.Get, "/api/v1/status");
+        crossOrigin.Headers.Add("Origin", "https://unrelated.example");
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(crossOrigin)).StatusCode);
+        Assert.Empty(pairing.ActiveClients);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
+        Assert.Single(pairing.ActiveClients);
+        clock.Advance(PairingService.PresenceTimeout);
+        Assert.Empty(pairing.ActiveClients);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
+        pairing.Revoke(Assert.Single(pairing.Clients).Id);
+        Assert.Empty(pairing.ActiveClients);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/status")).StatusCode);
+        Assert.Empty(pairing.ActiveClients);
+    }
+
+    [Fact]
     public async Task BluetoothRequiresPairingAndExplicitBooleanBeforeChangingState()
     {
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.PutAsJsonAsync("/api/v1/bluetooth", new { enabled = false })).StatusCode);
