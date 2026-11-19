@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_theme.dart';
 import 'widgets.dart';
 
@@ -396,7 +397,7 @@ class DeviceControls extends StatelessWidget {
   }
 }
 
-class PowerControls extends StatelessWidget {
+class PowerControls extends StatefulWidget {
   final Map<String, dynamic>? status;
   final bool busy;
   final PowerCommand power;
@@ -410,13 +411,24 @@ class PowerControls extends StatelessWidget {
     required this.wakeConfigured,
     this.onWake,
   });
+
+  @override
+  State<PowerControls> createState() => _PowerControlsState();
+}
+
+enum _TimerUnit { minutes, seconds }
+
+class _PowerControlsState extends State<PowerControls> {
+  String timerAmount = '30';
+  _TimerUnit timerUnit = _TimerUnit.minutes;
+
   bool supports(String action) =>
-      !busy &&
-      status != null &&
+      !widget.busy &&
+      widget.status != null &&
       (action == 'Sleep'
-          ? status?['capabilities']?['sleep'] == true
+          ? widget.status?['capabilities']?['sleep'] == true
           : action == 'Hibernate'
-          ? status?['capabilities']?['hibernate'] == true
+          ? widget.status?['capabilities']?['hibernate'] == true
           : true);
   static const icons = {
     'Lock': Icons.lock_outline,
@@ -426,73 +438,133 @@ class PowerControls extends StatelessWidget {
     'Shutdown': Icons.power_settings_new,
   };
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      SectionCard(
-        title: 'Power',
-        subtitle: !wakeConfigured
-            ? 'Configure Wake-on-LAN in Settings.'
-            : status != null
-            ? 'Wake PC becomes available when this PC is offline.'
-            : null,
-        child: ActionGrid(
-          children: [
-            ActionTile(
-              label: 'Wake PC',
-              icon: Icons.wb_sunny_outlined,
-              onPressed: wakeConfigured && status == null && !busy
-                  ? onWake
-                  : null,
-            ),
-            for (final action in icons.entries)
+  Widget build(BuildContext context) {
+    final useMinutes = timerUnit == _TimerUnit.minutes;
+    final amount = int.tryParse(timerAmount);
+    final valid =
+        amount != null &&
+        amount >= (useMinutes ? 1 : 3) &&
+        amount <= (useMinutes ? 1440 : 86400);
+    final seconds = valid ? amount * (useMinutes ? 60 : 1) : 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionCard(
+          title: 'Power',
+          subtitle: !widget.wakeConfigured
+              ? 'Configure Wake-on-LAN in Settings.'
+              : widget.status != null
+              ? 'Wake PC becomes available when this PC is offline.'
+              : null,
+          child: ActionGrid(
+            children: [
               ActionTile(
-                label: action.key == 'Shutdown' ? 'Shut down' : action.key,
-                icon: action.value,
-                danger: ['Shutdown', 'Restart'].contains(action.key),
-                onPressed: supports(action.key)
-                    ? () => power(action.key)
+                label: 'Wake PC',
+                icon: Icons.wb_sunny_outlined,
+                onPressed:
+                    widget.wakeConfigured &&
+                        widget.status == null &&
+                        !widget.busy
+                    ? widget.onWake
                     : null,
               ),
-          ],
-        ),
-      ),
-      SectionCard(
-        title: 'Set a timer',
-        subtitle: 'The PC keeps time, even if this phone disconnects',
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'AFTER 30 MINUTES',
-              style: TextStyle(
-                color: AppColors.secondary,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            for (final action in ['Sleep', 'Hibernate', 'Shutdown'])
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: ActionTile(
-                  label: action == 'Shutdown' ? 'Shut down' : action,
-                  icon: icons[action]!,
-                  onPressed: supports(action)
-                      ? () => power(action, delay: 1800)
+              for (final action in icons.entries)
+                ActionTile(
+                  label: action.key == 'Shutdown' ? 'Shut down' : action.key,
+                  icon: action.value,
+                  danger: ['Shutdown', 'Restart'].contains(action.key),
+                  onPressed: supports(action.key)
+                      ? () => widget.power(action.key)
                       : null,
                 ),
+            ],
+          ),
+        ),
+        SectionCard(
+          title: 'Set a timer',
+          subtitle: 'The PC keeps time, even if this phone disconnects',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      key: const Key('timer-duration'),
+                      initialValue: timerAmount,
+                      decoration: const InputDecoration(labelText: 'Duration'),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      onChanged: (value) => setState(() => timerAmount = value),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<_TimerUnit>(
+                      key: const Key('timer-unit'),
+                      initialValue: timerUnit,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'Unit'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: _TimerUnit.minutes,
+                          child: Text('Minutes'),
+                        ),
+                        DropdownMenuItem(
+                          value: _TimerUnit.seconds,
+                          child: Text('Seconds'),
+                        ),
+                      ],
+                      onChanged: (unit) {
+                        if (unit != null) setState(() => timerUnit = unit);
+                      },
+                    ),
+                  ),
+                ],
               ),
-          ],
+              if (!valid || seconds < 10)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    !valid
+                        ? (useMinutes
+                              ? 'Enter 1–1440 minutes.'
+                              : 'Enter 3–86400 seconds.')
+                        : 'Restart and Shut down need at least 10 seconds.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              const SizedBox(height: 12),
+              for (final action in icons.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ActionTile(
+                    key: ValueKey('timer-${action.key}'),
+                    label: action.key == 'Shutdown' ? 'Shut down' : action.key,
+                    icon: action.value,
+                    onPressed:
+                        supports(action.key) &&
+                            seconds >=
+                                (action.key == 'Shutdown' ||
+                                        action.key == 'Restart'
+                                    ? 10
+                                    : 3)
+                        ? () => widget.power(action.key, delay: seconds)
+                        : null,
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
-      const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 4),
-        child: Text(
-          'Unsaved work may prevent a power action. Apps are not force-closed.',
-          style: TextStyle(color: AppColors.secondary, fontSize: 12),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            'Unsaved work may prevent a power action. Apps are not force-closed.',
+            style: TextStyle(color: AppColors.secondary, fontSize: 12),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

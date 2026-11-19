@@ -8,7 +8,7 @@ TapMyPC Android supports encrypted Classic Bluetooth RFCOMM with the Windows hos
 2. Pair/reconnect over Wi-Fi once. Authenticated status supplies the PC's Bluetooth address and service identifier, saved with that PC's protected profile. Existing credentials and certificate identity are reused.
 3. On Android open **Settings > Connection** for the selected PC and choose **Bluetooth only**. Allow Nearby devices when requested. Confirm the matching system pairing code on both devices if prompted. TapMyPC keeps the previous connection mode until pairing finishes.
 4. **Automatic** tries the local network, Tailscale, then Bluetooth. **Bluetooth only** stays on Bluetooth. See [all connection choices](tailscale.md#connection-choices).
-5. The phone labels an active Bluetooth connection. The PC shows Bluetooth readiness separately from each active phone's name and actual authenticated transport, for example POCO X6 5G · Bluetooth. Readiness is availability, not the current connection.
+5. The phone labels an active Bluetooth connection. The PC shows each active phone's name with a blue **Bluetooth** badge when it has authenticated over Bluetooth. The separate Bluetooth readiness line shows listener availability.
 
 Initial enrollment requires reachable trusted Wi-Fi. An already enrolled phone with saved Bluetooth metadata can control the PC without a LAN. Use [Wake-on-LAN](setup.md#android-wake-on-lan) over the local network when the PC is asleep and supports wake.
 

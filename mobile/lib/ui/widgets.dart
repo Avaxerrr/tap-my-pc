@@ -103,15 +103,35 @@ class ActionGrid extends StatelessWidget {
 
 class StatusBadge extends StatelessWidget {
   final String text;
-  final bool connected;
-  const StatusBadge({super.key, required this.text, required this.connected});
+  final String? transport;
+  const StatusBadge({super.key, required this.text, this.transport});
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = connected ? scheme.onPrimaryContainer : AppColors.secondary;
+    final (label, background, border, foreground) = switch (transport) {
+      'Bluetooth' => (
+        'Bluetooth',
+        const Color(0xff14263b),
+        const Color(0xff344f71),
+        const Color(0xffa1d0ff),
+      ),
+      'Local network' => (
+        'Wi-Fi',
+        const Color(0xff182c24),
+        const Color(0xff365647),
+        const Color(0xffa4e2bf),
+      ),
+      'Tailscale' => (
+        'Tailscale',
+        const Color(0xff29223a),
+        const Color(0xff53426d),
+        const Color(0xffd5c1ff),
+      ),
+      _ => (text, AppColors.subtle, AppColors.subtle, AppColors.secondary),
+    };
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: connected ? scheme.primaryContainer : AppColors.subtle,
+        color: background,
+        border: Border.all(color: border),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Padding(
@@ -122,13 +142,16 @@ class StatusBadge extends StatelessWidget {
             Container(
               width: 6,
               height: 6,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: foreground,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 6),
             Text(
-              text,
+              label,
               style: TextStyle(
-                color: color,
+                color: foreground,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
               ),

@@ -6,11 +6,13 @@ class PendingActionBanner extends StatefulWidget {
   final Map<String, dynamic> pending;
   final String? serverTime;
   final String pcName;
+  final bool connected;
   final VoidCallback? onCancel;
   const PendingActionBanner({
     super.key,
     required this.pending,
     required this.pcName,
+    required this.connected,
     this.serverTime,
     this.onCancel,
   });
@@ -61,7 +63,13 @@ class _PendingActionBannerState extends State<PendingActionBanner>
   @override
   Widget build(BuildContext context) {
     final due = DateTime.tryParse(widget.pending['dueAt'] ?? '');
-    final seconds = due?.difference(DateTime.now().add(offset)).inSeconds ?? 0;
+    final remaining =
+        due?.difference(DateTime.now().add(offset)) ?? Duration.zero;
+    if (!widget.connected && remaining <= Duration.zero) {
+      return const SizedBox.shrink();
+    }
+    final seconds = (remaining.inMicroseconds / Duration.microsecondsPerSecond)
+        .ceil();
     final label = seconds > 0
         ? '${seconds ~/ 60}m ${seconds % 60}s'
         : 'Request is due';

@@ -36,6 +36,41 @@ internal static class Program
             foreach (var nested in Descendants<T>(child)) yield return nested;
         }
     }
+
+    private static void Capture(Window window, string fileName)
+    {
+        window.UpdateLayout();
+        var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(window);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        Directory.CreateDirectory("artifacts/certificate-ui-check");
+        using var output = File.Create(Path.Combine("artifacts/certificate-ui-check", fileName));
+        encoder.Save(output);
+    }
+
+    private static void CheckConnectionCard(MainWindow window, string borderKey, params (string Name, string Route, string BorderKey)[] remotes)
+    {
+        window.UpdateLayout();
+        var card = (Border)window.FindName("HeroCard");
+        var idleBadge = (ContentControl)window.FindName("ConnectionStatusBadge");
+        var phones = (ItemsControl)window.FindName("ConnectedPhones");
+        var transportBadge = (Style)window.Resources["TransportBadge"];
+        var badges = Descendants<ContentControl>(phones).Where(control => control.Style == transportBadge).ToArray();
+        Check(Equals(card.BorderBrush, window.Resources[borderKey]), "Connection card uses the expected transport border");
+        Check(badges.Length == remotes.Length, "Each connected phone has one route badge");
+        Check(idleBadge.IsVisible == (remotes.Length == 0), "The idle badge only appears with no active phone");
+        Check(Equals(idleBadge.Content, "No phone connected"), "The idle badge displays its listening state");
+        for (var i = 0; i < remotes.Length; i++)
+        {
+            var (name, route, badgeBorderKey) = remotes[i];
+            Check(badges[i].IsVisible && Equals(badges[i].Content, route), $"Visible {route} badge for {name}");
+            Check(Equals(badges[i].BorderBrush, window.Resources[badgeBorderKey]), $"Transport color for {name}");
+            Check(Descendants<TextBlock>(phones).Any(text => text.IsVisible && text.Text == name), $"Visible heading for {name}");
+        }
+        Check(Equals(Descendants<Button>(card).Single().Background, window.Resources["AccentBlue"]), "The host button follows the theme accent");
+    }
+
     private static async Task Run()
     {
         await RunDualNetworkScenario();
@@ -58,23 +93,48 @@ internal static class Program
             window.Show();
             await vm.InitializeAsync();
             Check(vm.IsHosting, "Initial test listener");
+            CheckConnectionCard(window, "BorderHairline");
+            Capture(window, "connection-idle.png");
             ((System.Windows.Controls.Primitives.ToggleButton)window.FindName("SettingsDrawerToggle")).IsChecked = true;
-            await Task.Delay(350); window.UpdateLayout();
-            Directory.CreateDirectory("artifacts/certificate-ui-check");
-            var remoteBitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-            remoteBitmap.Render(window);
-            var remoteEncoder = new PngBitmapEncoder(); remoteEncoder.Frames.Add(BitmapFrame.Create(remoteBitmap));
-            using (var output = File.Create("artifacts/certificate-ui-check/remote-access.png")) remoteEncoder.Save(output);
+            await Task.Delay(350);
+            Capture(window, "remote-access.png");
             ((System.Windows.Controls.Primitives.ToggleButton)window.FindName("SettingsDrawerToggle")).IsChecked = false;
             await Task.Delay(350);
             pairing.Authorize(oldToken, RemoteTransport.Bluetooth, "POCO test phone");
             await Task.Delay(1100);
             Check(vm.ConnectionSummary == "POCO test phone · Bluetooth", "Active phone name and actual Bluetooth transport");
+            CheckConnectionCard(window, "BluetoothBorder", ("POCO test phone", "Bluetooth", "BluetoothBorder"));
+            Capture(window, "connection-bluetooth.png");
             vm.SelectedDevice = vm.Devices.Single(); vm.DeviceName = "My test phone"; vm.RenameDevice.Execute(null);
             Check(pairing.Clients.Single().Name == "My test phone", "Paired phone rename command");
             pairing.Authorize(oldToken, RemoteTransport.WiFi, "OS-reported name");
             await Task.Delay(1100);
             Check(vm.ConnectionSummary == "My test phone · Wi-Fi", "Custom name and switched Wi-Fi transport");
+            vm.Appearance.Accent = "Amber";
+            CheckConnectionCard(window, "WiFiBorder", ("My test phone", "Wi-Fi", "WiFiBorder"));
+            var notifications = Descendants<CheckBox>(window).Single(checkBox =>
+                System.Windows.Automation.AutomationProperties.GetName(checkBox) == "Show command notifications");
+            Check(notifications.IsChecked == true, "Notification toggle is enabled in the fixture");
+            var toggleTrack = (Border)notifications.Template.FindName("Track", notifications);
+            var toggleThumb = (System.Windows.Shapes.Ellipse)notifications.Template.FindName("Thumb", notifications);
+            Check(Equals(toggleTrack.Background, window.Resources["AccentBlue"]) &&
+                Equals(toggleThumb.Fill, window.Resources["AccentForeground"]), "Enabled preferences switch tracks and thumbs follow the theme");
+            Capture(window, "connection-wifi.png");
+            pairing.Authorize(oldToken, RemoteTransport.Tailscale);
+            await Task.Delay(1100);
+            CheckConnectionCard(window, "TailscaleBorder", ("My test phone", "Tailscale", "TailscaleBorder"));
+            Capture(window, "connection-tailscale.png");
+            var secondToken = pairing.Pair(pairing.OpenPairing().Code, "Second test phone");
+            pairing.Authorize(secondToken, RemoteTransport.Bluetooth);
+            await Task.Delay(1100);
+            CheckConnectionCard(window, "BorderHairline", ("My test phone", "Tailscale", "TailscaleBorder"),
+                ("Second test phone", "Bluetooth", "BluetoothBorder"));
+            Capture(window, "connection-mixed.png");
+            pairing.ClearPresence();
+            await Task.Delay(1100);
+            CheckConnectionCard(window, "BorderHairline");
+            vm.Appearance.Accent = "Blue";
+            Console.WriteLine("PASS: idle, Bluetooth, Wi-Fi, Tailscale and mixed connection card states.");
             if (Environment.GetCommandLineArgs().Contains("--bluetooth")) Check(vm.BluetoothConnectionSummary.StartsWith("Bluetooth ready"), "Bluetooth transport starts with global connections");
             vm.RequestIdentityReset.Execute(null);
             Check(vm.IdentityResetRequested, "Reset confirmation opens");
@@ -89,11 +149,7 @@ internal static class Program
             var confirm = Descendants<Button>(window).Single(b => b.Content?.ToString() == "Reset and revoke all phones");
             confirm.BringIntoView(); await Task.Delay(100); window.UpdateLayout();
             Check(confirm.IsVisible, "Reset confirmation is visible");
-            var bitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(window);
-            Directory.CreateDirectory("artifacts/certificate-ui-check");
-            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            using (var output = File.Create("artifacts/certificate-ui-check/confirmation.png")) encoder.Save(output);
+            Capture(window, "confirmation.png");
             vm.ConfirmIdentityReset.Execute(null);
             for (var attempt = 0; attempt < 100 && !vm.ConfirmIdentityReset.CanExecute(null); attempt++) await Task.Delay(50);
             owned.Add(settings.ReadIdentity()!.CertificateThumbprint);

@@ -203,12 +203,24 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string NetworkSummary => networkSummary;
     public string Pending => pending;
     public bool HasPending => scheduler.State.Pending is not null;
+    public IReadOnlyList<PairedClient> ConnectedClients => connectedClients;
     public bool HasConnectedClients => connectedClients.Count > 0;
+    public RemoteTransport? SharedConnectionTransport
+    {
+        get
+        {
+            var transport = connectedClients.FirstOrDefault()?.Transport;
+            return transport is not null && connectedClients.All(client => client.Transport == transport)
+                ? transport
+                : null;
+        }
+    }
     public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => $"{c.Name} · {(c.Transport switch { RemoteTransport.Bluetooth => "Bluetooth", RemoteTransport.Tailscale => "Tailscale", _ => "Wi-Fi" })}"));
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
         : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
-    public string HostStatus => isChangingHost ? "Updating host…" : (server is null && tailscaleServer is null && bluetoothHost?.Info.Available != true) ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "No phone connected";
+    public string HostStatus => isChangingHost ? "Updating host…" : IsHosting ? "No phone connected" :
+        connectionsEnabled ? "Waiting for trusted network" : "Connections stopped";
     public string HostButtonText => isChangingHost ? "Please wait…" : connectionsEnabled ? "Stop connections" : "Start connections";
     public bool CanEditConnection => server is null && tailscaleServer is null && !isChangingHost;
     public bool IsHosting => (server is not null || tailscaleServer is not null || bluetoothHost?.Info.Available == true) && !isChangingHost;
@@ -541,7 +553,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         var active = (server is null && tailscaleServer is null && bluetoothHost?.Info.Available != true) || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
         if (connectedClients.SequenceEqual(active)) return;
         connectedClients = active;
-        foreach (var name in new[] { nameof(HasConnectedClients), nameof(ConnectionSummary), nameof(ConnectionHint), nameof(HostStatus) }) Notify(name);
+        Notify(nameof(ConnectedClients));
+        Notify(nameof(HasConnectedClients));
+        Notify(nameof(SharedConnectionTransport));
+        Notify(nameof(ConnectionSummary));
+        Notify(nameof(ConnectionHint));
     }
 
     private void Tick()

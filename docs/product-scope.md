@@ -63,7 +63,7 @@ The Android development client implements QR and manual pinned enrollment, prote
 
 ## Behavior expectations
 
-- Require deliberate confirmation for shutdown/restart and provide a short cancellation opportunity. Shutdown/restart have a minimum ten-second cancellable delay; other supported power actions have a minimum three seconds.
+- Require confirmation for power actions. Android Lock, Sleep, and Hibernate run immediately on hosts that advertise support. Restart and Shut down retain a ten-second cancellation window. Android scheduled durations accept seconds or minutes with a 24-hour maximum.
 - Do not force-close applications by default. A power request may be blocked by unsaved work; accepting a command does not guarantee the power transition completes.
 - Timers run on the PC and continue when the browser disconnects. The prototype cancels them on process exit and does not persist them across restart.
 - Show pending actions and connection failures clearly. Avoid ambiguous toggle commands where an explicit state can be requested, such as setting mute on/off.
@@ -77,7 +77,7 @@ The desktop displays recently active remote clients on the main connection card 
 
 ## Phone identity and radio presentation
 
-- Desktop active remote labels show the phone's OS name/model or locally saved custom name, followed by its actual most-recent authenticated Wi-Fi/Bluetooth transport. Listener readiness stays separate.
+- The Windows connection card shows each active phone's OS name, model, or locally saved name and a badge for its latest authenticated connection. Bluetooth is blue, Wi-Fi is green, and Tailscale is purple. The card also shows listener readiness.
 - Existing Android pairings update their reported name through authenticated traffic without re-pairing. PC-side names can be edited in Configure > Authorized phones and take precedence over reported names.
 - Mobile shows PC Bluetooth: On/Off. Over Wi-Fi it offers only the applicable action; unavailable/unknown/mixed state disables changes. Radio changes are disabled while actually connected over Bluetooth, including Automatic fallback, with a switch-to-Wi-Fi explanation. The Bluetooth API listener enforces the same restriction.
 
@@ -91,7 +91,7 @@ The desktop displays recently active remote clients on the main connection card 
 
 - Match desktop's dark surfaces, Inter typography, modest corner radii, and Blue/Mint/Purple/Teal/Amber accents. Themes persist on the phone independently of the desktop.
 - Group controls into Remote, Devices, and Power; keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets. Device-list errors must not mark a PC offline when its authenticated status request succeeds; show a specific warning and retain working controls.
-- Keep a pending PC action visible across tabs, with a live countdown and cancellation when online. Retain last-known timer information offline without pretending cancellation is available.
+- Keep a pending PC action visible across tabs, with a live countdown and cancellation when online. Show the last-known countdown offline until it is due, then reconcile with the PC when it reconnects.
 - Provide a focused first-connection card with one Add your PC action, QR-first enrollment, manual fallback, version/build metadata in Settings > About, and native permission/failure feedback. Respect large text and compact screens; automatically follow system reduced-motion settings without a separate app animation preference.
 
 ## Boundaries

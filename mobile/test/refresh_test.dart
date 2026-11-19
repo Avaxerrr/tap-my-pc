@@ -21,7 +21,9 @@ class FakePcApi extends PcApi {
   FakePcApi([super.profile = testProfile]);
   final failures = <String, Object>{};
   final calls = <String>[];
+  final powerRequests = <Object?>[];
   Map<String, dynamic>? networkConnection;
+  bool supportsImmediatePower = false;
   int closeCount = 0;
 
   @override
@@ -41,7 +43,14 @@ class FakePcApi extends PcApi {
     return switch (path) {
       '/status' => {
         'pcName': profile.name,
-        'capabilities': {'audio': true, 'media': true, 'display': true},
+        'capabilities': {
+          'audio': true,
+          'media': true,
+          'display': true,
+          'sleep': true,
+          'hibernate': true,
+        },
+        if (supportsImmediatePower) 'supportsImmediatePower': true,
         'audio': {'volume': 35, 'muted': false},
         'bluetooth': {'state': 'On', 'canControl': true},
         'scheduler': {'pending': null},
@@ -59,8 +68,14 @@ class FakePcApi extends PcApi {
         },
       ],
       '/shortcuts' => [],
+      '/power' => _acceptPower(body),
       _ => throw StateError('Unexpected request: $method $path'),
     };
+  }
+
+  Map<String, Object> _acceptPower(Object? body) {
+    powerRequests.add(body);
+    return {'accepted': true};
   }
 }
 
@@ -95,6 +110,37 @@ void main() {
   Future<void> dispose(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
+  }
+
+  for (final (action, supportsImmediatePower, expectedDelay) in [
+    ('Lock', true, 0),
+    ('Sleep', true, 0),
+    ('Hibernate', true, 0),
+    ('Restart', true, 10),
+    ('Sleep', false, 3),
+  ]) {
+    testWidgets('$action sends a confirmed $expectedDelay-second delay', (
+      tester,
+    ) async {
+      final api = FakePcApi()..supportsImmediatePower = supportsImmediatePower;
+      await render(tester, api);
+      await tester.tap(find.text('Power').last);
+      await tester.pumpAndSettle();
+      final button = find.widgetWithText(OutlinedButton, action).first;
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(api.powerRequests, isEmpty);
+      await tester.tap(find.text('Confirm'));
+      await tester.pumpAndSettle();
+      expect(api.powerRequests.single, {
+        'action': action,
+        'delaySeconds': expectedDelay,
+        'confirmed': true,
+      });
+      expect(find.byKey(const Key('pending-action')), findsNothing);
+      await dispose(tester);
+    });
   }
 
   testWidgets(
@@ -385,10 +431,14 @@ void main() {
       find.text('Enter the PC network adapter’s MAC address.'),
       findsOneWidget,
     );
-    final fields = find.byType(TextFormField);
+    final fields = find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.byType(TextFormField),
+    );
     await tester.enterText(fields.at(0), '02-12-34-56-78-9a');
     await tester.enterText(fields.at(1), '192.168.0.255');
     await tester.enterText(fields.at(2), '7');
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 

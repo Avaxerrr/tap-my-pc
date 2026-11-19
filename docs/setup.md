@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.9.1 (build 14)** and Android **0.9.5 (build 22)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.10.0 (build 16)** and Android **0.10.0 (build 23)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -10,7 +10,7 @@ Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build
 
 ## Phone names and connection feedback
 
-The desktop's active remote line shows the phone name and actual connection, for example POCO X6 5G · Bluetooth. Wi-Fi address and Bluetooth ready describe listener availability separately. Existing phones update their name on their next authenticated request after the Android update.
+The desktop connection card shows each active phone's name and its latest authenticated connection. The network address and Bluetooth readiness lines describe the available listeners. Existing phones update their name on their next authenticated request after the Android update.
 
 To customize a name, open Configure > Authorized phones, select the phone, edit Phone name, and select Save phone name. The override remains local to this PC and is not overwritten by the phone.
 
@@ -110,7 +110,8 @@ Scope LocalAddress to the chosen Wi-Fi address as well if desired. Update the ru
 - Volume up/down buttons send standard Windows volume keys, requesting the native system overlay where Windows displays it. Step size and overlay visibility are controlled by Windows; they are not fixed five-percent operations. Slider/mute changes retain direct, explicit state setting. Volume adjustments do not show a custom PC notification; slider changes may not display a native flyout. Mute/unmute and errors still show compact custom feedback. Phone feedback and dashboard activity are retained for every action.
 - Media commands send standard Windows media keys. The active media application decides how to handle them. Current track metadata is not implemented.
 - Display-off affects connected monitors through the Windows display-power message. Input/activity may wake them.
-- All power actions require confirmation. Shutdown/restart use a minimum ten-second cancellable delay; lock/sleep/hibernate use a minimum three seconds.
+- All power actions require confirmation. With Windows 0.10.0 or newer, Android runs Lock, Sleep, and Hibernate immediately after confirmation. Older Windows hosts use the previous three-second countdown. Restart and Shut down keep a ten-second cancellation window.
+- In Android **Power > Set a timer**, enter seconds or minutes and choose the action. The field starts at 30 minutes. Scheduled Lock, Sleep, and Hibernate accept 3 seconds to 24 hours. Scheduled Restart and Shut down accept 10 seconds to 24 hours. A timer stays visible while counting down offline and hides when due. The next authenticated status refresh supplies the current timer state.
 - Silent TapMyPC notifications show remote activity without activating the window. The final ten seconds of a pending power action show a cancel button. The main-screen Show command notifications switch can disable these custom notifications. This does not disable Windows' own media/volume overlays. Exclusive-fullscreen visibility still needs manual verification.
 - There is one pending power action. Cancel it before scheduling a different one. The timer runs on the PC after browser disconnection and after stopping the API listener.
 - Exiting the process cancels the timer. Timers are not persisted, do not wake a sleeping PC, and cannot be canceled once execution begins.
@@ -146,7 +147,9 @@ The dashboard opens at 680 × 640 with bundled Inter typography, a frameless tit
 
 ### Phone activity and PC notifications
 
-The connection card shows a muted No phone connected badge while listening without an active remote. It switches to an accent-colored Remote connected badge and client names after authenticated activity. The title-bar dot changes to your accent and gently pulses while the dashboard is visible. After ten seconds without activity it returns to idle; stored pairings alone are not treated as connected. Browser requests and phone availability checks count, so the indicator does not imply that this PC is selected on the phone. Stopping connections or revoking a client clears its presence.
+The connection card shows a gray **No phone connected** badge while idle. When a phone is active, its name appears below a blue **Bluetooth**, green **Wi-Fi**, or purple **Tailscale** badge. The card border follows the connection color when all active phones use the same connection and stays neutral when they use different routes. The title-bar dot uses your theme accent and pulses while the dashboard is visible. Activity expires after ten seconds. Authenticated browser requests and phone availability checks also count. Stopping connections or revoking a client clears its presence.
+
+Windows preference toggles use the selected theme accent when on. Android uses the same Bluetooth, Wi-Fi, and Tailscale badge colors on its selected-PC card, with a gray Offline badge.
 
 The PC notification banner follows your desktop accent, Inter font, and corner styling, with a brief fade on appearance. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
 

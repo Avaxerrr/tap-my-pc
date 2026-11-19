@@ -288,6 +288,31 @@ public sealed class ApiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ConfirmedZeroDelayPowerRequestIsAcceptedWithoutAPendingTimer()
+    {
+        await Authenticate();
+        var status = await client.GetFromJsonAsync<JsonElement>("/api/v1/status");
+        Assert.True(status.GetProperty("supportsImmediatePower").GetBoolean());
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.PostAsJsonAsync("/api/v1/power", new { action = "Sleep", delaySeconds = 0, confirmed = false })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.PostAsJsonAsync("/api/v1/power", new { action = "Restart", delaySeconds = 0, confirmed = true })).StatusCode);
+
+        var dispatched = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        scheduler.Activity.Published += notice =>
+        {
+            if (notice.Message == "Sleep request sent to Windows.") dispatched.TrySetResult();
+        };
+        using var response = await client.PostAsJsonAsync("/api/v1/power", new { action = "Sleep", delaySeconds = 0, confirmed = true });
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Sleep requested.", body.GetProperty("feedback").GetProperty("message").GetString());
+        await dispatched.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(PowerAction.Sleep, Assert.Single(device.PowerActions));
+        Assert.Null(scheduler.State.Pending);
+    }
+
+    [Fact]
     public async Task CrossOriginAndForeignHostRequestsAreRejected()
     {
         await Authenticate();

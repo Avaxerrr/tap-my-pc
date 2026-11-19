@@ -9,6 +9,7 @@ import 'package:tapmypc_mobile/connection.dart';
 import 'package:tapmypc_mobile/main.dart';
 import 'package:tapmypc_mobile/ui/app_theme.dart';
 import 'package:tapmypc_mobile/ui/remote_dashboard.dart';
+import 'package:tapmypc_mobile/ui/widgets.dart';
 
 const home = PcProfile(
   'Home desktop',
@@ -75,6 +76,8 @@ void main() {
     bool offline = false,
     bool busy = false,
     bool pending = false,
+    Duration pendingRemaining = const Duration(minutes: 30),
+    String? transport,
     double scale = 1,
     Size size = const Size(393, 852),
     List<Object?>? sent,
@@ -110,12 +113,13 @@ void main() {
             appVersion: 'v0.4.2 (build 6)',
             discoveryMessage: 'Automatically looking for saved PCs nearby.',
             busy: busy,
+            connectionTransport: transport,
             pending: pending
                 ? {
                     'id': 'timer-test',
                     'action': 'Sleep',
                     'dueAt': DateTime.now()
-                        .add(const Duration(minutes: 30))
+                        .add(pendingRemaining)
                         .toUtc()
                         .toIso8601String(),
                   }
@@ -412,6 +416,81 @@ void main() {
       await screenshot(tester, 'offline');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('A due offline timer stops occupying the navigation area', (
+    tester,
+  ) async {
+    await render(
+      tester,
+      offline: true,
+      pending: true,
+      pendingRemaining: const Duration(seconds: -1),
+    );
+    expect(find.byKey(const Key('pending-action')), findsNothing);
+    await render(
+      tester,
+      pending: true,
+      pendingRemaining: const Duration(seconds: -1),
+    );
+    expect(find.text('Sleep · Request is due'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('The connection badge follows the active route and its color', (
+    tester,
+  ) async {
+    for (final (transport, label, color) in [
+      ('Local network', 'Wi-Fi', const Color(0xffa4e2bf)),
+      ('Tailscale', 'Tailscale', const Color(0xffd5c1ff)),
+      ('Bluetooth', 'Bluetooth', const Color(0xffa1d0ff)),
+    ]) {
+      await render(tester, transport: transport);
+      final badge = find.descendant(
+        of: find.byType(StatusBadge),
+        matching: find.text(label),
+      );
+      expect(tester.widget<Text>(badge).style?.color, color);
+    }
+    await render(tester, offline: true, transport: 'Bluetooth');
+    expect(find.text('Offline'), findsOneWidget);
+    expect(find.text('Bluetooth'), findsNothing);
+  });
+
+  testWidgets(
+    'A timer takes editable minutes or seconds and observes action minimums',
+    (tester) async {
+      final sent = <Object?>[];
+      await render(tester, sent: sent);
+      await tester.tap(find.text('Power').last);
+      await tester.pumpAndSettle();
+      final duration = find.byKey(const Key('timer-duration'));
+      final unit = find.byKey(const Key('timer-unit'));
+      final sleep = find.byKey(const Key('timer-Sleep'));
+      final restart = find.byKey(const Key('timer-Restart'));
+      await tester.ensureVisible(duration);
+      expect(find.text('30'), findsOneWidget);
+      await tester.enterText(duration, '2');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(sleep);
+      await tester.tap(sleep);
+      expect(sent.single, ['Sleep', 120]);
+
+      await tester.ensureVisible(unit);
+      await tester.tap(unit);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Seconds').last);
+      await tester.pumpAndSettle();
+      expect(tester.widget<ActionTile>(sleep).onPressed, isNull);
+      await tester.ensureVisible(duration);
+      await tester.enterText(duration, '3');
+      await tester.pumpAndSettle();
+      expect(tester.widget<ActionTile>(restart).onPressed, isNull);
+      await tester.ensureVisible(sleep);
+      await tester.tap(sleep);
+      expect(sent.last, ['Sleep', 3]);
+      expect(tester.takeException(), isNull);
     },
   );
   testWidgets(

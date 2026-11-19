@@ -2,6 +2,10 @@
 
 ## Current state
 
+Windows 0.10.0+16 applies the theme accent to enabled preference switches and adds confirmed zero-delay dispatch for Lock, Sleep, and Hibernate. Android 0.10.0+23 uses the active connection's badge color, supports timers in seconds or minutes, and hides due countdowns while offline. See [verification](verification.md) for delivery status.
+
+Windows 0.9.2+15 shows the connected phone name and its active connection on the dashboard. Bluetooth is blue, Wi-Fi is green, and Tailscale is purple. The card uses a neutral border for mixed connections. See [verification](verification.md) for delivery status.
+
 Android 0.9.5+22 starts system pairing from Bluetooth only and waits for it to finish before switching routes. Failed status clients are closed before the next reconnect attempt. Windows 0.9.1+14 recreates the Bluetooth listener after system resume when connections are enabled. See [Bluetooth setup](bluetooth.md) and [verification](verification.md) for test and delivery status.
 
 Installed Android 0.9.4+21 shows a steady Offline status, reports when a wake packet was sent, and preserves the parent settings screens when leaving the wake and address editors. The Wi-Fi wake sender supports an active split-tunnel VPN. Wake PC appears first in the Power action grid, which shows why wake is unavailable while connected or when settings are missing. Setup is in Settings for both automatic and manual profiles. Android learns local Wi-Fi settings from authenticated status on desktop 0.9.0+13. Saved manual settings take priority. See [setup](setup.md#android-wake-on-lan).
@@ -92,7 +96,7 @@ Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable o
 - Media targeting when several applications are playing.
 - Bluetooth uses Windows Classic RFCOMM server and Android secure RFCOMM client roles. Wider adapter/background behavior needs further testing.
 
-Implemented decisions: HTTPS with per-user self-signed certificates; revocable bearer credentials stored as hashes on the PC; local JSON preferences; explicit listen address; status polling every two seconds while visible; ten-second minimum shutdown/restart countdown, three-second minimum for other power actions; one pending timer with explicit cancellation before replacement. Timers are canceled on host-process exit and do not survive restart. [API details](api.md) and [setup](setup.md) document the behavior.
+Implemented decisions include HTTPS with per-user self-signed certificates, hashed revocable bearer credentials, local JSON preferences, explicit listen address, and two-second status polling while visible. Direct Android Lock, Sleep, and Hibernate can dispatch immediately. The PC owns one cancellable timer and requires explicit cancellation before replacement. Positive delays start at three seconds for Lock, Sleep, and Hibernate and ten seconds for Restart and Shut down. Host-process exit cancels pending work. [API details](api.md) and [setup](setup.md) document the behavior.
 
 Resolve each decision when needed and record the implemented choice in the relevant document. These are implementation choices, not reasons to block all independent work.
 

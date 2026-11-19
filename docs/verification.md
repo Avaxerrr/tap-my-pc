@@ -384,3 +384,15 @@ November 19, 2026 (Asia/Taipei).
 - With the desktop awake and connected, cycled Windows Bluetooth off and back on. The Windows listener opened on a new port, and Android discovered the RFCOMM channel and reconnected automatically using its saved pairing. The post-sleep failure had already cleared before this radio cycle.
 - In a later sleep/wake reproduction, Android retained the desktop bond and retried Bluetooth discovery about every six seconds. The Windows 0.9.1+14 listener had already reopened after resume, but discovery kept returning `SDP_CFG_FAILED`. Cycling the Windows Bluetooth radio during the failure restored service discovery and opened RFCOMM within seconds, with both TapMyPC processes still running. This isolates the failure to the Bluetooth connection before HTTPS authentication and establishes the radio cycle as a recovery for this reproduction.
 - Verified the Android package name and version 0.9.5+22 at artifacts/mobile/TapMyPC-0.9.5-build22.apk. The local debug signer differs from the installed app’s signer. Android canceled installation of a separate test package, so the usual app and its saved PC profiles remain on build 21. Physical verification of the Android changes remains pending.
+
+## Windows connection card 0.9.2+15
+
+- All 82 .NET tests passed. The isolated WPF smoke check verified the idle badge, the Bluetooth, Wi-Fi, and Tailscale badges, and a neutral border for mixed connections. It also checked that the host button follows the selected accent. Reviewed screenshots for each state.
+- Published and applied build 15 after the previous Windows host exited. Verified all 26 installed files against the staged publish and checked version metadata on the executable and API assembly. The live dashboard showed the POCO phone name under a blue Bluetooth badge.
+
+## Connection colors and power timing 0.10.0
+
+- Windows 0.10.0+16 passed all 86 .NET tests. The isolated WPF check verified the checked preference switch track and thumb under the Amber theme. The authenticated API tests used a simulated device to verify zero-delay acceptance and dispatch, continued confirmation requirements, and the ten-second minimum for restart and shutdown.
+- Published and applied Windows build 16 after the host exited. All 26 installed files matched the publish tree. The live UI showed both enabled preferences using the selected blue accent. No native power action was sent in verification.
+- Android 0.10.0+23 passed analysis and 72 Flutter tests, with one opt-in certificate fixture skipped. Verified transport labels and colors, seconds and minutes input, short timer validation, direct zero-delay actions, older-host fallback, and the due card hiding offline. The debug APK at artifacts/mobile/TapMyPC-0.10.0-build23.apk uses a different signing key from build 21.
+- With the user's approval, removed Android build 21 and installed build 23 under the standard package ID. ADB verified version 0.10.0, build 23 and a successful cold launch. The clean install starts at PC setup.

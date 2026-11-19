@@ -34,7 +34,27 @@ public class SchedulerTests
         Assert.Throws<ArgumentException>(() => scheduler.Schedule((PowerAction)999, 30));
         var item = scheduler.Schedule(PowerAction.Sleep, 10);
         Assert.Throws<InvalidOperationException>(() => scheduler.Schedule(PowerAction.Restart, 30));
+        Assert.Throws<InvalidOperationException>(() => scheduler.PrepareImmediate(PowerAction.Lock));
         Assert.Equal(item, scheduler.State.Pending);
+    }
+
+    [Theory]
+    [InlineData(PowerAction.Lock)]
+    [InlineData(PowerAction.Sleep)]
+    [InlineData(PowerAction.Hibernate)]
+    public void ImmediateRequestDispatchesOnceWithoutCreatingATimer(PowerAction action)
+    {
+        var device = new FakeDevice();
+        using var scheduler = new PowerScheduler(device, new FakeTimeProvider());
+        var (feedback, dispatch) = scheduler.PrepareImmediate(action);
+        Assert.Equal($"{action} requested.", feedback.Message);
+        Assert.Null(scheduler.State.Pending);
+        Assert.Empty(device.PowerActions);
+        Assert.Throws<InvalidOperationException>(() => scheduler.Schedule(PowerAction.Lock, 3));
+        dispatch();
+        dispatch();
+        Assert.Equal(action, Assert.Single(device.PowerActions));
+        Assert.Null(scheduler.State.Pending);
     }
 
     [Fact]

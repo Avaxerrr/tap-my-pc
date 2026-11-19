@@ -424,15 +424,22 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
 
   Future<void> power(String action, {int? delay}) async {
     final target = selected;
-    if (target == null) return;
-    final seconds =
-        delay ?? (['Shutdown', 'Restart'].contains(action) ? 10 : 3);
+    if (target == null || status == null || busy) return;
+    final destructive = action == 'Shutdown' || action == 'Restart';
+    final immediateSupported = status?['supportsImmediatePower'] == true;
+    final seconds = delay ?? (destructive ? 10 : (immediateSupported ? 0 : 3));
+    final label = action == 'Shutdown' ? 'Shut down' : action;
+    final description = seconds == 0
+        ? 'Runs immediately after you confirm.'
+        : 'Runs after $seconds seconds. You can cancel before it starts.';
     final accepted = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('$action ${target.name}?'),
+        title: Text('$label ${target.name}?'),
         content: Text(
-          'Runs after $seconds seconds. You can cancel before it starts. Unsaved work may block shutdown.',
+          destructive
+              ? '$description Unsaved work may block this action.'
+              : description,
         ),
         actions: [
           TextButton(
@@ -1081,6 +1088,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     power: power,
     onBluetooth: setBluetooth,
     usingBluetooth: api?.isBluetooth ?? false,
+    connectionTransport: api?.transportLabel,
     onVolumePreview: (value) =>
         setState(() => status!['audio']['volume'] = value.round()),
     onBrightnessPreview: (id, value) => setState(

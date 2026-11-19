@@ -1,12 +1,12 @@
 # TapMyPC Android client
 
-Android **0.9.5 (build 22)** waits for system pairing to finish when you choose **Bluetooth only**. It also closes failed connections before retrying status. See [verification](../docs/verification.md) for package and installation status.
+Android **0.10.0 (build 23)** colors its status badge by active connection and adds a seconds or minutes timer editor. With desktop 0.10.0 or newer, direct Lock, Sleep, and Hibernate run immediately after confirmation. See [verification](../docs/verification.md) for package and installation status.
 
-The current Android development build is **0.9.4 (build 21)**. Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
+Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 
 Open **Settings > Connection** to choose Automatic, Local network only, Tailscale only, or Bluetooth only. TapMyPC learns separate local and Tailscale addresses from authenticated status. Both address editors accept a bare IP and reuse the saved port. **Advanced** reveals the editable port and **Back** returns to Connection. See [Tailscale setup](../docs/tailscale.md) and [verification](../docs/verification.md).
 
-Configurable timer durations and iOS deployment are not implemented yet. Hardware monitoring is next. Laptop Wi-Fi wake investigation is closed for the current configuration. See [wake investigation](../docs/wake-investigation.md). Manual enrollment retains the browser protocol; QR uses the new single-use /api/v1/pair/qr endpoint.
+iOS deployment remains deferred. Hardware monitoring is next. Laptop Wi-Fi wake investigation is closed for the current configuration. See [wake investigation](../docs/wake-investigation.md). Manual enrollment retains the browser protocol. QR uses the single-use `/api/v1/pair/qr` endpoint.
 
 ## QR pairing
 
@@ -72,7 +72,7 @@ Native Android carries opaque TLS bytes over secure RFCOMM; the existing Dart cl
 
 - **Remote:** volume and mute, an audio-output sheet, media transport, and locally approved shortcuts.
 - **Devices:** all-screen off, individual monitor capabilities/brightness/power, and Bluetooth radio control with disconnect confirmation.
-- **Power:** named-PC confirmation for every power action and the existing 30-minute timers. Pending actions remain above bottom navigation, including a last-known countdown offline; cancellation is disabled until reconnected.
+- **Power:** named-PC confirmation for every power action and editable timer durations. Pending countdowns stay above bottom navigation. While offline, cancellation is disabled and the card hides when the countdown is due.
 - The selected PC and connection feedback remain visible. PC switching, activity, and settings use focused sheets. Successful/failed command feedback is retained while status polling continues, and no action is automatically retried. Optional device-list failures leave the verified connection and other controls usable; their specific warnings clear after a successful refresh. Failed lists retry on the existing ten-second polling cadence, and authentication rejection still requires pairing.
 - Settings offers the desktop's five accent palettes, saved independently of PC credentials, and transitions that automatically respect Android reduced motion; there is no separate animation setting. Static Inter fonts and their OFL are bundled; the launcher/splash use the TapMyPC mark and dark surfaces.
 - First connection uses one setup card with two pairing steps and a single Add your PC action. The initial app bar omits the version; Settings > About always shows it, and the dashboard header shows it once a PC is saved. Version/build is read from the installed Android package. PC serverVersion is shown separately. See [versioning](../docs/versioning.md).

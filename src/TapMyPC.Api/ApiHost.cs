@@ -108,7 +108,7 @@ public static class ApiHost
             AudioState? audio = null;
             try { if (capabilities.Audio) audio = device.ReadAudio(); } catch { capabilities = capabilities with { Audio = false }; }
             var bluetoothState = bluetooth is null ? new BluetoothStatus(false, false, BluetoothRadioState.Unavailable, "Bluetooth control is unavailable.") : await bluetooth.ReadAsync();
-            return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
+            return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, supportsImmediatePower = true, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
         });
         app.MapPut("/api/v1/audio/volume", (VolumeRequest request) =>
         {
@@ -151,9 +151,16 @@ public static class ApiHost
             if (monitors is null) throw new NotSupportedException("Monitor controls are unavailable.");
             return Results.Ok(new { accepted = true, feedback = await hardware.SetMonitorPowerAsync(monitors, request.Id ?? "", request.Enabled) });
         });
-        app.MapPost("/api/v1/power", (PowerRequest request) =>
+        app.MapPost("/api/v1/power", (PowerRequest request, HttpResponse response) =>
         {
             if (!request.Confirmed) throw new ArgumentException("Power actions require explicit confirmation.");
+            if (request.DelaySeconds == 0)
+            {
+                var (feedback, dispatch) = scheduler.PrepareImmediate(request.Action);
+                // Sleep and hibernate may drop the connection as soon as Windows accepts the request.
+                response.OnCompleted(() => { _ = Task.Run(dispatch); return Task.CompletedTask; });
+                return Results.Accepted(value: new { accepted = true, feedback });
+            }
             return Results.Accepted(value: scheduler.Schedule(request.Action, request.DelaySeconds));
         });
         app.MapDelete("/api/v1/power/{id:guid}", (Guid id) => scheduler.Cancel(id) ? Results.Ok(new { canceled = true }) : Results.NotFound(new { error = "Timer is no longer pending." }));

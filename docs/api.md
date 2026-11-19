@@ -25,7 +25,7 @@ Successful authenticated requests also refresh a transient desktop presence indi
 | POST | `/api/v1/media` | `{"action":"PlayPause"}` | 200 `{"accepted":true}` |
 | POST | `/api/v1/display/off` | None or `{}` | 200 `{"accepted":true}` |
 | PUT | `/api/v1/bluetooth` | {"enabled":true} | 200 accepted + feedback |
-| POST | `/api/v1/power` | `{"action":"Hibernate","delaySeconds":1800,"confirmed":true}` | 202 pending action object |
+| POST | `/api/v1/power` | `{"action":"Hibernate","delaySeconds":1800,"confirmed":true}` | 202 pending action object or immediate acceptance feedback |
 | DELETE | `/api/v1/power/{id}` | None | 200 `{"canceled":true}` or 404 |
 
 Media actions: `PlayPause`, `Previous`, `Next`.
@@ -51,17 +51,18 @@ Immediate audio/media/display responses also contain `feedback`. For example:
 
 `audio` is included for explicit volume/mute results after reading the endpoint. Native key/media/display responses use `Requested` rather than claiming the final effect was verified.
 
-Power actions: `Lock`, `Sleep`, `Hibernate`, `Shutdown`, `Restart`. Delay is an integer: 10–86400 seconds for shutdown/restart, 3–86400 seconds otherwise. Power requests require `confirmed:true`. Reject a second pending timer with 409 rather than replacing it. An accepted action is queued, not proof that a Windows power transition completed.
+Power actions are `Lock`, `Sleep`, `Hibernate`, `Shutdown`, and `Restart`. All require `confirmed:true`. On hosts advertising `supportsImmediatePower`, `delaySeconds: 0` accepts Lock, Sleep, and Hibernate for dispatch after the HTTP response. Positive delays are 3–86400 seconds for those actions and 10–86400 seconds for Shutdown and Restart. The server returns 409 while a timer or an immediate request is pending. Acceptance confirms that TapMyPC accepted the request. Windows execution failures are available in the scheduler state and activity history.
 
 Volume is an integer from 0 to 100. Missing required command properties, malformed JSON, invalid enum values, and numeric enum values are rejected. Device names must contain 1–60 characters after considering non-whitespace content.
 
 ### Status
 
-Status includes optional serverVersion (currently 0.3.1+4 for the desktop/server release), read from compiled API assembly metadata. Clients display it for comparison; it is informational, not an identity or protocol compatibility check.
+Status includes optional `serverVersion`, read from compiled API assembly metadata and displayed for comparison. A `supportsImmediatePower` value of `true` advertises support for zero-delay requests. Older hosts omit this field.
 
 ```json
 {
   "pcName": "MY-PC",
+  "supportsImmediatePower": true,
   "capabilities": {
     "audio": true,
     "media": true,
@@ -80,7 +81,7 @@ Status includes optional serverVersion (currently 0.3.1+4 for the desktop/server
 }
 ```
 
-`audio` is null if unavailable. `pending` is null when no action is queued. `lastError` records the latest scheduler execution failure and clears when another action is scheduled. Dates are ISO 8601 UTC; clients display local time or derive remaining duration using serverTime to avoid phone clock skew. Capability flags describe available adapters/power states; individual commands can still fail because of OS policy or the target app.
+`audio` is null if unavailable. `pending` describes the cancellable timer and is null when no timer is scheduled. `lastError` records the latest execution failure and clears when the host accepts another action. Dates are ISO 8601 UTC. Clients display local time or use `serverTime` to derive remaining duration. Capability flags describe available adapters and power states. Windows policy or the target app can still reject a command.
 
 `activity` contains up to 30 recent notices, newest first, with the same shape as `feedback` above. Phases are `Running`, `Succeeded`, `Requested`, `Scheduled`, `Canceled`, and `Failed`. Sequences increase within the host process and reset on restart. Activity is in memory, shared across clients, and contains no pairing secrets. `Scheduled` includes a dueAt timestamp. It is presentation feedback, not a durable audit log or proof that a power transition completed.
 
@@ -91,6 +92,8 @@ Status includes optional serverVersion (currently 0.3.1+4 for the desktop/server
 ```
 
 Use the returned ID for cancellation. An old timer ID cannot cancel a newer action. Cancellation is unavailable after dispatch starts. Closing the client does not cancel the action; exiting the Windows process does.
+
+Immediate requests return `{"accepted":true,"feedback":{...}}` with the regular action feedback fields and no timer ID.
 
 ## Audio outputs, approved shortcuts, and individual monitors
 

@@ -11,7 +11,7 @@ class RemoteDashboard extends StatefulWidget {
   final PcProfile? selected;
   final Map<String, dynamic>? status, pending;
   final String message, appVersion, discoveryMessage;
-  final String? feedback, serverTime;
+  final String? feedback, serverTime, connectionTransport;
   final bool busy, feedbackError;
   final bool usingBluetooth;
   final List<dynamic> outputs, monitors, shortcuts;
@@ -45,6 +45,7 @@ class RemoteDashboard extends StatefulWidget {
     required this.onForget,
     this.onRecover,
     this.usingBluetooth = false,
+    this.connectionTransport,
     this.onConnection,
     this.onWakeSettings,
     this.onWake,
@@ -439,7 +440,9 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                         : widget.busy
                                         ? 'Working'
                                         : 'Offline',
-                                    connected: connected,
+                                    transport: connected
+                                        ? widget.connectionTransport
+                                        : null,
                                   ),
                                 ],
                               ),
@@ -631,6 +634,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                     pending: widget.pending!,
                     serverTime: widget.serverTime,
                     pcName: widget.selected?.name ?? 'PC',
+                    connected: connected,
                     onCancel: !widget.busy && connected
                         ? () => widget.send(
                             '/power/${widget.pending!['id']}',
