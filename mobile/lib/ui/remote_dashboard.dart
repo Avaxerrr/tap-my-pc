@@ -19,10 +19,8 @@ class RemoteDashboard extends StatefulWidget {
   final String Function(PcProfile) profileStatus;
   final ValueChanged<PcProfile> onSelect;
   final Future<void> Function() onAdd, onForget, onRefresh;
-  final Future<void> Function()? onRecover,
-      onConnection,
-      onWakeSettings,
-      onWake;
+  final Future<bool> Function()? onConnection;
+  final Future<void> Function()? onRecover, onWakeSettings, onWake;
   final VoidCallback onHelp;
   final SendCommand send;
   final PowerCommand power;
@@ -188,19 +186,27 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
             const Divider(),
             Text('CONNECTIONS', style: Theme.of(context).textTheme.bodySmall),
             if (widget.selected != null && widget.onConnection != null)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.settings_input_antenna),
-                title: const Text('Connection'),
-                subtitle: Text(
-                  connectionModeLabel(widget.selected!.connectionMode),
+              StatefulBuilder(
+                builder: (context, refreshTile) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.settings_input_antenna),
+                  title: const Text('Connection'),
+                  subtitle: Text(
+                    connectionModeLabel(widget.selected!.connectionMode),
+                  ),
+                  onTap: widget.busy
+                      ? null
+                      : () async {
+                          final choseMode = await widget.onConnection!();
+                          if (!context.mounted) return;
+                          if (choseMode &&
+                              ModalRoute.of(context)?.isCurrent == true) {
+                            Navigator.pop(context);
+                          } else {
+                            refreshTile(() {});
+                          }
+                        },
                 ),
-                onTap: widget.busy
-                    ? null
-                    : () {
-                        Navigator.pop(context);
-                        widget.onConnection!();
-                      },
               ),
             if (widget.selected != null && widget.onWakeSettings != null)
               ListTile(
@@ -208,12 +214,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                 leading: const Icon(Icons.power_settings_new),
                 title: const Text('Wake-on-LAN'),
                 subtitle: Text(widget.selected!.name),
-                onTap: widget.busy
-                    ? null
-                    : () {
-                        Navigator.pop(context);
-                        widget.onWakeSettings!();
-                      },
+                onTap: widget.busy ? null : widget.onWakeSettings,
               ),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -467,12 +468,14 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 7),
-                              Text(
-                                widget.message,
-                                key: const Key('connection-status'),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
+                              if (widget.message.isNotEmpty) ...[
+                                const SizedBox(height: 7),
+                                Text(
+                                  widget.message,
+                                  key: const Key('connection-status'),
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -600,11 +603,10 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                   status: widget.status,
                                   busy: widget.busy,
                                   power: widget.power,
-                                  onWake:
+                                  wakeConfigured:
                                       widget.selected!.effectiveWakeOnLan !=
-                                          null
-                                      ? widget.onWake
-                                      : null,
+                                      null,
+                                  onWake: widget.onWake,
                                 ),
                               },
                             ),

@@ -2,7 +2,7 @@
 
 ## Current state
 
-Installed Android 0.9.1+18 puts Wake PC in the Power action grid and keeps setup in Settings for both automatic and manual profiles. Android learns local Wi-Fi settings from authenticated status on desktop 0.9.0+13. Saved manual settings take priority. See [setup](setup.md#android-wake-on-lan).
+Installed Android 0.9.4+21 shows a steady Offline status, reports when a wake packet was sent, and preserves the parent settings screens when leaving the wake and address editors. The Wi-Fi wake sender supports an active split-tunnel VPN. Wake PC appears first in the Power action grid, which shows why wake is unavailable while connected or when settings are missing. Setup is in Settings for both automatic and manual profiles. Android learns local Wi-Fi settings from authenticated status on desktop 0.9.0+13. Saved manual settings take priority. See [setup](setup.md#android-wake-on-lan).
 
 Unpacked desktop 0.8.0+12 and the previous Android build 0.8.0+14 add simultaneous local/Tailscale listeners, separate saved endpoints, authenticated address learning, four connection choices and IP-only manual setup with the port under Advanced. Pairing, pinned HTTPS and no-command-replay behavior are preserved. See [Tailscale setup](tailscale.md) and verification.md for checks and package status.
 

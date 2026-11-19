@@ -400,12 +400,14 @@ class PowerControls extends StatelessWidget {
   final Map<String, dynamic>? status;
   final bool busy;
   final PowerCommand power;
+  final bool wakeConfigured;
   final VoidCallback? onWake;
   const PowerControls({
     super.key,
     required this.status,
     required this.busy,
     required this.power,
+    required this.wakeConfigured,
     this.onWake,
   });
   bool supports(String action) =>
@@ -420,8 +422,8 @@ class PowerControls extends StatelessWidget {
     'Lock': Icons.lock_outline,
     'Sleep': Icons.bedtime_outlined,
     'Hibernate': Icons.nights_stay_outlined,
-    'Shutdown': Icons.power_settings_new,
     'Restart': Icons.restart_alt,
+    'Shutdown': Icons.power_settings_new,
   };
   @override
   Widget build(BuildContext context) => Column(
@@ -429,8 +431,20 @@ class PowerControls extends StatelessWidget {
     children: [
       SectionCard(
         title: 'Power',
+        subtitle: !wakeConfigured
+            ? 'Configure Wake-on-LAN in Settings.'
+            : status != null
+            ? 'Wake PC becomes available when this PC is offline.'
+            : null,
         child: ActionGrid(
           children: [
+            ActionTile(
+              label: 'Wake PC',
+              icon: Icons.wb_sunny_outlined,
+              onPressed: wakeConfigured && status == null && !busy
+                  ? onWake
+                  : null,
+            ),
             for (final action in icons.entries)
               ActionTile(
                 label: action.key == 'Shutdown' ? 'Shut down' : action.key,
@@ -440,11 +454,6 @@ class PowerControls extends StatelessWidget {
                     ? () => power(action.key)
                     : null,
               ),
-            ActionTile(
-              label: 'Wake PC',
-              icon: Icons.power_settings_new,
-              onPressed: status == null && !busy ? onWake : null,
-            ),
           ],
         ),
       ),

@@ -10,7 +10,7 @@ TapMyPC saves separate local and Tailscale addresses for each paired PC. All rou
 4. In Android Settings > Connection choose **Automatic**, or choose **Tailscale only** to use that route explicitly.
 5. If the phone has not learned the address, select **Tailscale address**, enter just the 100.x IPv4 address shown on the PC, and select **Verify and save**. The existing TapMyPC port is reused. Advanced allows changing the port only when it differs on the PC. Pasting the complete HTTPS IP link also works.
 
-Changing an address verifies exactly that endpoint before saving. It does not change the connection preference unless setup was opened by choosing Tailscale only. Failed verification leaves the old profile intact and shows feedback. Existing pairing is preserved.
+Both address editors return to Connection with **Back**. Expanding **Advanced** brings the TapMyPC port into view. Changing an address verifies exactly that endpoint before saving. It does not change the connection preference unless setup was opened by choosing Tailscale only. Failed verification leaves the old profile intact and shows feedback. Existing pairing is preserved.
 
 ## Connection choices
 

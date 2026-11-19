@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
+
 import '../connection.dart';
 
 class NetworkAddressEditor extends StatefulWidget {
   final PcProfile profile;
   final bool tailscale;
+  final Future<String?> Function(String endpoint) onSave;
+
   const NetworkAddressEditor({
     super.key,
     required this.profile,
     required this.tailscale,
+    required this.onSave,
   });
+
   @override
   State<NetworkAddressEditor> createState() => _NetworkAddressEditorState();
 }
 
 class _NetworkAddressEditorState extends State<NetworkAddressEditor> {
+  final portField = GlobalKey();
   late String address, port;
+  bool saving = false;
   String? error;
+
   @override
   void initState() {
     super.initState();
@@ -26,40 +34,74 @@ class _NetworkAddressEditorState extends State<NetworkAddressEditor> {
     port = Uri.parse(saved ?? widget.profile.address).port.toString();
   }
 
-  void save() {
+  Future<void> save() async {
+    if (saving) return;
+    final String endpoint;
     try {
-      final endpoint = configuredNetworkAddress(
+      endpoint = configuredNetworkAddress(
         address,
         widget.profile,
         tailscale: widget.tailscale,
         port: port,
       );
-      Navigator.pop(context, endpoint);
     } on FormatException catch (e) {
       setState(() => error = e.message);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    final failure = await widget.onSave(endpoint);
+    if (!mounted) return;
+    if (failure == null) {
+      Navigator.pop(context, true);
+    } else {
+      setState(() {
+        saving = false;
+        error = failure;
+      });
     }
   }
 
+  void revealPort(bool expanded) {
+    if (!expanded) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final field = portField.currentContext;
+      if (field == null) return;
+      Scrollable.ensureVisible(
+        field,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(
-      widget.tailscale ? 'Tailscale address' : 'Local network address',
-    ),
-    content: SizedBox(
-      width: 360,
-      child: SingleChildScrollView(
+  Widget build(BuildContext context) => PopScope(
+    canPop: !saving,
+    child: AlertDialog(
+      title: Text(
+        widget.tailscale ? 'Tailscale address' : 'Local network address',
+      ),
+      scrollable: true,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      content: SizedBox(
+        width: 360,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               widget.tailscale
-                  ? 'Turn on Tailscale on both devices and enable it in the PC app. Enter the PC’s 100.x IP.'
-                  : 'Usually discovered automatically. Enter the local IP shown on the PC if discovery cannot find it.',
+                  ? 'Enter the PC’s Tailscale IPv4 address.'
+                  : 'Enter the IPv4 address shown in the PC app.',
             ),
             const SizedBox(height: 16),
             TextFormField(
               initialValue: address,
+              enabled: !saving,
               keyboardType: TextInputType.url,
               autocorrect: false,
               enableSuggestions: false,
@@ -76,36 +118,55 @@ class _NetworkAddressEditorState extends State<NetworkAddressEditor> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             ExpansionTile(
+              expansionAnimationStyle: AnimationStyle.noAnimation,
+              onExpansionChanged: revealPort,
               tilePadding: EdgeInsets.zero,
               title: const Text('Advanced'),
               children: [
-                TextFormField(
-                  initialValue: port,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'TapMyPC port',
-                    helperText:
-                        'Change only if you changed the port on the PC.',
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: TextFormField(
+                    key: portField,
+                    initialValue: port,
+                    enabled: !saving,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'TapMyPC port',
+                      helperText: 'Use the port shown on the PC.',
+                      helperMaxLines: 2,
+                    ),
+                    onChanged: (value) => port = value,
+                    onFieldSubmitted: (_) => save(),
                   ),
-                  onChanged: (value) => port = value,
                 ),
               ],
             ),
             if (error != null)
-              Text(
-                error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
               ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: saving ? null : () => Navigator.pop(context),
+          child: const Text('Back'),
+        ),
+        FilledButton(
+          onPressed: saving ? null : save,
+          child: Text(saving ? 'Verifying…' : 'Verify and save'),
+        ),
+      ],
     ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      FilledButton(onPressed: save, child: const Text('Verify and save')),
-    ],
   );
 }

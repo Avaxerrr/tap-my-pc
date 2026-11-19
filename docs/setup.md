@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Installed Android **0.9.1, build 18** places Wake PC with the other Power actions. Each selected PC has its own **Settings > Wake-on-LAN** entry and can learn wake settings from desktop **0.9.0, build 13**. The Windows update is staged in `artifacts/publish/TapMyPC-next` and available as a complete `TapMyPC-0.9.0-build13-win-x64.zip` in the publish directory. The phone supports manual settings with earlier desktop builds.
+Installed Android **0.9.4, build 21** adds clearer offline and wake feedback and Back navigation in the wake and address editors. Each selected PC has its own **Settings > Wake-on-LAN** entry and can learn wake settings from desktop **0.9.0, build 13**. The Windows update is staged in `artifacts/publish/TapMyPC-next` and available as a complete `TapMyPC-0.9.0-build13-win-x64.zip` in the publish directory. The phone supports manual settings with earlier desktop builds.
 
 Versions before Wake-on-LAN: desktop/server **0.8.0, build 12** is unpacked at artifacts/publish/TapMyPC; Android **0.8.0, build 14** was previously installed on the phone. Both add independent LAN/Tailscale access and four phone connection choices. See [Tailscale setup](tailscale.md) and verification.md for delivery status. Previous versions: desktop/server **0.7.0, build 11** is applied at artifacts/publish/TapMyPC, and Android **0.7.0, build 13** is installed on the connected phone. These add optional [Tailscale remote access](tailscale.md). Build/staging status is recorded in verification.md. Previously installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
 
@@ -83,7 +83,7 @@ Hardware monitoring is next. The monitoring bridge preserves the standalone coll
 3. Connect the phone to the PC’s local Wi-Fi, then put the PC to sleep. Wait for TapMyPC to show **Offline**, then open **Power** and tap **Wake PC**.
 4. Confirm that the PC resumes and TapMyPC reconnects. Repeat from hibernate.
 
-Wake PC is enabled when the selected PC is offline and has usable settings. The wake button sends one UDP magic packet per tap. TapMyPC shows packet feedback immediately and reports the PC back online after an authenticated status response. The PC needs working network wake settings. The development laptop's Wi-Fi wake investigation is closed for its current configuration. See [wake investigation](wake-investigation.md).
+Wake PC is enabled when the selected PC is offline and has usable settings. The Power screen explains when the PC is still connected or needs wake settings. The wake button sends one UDP magic packet per tap. With a VPN active, the phone uses Android’s normal routing for destinations on the connected Wi-Fi subnet that the VPN leaves on the LAN. Once a connection attempt fails, the app shows **Offline**. After sending a packet it shows **Wake packet sent. Waiting for PC…** and reports the PC back online after an authenticated status response. The PC needs working network wake settings. The development laptop's Wi-Fi wake investigation is closed for its current configuration. See [wake investigation](wake-investigation.md).
 
 ## HTTPS identity and certificates
 

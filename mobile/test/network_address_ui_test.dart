@@ -82,6 +82,15 @@ void main() {
       await tester.ensureVisible(find.text('Connection'));
       await tester.tap(find.text('Connection'));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Local network address'));
+      await tester.tap(find.text('Local network address'));
+      await tester.pumpAndSettle();
+      expect(find.text('Local IP'), findsOneWidget);
+      await tester.tap(find.text('Back').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Connection for Saved PC'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+
       await tester.ensureVisible(find.text('Tailscale address'));
       await tester.tap(find.text('Tailscale address'));
       await tester.pumpAndSettle();
@@ -108,14 +117,26 @@ void main() {
       );
       expect(calls.every((c) => c.startsWith('GET ')), true);
       if (reject) {
-        expect(find.textContaining('Address was not saved.'), findsWidgets);
+        expect(find.textContaining('Address was not saved.'), findsOneWidget);
+        expect(find.text(newAddress), findsOneWidget);
+        await tester.tap(find.text('Back').last);
+        await tester.pumpAndSettle();
       } else {
         expect(saved.connectionMode, 'auto');
-        expect(
-          find.textContaining('Connected to Saved PC · Local network'),
-          findsOneWidget,
-        );
+        expect(find.text('Address saved.'), findsOneWidget);
+        expect(find.text('100.80.90.100'), findsOneWidget);
       }
+      expect(find.text('Connection for Saved PC'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+      await tester.tap(find.text('Back').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Accent color'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Connected to Saved PC · Local network'),
+        findsOneWidget,
+      );
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pump();
     });

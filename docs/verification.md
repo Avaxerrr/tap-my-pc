@@ -348,3 +348,25 @@ November 19, 2026 (Asia/Taipei).
 - Compared both saved profiles on build 17. The newer host populated the editor and suppressed the extra setup shortcut in Power. The 0.8.0 host needed manual values and showed that shortcut. Settings > Wake-on-LAN opened for both.
 - Verified Android package 0.9.1+18 after an in-place update. Inspected the final Power grid on the phone and opened the editor from Settings for both hosts. Both showed Wake PC in Power with no setup shortcut. The detected laptop settings and the manual editor for the older PC remained available. The phone displayed no Wolow wording.
 - Flutter analysis reported no issues. The suite passed 61 tests and skipped the certificate fixture test. The wake regression verifies that Wake PC shares the Power action grid, settings remain reachable, and a saved profile sends the expected packet while offline.
+
+## Android Power layout 0.9.2+19
+
+November 19, 2026 (Asia/Taipei).
+
+- Flutter analysis reported no issues. The suite passed 61 tests and skipped the certificate fixture test. The wake regression asserts the Power button order and the guidance shown for online and unconfigured PCs.
+- Verified the APK and installed Android version 0.9.2, build 19 in place. Inspected the Power screen on the phone and confirmed the three button rows and the offline guidance while the selected PC was connected.
+
+## Android Wake-on-LAN with a split-tunnel VPN 0.9.3+20
+
+November 19, 2026 (Asia/Taipei).
+
+- Compared the selected desktop profile on the phone with the working Wolow profile. The adapter MAC and broadcast destination matched. TapMyPC displayed a wake send failure after the reported sleep attempt. Android showed that the active Tailscale VPN included TapMyPC, disallowed explicit bypass, and advertised no route for the wake subnet. The pre-fix sender explicitly bound to the physical Wi-Fi network.
+- Android now validates the Wi-Fi destination and uses system routing when the VPN leaves that destination on the LAN. Flutter analysis reported no issues and 61 tests passed, with the certificate fixture test skipped. Android built successfully, and ADB verified the in-place installation of 0.9.3 (build 20).
+- A physical wake retest with build 20 is pending.
+
+## Android offline feedback and settings navigation 0.9.4+21
+
+November 19, 2026 (Asia/Taipei).
+
+- Flutter analysis was clean. The suite passed 62 tests and skipped the certificate fixture test. Widget tests covered stable Offline status across retries, separate wake send and reconnect feedback, parent navigation, and exposing the Advanced port in both editors at large text size with keyboard insets. A failed address verification kept the entered draft and left the saved profile intact.
+- Built and verified Android 0.9.4, build 21 and installed it in place on the connected phone. On the phone, Wake-on-LAN returned to Settings, both address editors returned to Connection, and Connection returned to Settings. The port field and both editor actions were visible with the keyboard open in both address editors.

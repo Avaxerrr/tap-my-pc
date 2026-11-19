@@ -118,7 +118,7 @@ class _WakeOnLanEditorState extends State<WakeOnLanEditor> {
           ),
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text('Back'),
         ),
         FilledButton(onPressed: save, child: const Text('Save')),
       ],

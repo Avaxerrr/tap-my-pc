@@ -222,10 +222,12 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         } catch (error) {
           if (!mounted || generation != epoch) return;
           if (error is PcApiException && error.statusCode == 401) rethrow;
-          setState(() {
-            status = null;
-            message = 'Reconnecting to ${current.name}…';
-          });
+          if (status != null) {
+            setState(() {
+              status = null;
+              message = 'Reconnecting to ${current.name}…';
+            });
+          }
           recovered = await connectSelectedPc(
             current,
             hints,
@@ -326,7 +328,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
             pairingRequired.add(selected!.pin);
             message = 'Pairing required. Scan a new QR on ${selected!.name}.';
           } else {
-            message = 'Connection unavailable. ${friendly(error)}';
+            message = error is SocketException || error is TimeoutException
+                ? ''
+                : friendly(error);
           }
         });
       }
@@ -559,7 +563,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       setState(() {
         awaitingWake = status == null;
         feedback = awaitingWake
-            ? 'Wake packet sent to ${target.name}. Checking for reconnection…'
+            ? 'Wake packet sent. Waiting for PC…'
             : '${target.name} is online.';
         feedbackError = false;
       });
@@ -579,137 +583,167 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> connectionSettings() async {
+  Future<bool> connectionSettings() async {
     final target = selected;
-    if (target == null || busy) return;
-    if (editingConnection) return;
+    if (target == null || busy || editingConnection) return false;
     editingConnection = true;
     epoch++;
     try {
+      var addressSaved = false;
       final mode = await showDialog<String>(
         context: context,
-        builder: (dialog) => AlertDialog(
-          title: Text('Connection for ${target.name}'),
-          content: SizedBox(
-            width: 360,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Current: ${status == null ? 'Disconnected' : api?.transportLabel ?? 'Disconnected'}',
+        builder: (dialog) => StatefulBuilder(
+          builder: (context, refreshDialog) {
+            final current = selected ?? target;
+            Future<void> editAddress({
+              required bool tailscale,
+              String? modeAfterSave,
+            }) async {
+              final saved = await showDialog<bool>(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => NetworkAddressEditor(
+                  profile: current,
+                  tailscale: tailscale,
+                  onSave: (endpoint) => saveNetworkAddress(
+                    current,
+                    endpoint,
+                    modeAfterSave: modeAfterSave,
                   ),
-                  const SizedBox(height: 12),
-                  for (final choice in const [
-                    (
-                      'auto',
-                      'Automatic',
-                      'Local network → Tailscale → Bluetooth. No commands are resent.',
-                    ),
-                    (
-                      'local',
-                      'Local network only',
-                      'Stay on your home or office network.',
-                    ),
-                    (
-                      'tailscale',
-                      'Tailscale only',
-                      'Stay on Tailscale; no local or Bluetooth fallback.',
-                    ),
-                    (
-                      'bluetooth',
-                      'Bluetooth only',
-                      'Use Bluetooth without the local network.',
-                    ),
-                  ])
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(choice.$2),
-                      subtitle: Text(choice.$3),
-                      trailing: target.connectionMode == choice.$1
-                          ? const Icon(Icons.check)
-                          : null,
-                      onTap: () => Navigator.pop(dialog, choice.$1),
-                    ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Local network address'),
-                    subtitle: Text(
-                      target.localEndpoint == null
-                          ? 'Discovered automatically when nearby'
-                          : endpointHost(target.localEndpoint!),
-                    ),
-                    trailing: const Icon(Icons.edit_outlined),
-                    onTap: () => Navigator.pop(dialog, 'local-address'),
+                ),
+              );
+              if (context.mounted && saved == true) {
+                refreshDialog(() => addressSaved = true);
+              }
+            }
+
+            return AlertDialog(
+              title: Text('Connection for ${current.name}'),
+              content: SizedBox(
+                width: 360,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'Current: ${status == null ? 'Disconnected' : api?.transportLabel ?? 'Disconnected'}',
+                      ),
+                      if (addressSaved) const Text('Address saved.'),
+                      const SizedBox(height: 12),
+                      for (final choice in const [
+                        (
+                          'auto',
+                          'Automatic',
+                          'Local network → Tailscale → Bluetooth. No commands are resent.',
+                        ),
+                        (
+                          'local',
+                          'Local network only',
+                          'Stay on your home or office network.',
+                        ),
+                        (
+                          'tailscale',
+                          'Tailscale only',
+                          'Stay on Tailscale; no local or Bluetooth fallback.',
+                        ),
+                        (
+                          'bluetooth',
+                          'Bluetooth only',
+                          'Use Bluetooth without the local network.',
+                        ),
+                      ])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(choice.$2),
+                          subtitle: Text(choice.$3),
+                          trailing: current.connectionMode == choice.$1
+                              ? const Icon(Icons.check)
+                              : null,
+                          onTap: () {
+                            if (choice.$1 == 'tailscale' &&
+                                current.tailscaleEndpoint == null) {
+                              editAddress(
+                                tailscale: true,
+                                modeAfterSave: 'tailscale',
+                              );
+                            } else {
+                              Navigator.pop(dialog, choice.$1);
+                            }
+                          },
+                        ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Local network address'),
+                        subtitle: Text(
+                          current.localEndpoint == null
+                              ? 'Discovered automatically when nearby'
+                              : endpointHost(current.localEndpoint!),
+                        ),
+                        trailing: const Icon(Icons.edit_outlined),
+                        onTap: () => editAddress(tailscale: false),
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Tailscale address'),
+                        subtitle: Text(
+                          current.tailscaleEndpoint == null
+                              ? 'Set up remote access'
+                              : endpointHost(current.tailscaleEndpoint!),
+                        ),
+                        trailing: const Icon(Icons.edit_outlined),
+                        onTap: () => editAddress(tailscale: true),
+                      ),
+                      if (current.bluetoothAddress == null)
+                        const Text(
+                          'Connect over a network once to save this PC’s Bluetooth connection.',
+                        ),
+                      TextButton(
+                        onPressed: () async {
+                          try {
+                            if (await PhoneBluetooth.requestAccess()) {
+                              await PhoneBluetooth.openSettings();
+                            }
+                          } catch (error) {
+                            if (mounted) {
+                              setState(() => message = friendly(error));
+                            }
+                          }
+                        },
+                        child: const Text('Phone Bluetooth settings'),
+                      ),
+                    ],
                   ),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Tailscale address'),
-                    subtitle: Text(
-                      target.tailscaleEndpoint == null
-                          ? 'Set up remote access'
-                          : endpointHost(target.tailscaleEndpoint!),
-                    ),
-                    trailing: const Icon(Icons.edit_outlined),
-                    onTap: () => Navigator.pop(dialog, 'tailscale-address'),
-                  ),
-                  if (target.bluetoothAddress == null)
-                    const Text(
-                      'Connect over a network once to save this PC’s Bluetooth connection.',
-                    ),
-                  TextButton(
-                    onPressed: () async {
-                      try {
-                        if (await PhoneBluetooth.requestAccess()) {
-                          await PhoneBluetooth.openSettings();
-                        }
-                      } catch (error) {
-                        if (mounted) setState(() => message = friendly(error));
-                      }
-                    },
-                    child: const Text('Phone Bluetooth settings'),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialog),
-              child: const Text('Cancel'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialog),
+                  child: const Text('Back'),
+                ),
+              ],
+            );
+          },
         ),
       );
-      if (!mounted || mode == null || selected?.pin != target.pin || busy) {
-        return;
+      final current = selected;
+      if (!mounted ||
+          mode == null ||
+          current == null ||
+          current.pin != target.pin ||
+          busy) {
+        return false;
       }
-      if (mode == 'local-address' || mode == 'tailscale-address') {
-        await changeNetworkAddress(
-          target,
-          tailscale: mode == 'tailscale-address',
-        );
-        return;
-      }
-      if (mode == 'tailscale' && target.tailscaleEndpoint == null) {
-        await changeNetworkAddress(
-          target,
-          tailscale: true,
-          modeAfterSave: 'tailscale',
-        );
-        return;
-      }
-      if (mode == 'bluetooth' && target.bluetoothAddress == null) {
+      if (mode == 'bluetooth' && current.bluetoothAddress == null) {
         setState(
           () => message =
               'Connect to this PC over a network once before selecting Bluetooth.',
         );
-        return;
+        return true;
       }
       try {
         if (mode == 'bluetooth' &&
-            target.bluetoothAddress != null &&
+            current.bluetoothAddress != null &&
             !await PhoneBluetooth.requestAccess()) {
           if (mounted) {
             setState(
@@ -717,49 +751,44 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                   'Nearby devices permission is needed for Bluetooth.',
             );
           }
-          return;
+          return true;
         }
-        if (!mounted || selected?.pin != target.pin) return;
-        final updated = target.withConnectionMode(mode);
+        if (!mounted || selected?.pin != target.pin) return false;
+        final updated = current.withConnectionMode(mode);
         final saved = profiles
             .map((p) => p.pin == target.pin ? updated : p)
             .toList();
         await store.save(saved);
-        if (!mounted || selected?.pin != target.pin) return;
+        if (!mounted || selected?.pin != target.pin) return false;
         setState(() => profiles = saved);
         select(updated);
       } catch (error) {
         if (mounted) setState(() => message = friendly(error));
       }
+      return true;
     } finally {
       editingConnection = false;
       if (mounted) refresh(devices: true);
     }
   }
 
-  Future<void> changeNetworkAddress(
-    PcProfile target, {
-    required bool tailscale,
+  Future<String?> saveNetworkAddress(
+    PcProfile target,
+    String endpoint, {
     String? modeAfterSave,
   }) async {
-    final endpoint = await showDialog<String>(
-      context: context,
-      builder: (_) =>
-          NetworkAddressEditor(profile: target, tailscale: tailscale),
-    );
-    if (!mounted || endpoint == null || selected?.pin != target.pin) return;
+    if (!mounted || selected?.pin != target.pin) {
+      return 'Select this PC again before saving its address.';
+    }
     final generation = epoch;
     VerifiedPcConnection? verified;
-    setState(() {
-      busy = true;
-      message = 'Verifying ${target.name} at the new address…';
-    });
+    setState(() => busy = true);
     try {
       // Verify exactly the edited route; no fallback can validate a different address.
       verified = await reconnectPc(target.atAddress(endpoint), [
         endpoint,
       ], createApi: widget.createApi);
-      if (!mounted || generation != epoch) return;
+      if (!mounted || generation != epoch) return 'The selected PC changed.';
       final updated = verified.profile
           .withNetworkHints(verified.status['networkConnection'])
           .withAutomaticWakeHint(verified.status['networkConnection'])
@@ -768,17 +797,12 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           .map((p) => p.pin == target.pin ? updated : p)
           .toList();
       await store.save(saved);
-      if (!mounted || generation != epoch) return;
+      if (!mounted || generation != epoch) return 'The selected PC changed.';
       setState(() => profiles = saved);
       select(updated);
+      return null;
     } catch (error) {
-      if (mounted && generation == epoch) {
-        setState(() {
-          message = 'Address was not saved. ${friendly(error)}';
-          feedback = message;
-          feedbackError = true;
-        });
-      }
+      return 'Address was not saved. ${friendly(error)}';
     } finally {
       verified?.api.close();
       if (mounted) setState(() => busy = false);

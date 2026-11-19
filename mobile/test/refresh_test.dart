@@ -109,14 +109,20 @@ void main() {
       await tester.ensureVisible(find.text('Connection'));
       await tester.tap(find.text('Connection'));
       await tester.pumpAndSettle();
-      expect(find.text('Automatic'), findsOneWidget);
+      expect(find.text('Automatic').hitTestable(), findsOneWidget);
       expect(find.text('Bluetooth only'), findsOneWidget);
       final before = api.calls.length;
       await tester.pump(const Duration(seconds: 12));
       expect(api.calls.length, before);
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.text('Back'));
       await tester.pumpAndSettle();
-      expect(find.text('Connected to Test desktop · Local network'), findsOneWidget);
+      expect(find.text('Accent color'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Connected to Test desktop · Local network'),
+        findsOneWidget,
+      );
       expect(api.calls.length, greaterThan(before));
       final saved = await const ProfileStore().load();
       expect(saved.single.token, profile.token);
@@ -136,7 +142,10 @@ void main() {
             'Windows could not complete this command.',
           );
         await render(tester, api);
-        expect(find.text('Connected to Test desktop · Local network'), findsOneWidget);
+        expect(
+          find.text('Connected to Test desktop · Local network'),
+          findsOneWidget,
+        );
         expect(find.text('Offline'), findsNothing);
         expect(
           tester
@@ -231,9 +240,14 @@ void main() {
       matching: find.byType(ActionGrid),
     );
     expect(
-      find.descendant(of: powerGrid, matching: find.text('Wake PC')),
-      findsOneWidget,
+      tester
+          .widget<ActionGrid>(powerGrid)
+          .children
+          .cast<ActionTile>()
+          .map((tile) => tile.label),
+      ['Wake PC', 'Lock', 'Sleep', 'Hibernate', 'Restart', 'Shut down'],
     );
+    expect(find.text('Configure Wake-on-LAN in Settings.'), findsOneWidget);
     expect(
       tester
           .widget<OutlinedButton>(
@@ -245,6 +259,11 @@ void main() {
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.widgetWithText(ListTile, 'Wake-on-LAN'));
+    await tester.tap(find.widgetWithText(ListTile, 'Wake-on-LAN'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Accent color'), findsOneWidget);
     await tester.tap(find.widgetWithText(ListTile, 'Wake-on-LAN'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Save'));
@@ -266,13 +285,12 @@ void main() {
       saved.atAddress('https://192.168.0.15:45831').wakeOnLan?.mac,
       '02:12:34:56:78:9A',
     );
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Wake PC'));
     await tester.pumpAndSettle();
     expect(find.text('Offline'), findsOneWidget);
-    expect(
-      find.textContaining('Wake packet sent to Test desktop'),
-      findsOneWidget,
-    );
+    expect(find.text('Wake packet sent. Waiting for PC…'), findsOneWidget);
     expect(messages.single.method, 'send');
     expect(messages.single.arguments, {
       'destination': '192.168.0.255',
@@ -302,6 +320,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Test desktop is back online.'), findsOneWidget);
     expect(
+      find.text('Wake PC becomes available when this PC is offline.'),
+      findsOneWidget,
+    );
+    expect(
       tester
           .widget<OutlinedButton>(
             find.widgetWithText(OutlinedButton, 'Wake PC'),
@@ -325,9 +347,7 @@ void main() {
     final automatic = (await const ProfileStore().load()).single;
     expect(automatic.wakeOnLan, isNull);
     expect(automatic.effectiveWakeOnLan?.destination, '192.168.0.191');
-
-    await tester.tap(find.byTooltip('Settings'));
-    await tester.pumpAndSettle();
+    expect(find.text('Accent color'), findsOneWidget);
     await tester.ensureVisible(find.widgetWithText(ListTile, 'Wake-on-LAN'));
     await tester.tap(find.widgetWithText(ListTile, 'Wake-on-LAN'));
     await tester.pumpAndSettle();
@@ -336,8 +356,19 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('192.168.0.191'), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
+    expect(find.text('Accent color'), findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    api.failures['/status'] = const SocketException('PC cannot be reached.');
+    for (var poll = 0; poll < 2; poll++) {
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(find.text('Offline'), findsOneWidget);
+      expect(find.byKey(const Key('connection-status')), findsNothing);
+    }
     await dispose(tester);
   });
 
@@ -371,7 +402,10 @@ void main() {
       api.failures.clear();
       await tester.pump(const Duration(seconds: 10));
       await tester.pumpAndSettle();
-      expect(find.text('Connected to Test desktop · Local network'), findsOneWidget);
+      expect(
+        find.text('Connected to Test desktop · Local network'),
+        findsOneWidget,
+      );
       expect(find.text('Test monitor'), findsOneWidget);
       expect(find.textContaining('could not be loaded'), findsNothing);
       expect(api.calls.where((c) => !c.startsWith('GET ')), isEmpty);
