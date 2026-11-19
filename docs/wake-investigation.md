@@ -4,7 +4,7 @@
 
 Investigation closed for the current laptop configuration on November 18, 2026. Treat Wi-Fi wake as unavailable on this laptop: independent diagnostic packets and the user's Wolow test did not wake it. This is a practical compatibility decision, not proof that every MT7921 or every possible firmware/driver combination is incapable.
 
-**TapMyPC remote wake is not implemented.** Hardware monitoring through the [PC Stats Tray bridge](monitoring-integration.md) is the next implementation. Future wake development can target the user's desktop, which the user reports successfully wakes over Wi-Fi from sleep and hibernate after enabling PCIe resume in its BIOS. That desktop result is user-reported, not an agent-run TapMyPC end-to-end test.
+TapMyPC Android provides a [local Wi-Fi wake sender](setup.md#android-wake-on-lan). The user's desktop wakes with Wolow over Wi-Fi from sleep and hibernate after enabling PCIe resume in its BIOS. TapMyPC sleep and hibernate tests on that desktop are pending.
 
 ## Laptop and documented support
 
@@ -51,7 +51,7 @@ Diagnostic scripts, packet results and traces are under ignored artifacts/wake-t
 
 - Laptop Ethernet wake remains untested. Cabling to the router in another room is not practical for the user; Ethernet is not a prerequisite for moving to monitoring.
 - Laptop hibernate, shutdown, battery and Bluetooth wake remain untested. Awake connectivity does not demonstrate wake support.
-- A future wake sender must run on the phone or another awake device; the sleeping TapMyPC command listener cannot process a request.
+- The Android sender runs on the phone independently of the PC's power state.
 - No app source, installed package, credentials, driver, firmware, BIOS setting, permanent firewall setting, network category or clock was changed by this investigation. The temporary receive-probe firewall rule was removed.
 - The user-enabled Wi-Fi wake authorization remains armed. To restore its original state, run Administrator PowerShell:
 

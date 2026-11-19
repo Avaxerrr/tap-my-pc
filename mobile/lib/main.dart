@@ -11,6 +11,8 @@ import 'discovery.dart';
 import 'ui/app_theme.dart';
 import 'ui/remote_dashboard.dart';
 import 'ui/network_address_editor.dart';
+import 'ui/wake_on_lan_editor.dart';
+import 'wake_on_lan.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +82,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   String message = 'Add your first PC to get started.';
   bool busy = false, refreshing = false, foreground = true;
   bool editingConnection = false;
+  bool awaitingWake = false;
   String appVersion = '';
   String? feedback, lastServerTime;
   bool feedbackError = false;
@@ -170,6 +173,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       status = null;
       pendingSnapshot = null;
       lastServerTime = null;
+      awaitingWake = false;
       feedback = null;
       feedbackError = false;
       deviceErrors = {};
@@ -259,13 +263,22 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           (bluetoothInfo['address'] as String).toUpperCase(),
         );
       }
-      await rememberVerifiedProfile(verified, generation);
+      await rememberVerifiedProfile(
+        verified,
+        generation,
+        network: next['networkConnection'],
+      );
       if (!mounted || generation != epoch) return;
       final loadDevices = devices || status == null;
       // A verified status response establishes connectivity. Optional device
       // lists must not turn a reachable PC into an offline one.
       setState(() {
         status = next;
+        if (awaitingWake) {
+          awaitingWake = false;
+          feedback = '${selected!.name} is back online.';
+          feedbackError = false;
+        }
         final pending = next['scheduler']?['pending'];
         pendingSnapshot = pending == null
             ? null
@@ -435,21 +448,28 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
 
   Future<void> rememberVerifiedProfile(
     PcProfile updated,
-    int generation,
-  ) async {
+    int generation, {
+    Object? network,
+  }) async {
     if (!mounted || generation != epoch || editingConnection) return;
     final original = profiles.where((p) => p.pin == updated.pin).firstOrNull;
-    if (original == null ||
-        original.token != updated.token ||
-        (original.keyPin == updated.keyPin &&
-            original.address == updated.address &&
-            original.localEndpoint == updated.localEndpoint &&
-            original.tailscaleEndpoint == updated.tailscaleEndpoint &&
-            original.bluetoothAddress == updated.bluetoothAddress &&
-            original.connectionMode == updated.connectionMode &&
-            !unsavedProfiles.contains(updated.pin))) {
+    if (original == null || original.token != updated.token) return;
+    final automatic = original
+        .withAutomaticWakeHint(network)
+        .automaticWakeOnLan;
+    if ((original.keyPin == updated.keyPin &&
+        original.address == updated.address &&
+        original.localEndpoint == updated.localEndpoint &&
+        original.tailscaleEndpoint == updated.tailscaleEndpoint &&
+        original.bluetoothAddress == updated.bluetoothAddress &&
+        original.connectionMode == updated.connectionMode &&
+        original.automaticWakeOnLan == automatic &&
+        !unsavedProfiles.contains(updated.pin))) {
       return;
     }
+    updated = updated
+        .withWakeOnLan(original.wakeOnLan)
+        .copy(automaticWakeOnLan: automatic);
     setState(() {
       profiles = profiles
           .map((p) => p.pin == updated.pin ? updated : p)
@@ -466,6 +486,95 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           () => message =
               'Connected, but the renewed identity could not be saved securely. Try connecting again.',
         );
+      }
+    }
+  }
+
+  Future<void> wakeSettings() async {
+    final target = selected;
+    if (target == null || busy || editingConnection) return;
+    editingConnection = true;
+    var saving = false;
+    try {
+      final edited = await showDialog<({WakeOnLanSettings? settings})>(
+        context: context,
+        builder: (_) => WakeOnLanEditor(profile: target),
+      );
+      if (!mounted || edited == null || selected?.pin != target.pin) return;
+      final updated = selected!.withWakeOnLan(edited.settings);
+      final saved = profiles
+          .map((p) => p.pin == target.pin ? updated : p)
+          .toList();
+      saving = true;
+      setState(() => busy = true);
+      await store.save(saved);
+      if (!mounted) return;
+      setState(() {
+        profiles = saved;
+        selected = updated;
+        awaitingWake = false;
+        feedback = updated.wakeOnLan == null
+            ? updated.automaticWakeOnLan == null
+                  ? 'Wake-on-LAN settings removed.'
+                  : 'Using automatic wake settings for ${target.name}.'
+            : 'Wake-on-LAN settings saved for ${target.name}.';
+        feedbackError = false;
+      });
+    } catch (_) {
+      if (mounted && selected?.pin == target.pin) {
+        setState(() {
+          feedback = 'Could not save Wake-on-LAN settings.';
+          feedbackError = true;
+        });
+      }
+    } finally {
+      editingConnection = false;
+      if (mounted) {
+        if (saving) setState(() => busy = false);
+        unawaited(refresh());
+      }
+    }
+  }
+
+  Future<void> wakeSelected() async {
+    final target = selected;
+    final settings = target?.effectiveWakeOnLan;
+    if (target == null ||
+        settings == null ||
+        status != null ||
+        busy ||
+        editingConnection ||
+        !foreground ||
+        pairingRequired.contains(target.pin)) {
+      return;
+    }
+    final generation = epoch;
+    setState(() {
+      busy = true;
+      awaitingWake = false;
+    });
+    try {
+      await settings.send();
+      if (!mounted || generation != epoch) return;
+      setState(() {
+        awaitingWake = status == null;
+        feedback = awaitingWake
+            ? 'Wake packet sent to ${target.name}. Checking for reconnection…'
+            : '${target.name} is online.';
+        feedbackError = false;
+      });
+    } catch (error) {
+      if (!mounted || generation != epoch) return;
+      setState(() {
+        feedback = error is PlatformException
+            ? error.message ?? 'Could not send the wake packet.'
+            : 'Could not send the wake packet.';
+        feedbackError = true;
+      });
+    } finally {
+      if (mounted && generation == epoch) {
+        setState(() => busy = false);
+        unawaited(refresh());
       }
     }
   }
@@ -653,6 +762,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       if (!mounted || generation != epoch) return;
       final updated = verified.profile
           .withNetworkHints(verified.status['networkConnection'])
+          .withAutomaticWakeHint(verified.status['networkConnection'])
           .withConnectionMode(modeAfterSave ?? target.connectionMode);
       final saved = profiles
           .map((p) => p.pin == target.pin ? updated : p)
@@ -845,7 +955,11 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
             ...?candidates[key],
           ]);
           if (mounted) {
-            await rememberVerifiedProfile(connection.profile, generation);
+            await rememberVerifiedProfile(
+              connection.profile,
+              generation,
+              network: connection.status['networkConnection'],
+            );
             if (mounted) setState(() => verifiedAt[key] = DateTime.now());
           }
         } catch (error) {
@@ -915,6 +1029,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     onForget: forget,
     onRecover: recoverPc,
     onConnection: connectionSettings,
+    onWakeSettings: wakeSettings,
+    onWake: pairingRequired.contains(selected?.pin) ? null : wakeSelected,
     onRefresh: () => refresh(devices: true),
     onHelp: explainConnections,
     send: command,

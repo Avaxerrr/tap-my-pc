@@ -240,9 +240,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         : tailscaleServer is not null ? $"Tailscale ready · {TailscaleUrl}"
         : connectionsEnabled ? "Tailscale waiting · connect Tailscale on this PC"
         : "Tailscale enabled · connections stopped";
+    private volatile WakeOnLanInfo? listeningWakeOnLan;
     private NetworkConnectionInfo NetworkConnection => new(
         server is null ? null : $"https://{listeningAddress}:{Port}",
-        tailscaleServer is null ? null : TailscaleUrl);
+        tailscaleServer is null ? null : TailscaleUrl,
+        server is null ? null : listeningWakeOnLan);
     public AsyncCommand ToggleHost { get; }
     public RelayCommand OpenPairing { get; }
     public RelayCommand CopyUrl { get; }
@@ -351,7 +353,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         if (server is not null && !Equals(localIp, listeningAddress))
         {
             advertisement?.Dispose(); advertisement = null;
-            await server.StopAsync(); await server.DisposeAsync(); server = null; listeningAddress = null;
+            await server.StopAsync(); await server.DisposeAsync(); server = null; listeningAddress = null; listeningWakeOnLan = null;
             pairing.ClearPresence(RemoteTransport.WiFi);
         }
         if (tailscaleServer is not null && !Equals(tailIp, listeningTailscaleAddress))
@@ -390,6 +392,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             certificateSummary = $"Valid until {certificate.NotAfter:d}. Renews automatically with the same PC identity key.";
             Notify(nameof(CertificateSummary));
         }
+        listeningWakeOnLan = listeningAddress is null ? null
+            : available.FirstOrDefault(n => !n.IsTailscale && n.Address == listeningAddress.ToString())?.WakeOnLan;
         var previousUrl = remoteUrl;
         remoteUrl = NetworkConnection.LocalAddress ?? NetworkConnection.TailscaleAddress ?? "Network address available when connections are ready";
         if ((previousUrl != remoteUrl || previousFingerprint != fingerprint) && HasPairingQr)
@@ -418,7 +422,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         advertisement?.Dispose(); advertisement = null;
         if (server is not null) { await server.StopAsync(); await server.DisposeAsync(); server = null; }
         if (tailscaleServer is not null) { await tailscaleServer.StopAsync(); await tailscaleServer.DisposeAsync(); tailscaleServer = null; }
-        listeningAddress = null; listeningTailscaleAddress = null;
+        listeningAddress = null; listeningTailscaleAddress = null; listeningWakeOnLan = null;
         certificate?.Dispose(); certificate = null;
         pairing.ClearPresence(RemoteTransport.WiFi); pairing.ClearPresence(RemoteTransport.Tailscale);
     }

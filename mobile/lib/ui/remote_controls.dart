@@ -400,11 +400,13 @@ class PowerControls extends StatelessWidget {
   final Map<String, dynamic>? status;
   final bool busy;
   final PowerCommand power;
+  final VoidCallback? onWake;
   const PowerControls({
     super.key,
     required this.status,
     required this.busy,
     required this.power,
+    this.onWake,
   });
   bool supports(String action) =>
       !busy &&
@@ -427,7 +429,6 @@ class PowerControls extends StatelessWidget {
     children: [
       SectionCard(
         title: 'Power',
-        subtitle: 'Every action asks for confirmation',
         child: ActionGrid(
           children: [
             for (final action in icons.entries)
@@ -439,6 +440,11 @@ class PowerControls extends StatelessWidget {
                     ? () => power(action.key)
                     : null,
               ),
+            ActionTile(
+              label: 'Wake PC',
+              icon: Icons.power_settings_new,
+              onPressed: status == null && !busy ? onWake : null,
+            ),
           ],
         ),
       ),

@@ -2,7 +2,9 @@
 
 ## Versions and QR visibility
 
-Built versions: desktop/server **0.8.0, build 12** is unpacked at artifacts/publish/TapMyPC; Android **0.8.0, build 14** is installed on the connected phone. Both add independent LAN/Tailscale access and four phone connection choices. See [Tailscale setup](tailscale.md) and verification.md for delivery status. Previous versions: desktop/server **0.7.0, build 11** is applied at artifacts/publish/TapMyPC, and Android **0.7.0, build 13** is installed on the connected phone. These add optional [Tailscale remote access](tailscale.md). Build/staging status is recorded in verification.md. Previously installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
+Installed Android **0.9.1, build 18** places Wake PC with the other Power actions. Each selected PC has its own **Settings > Wake-on-LAN** entry and can learn wake settings from desktop **0.9.0, build 13**. The Windows update is staged in `artifacts/publish/TapMyPC-next` and available as a complete `TapMyPC-0.9.0-build13-win-x64.zip` in the publish directory. The phone supports manual settings with earlier desktop builds.
+
+Versions before Wake-on-LAN: desktop/server **0.8.0, build 12** is unpacked at artifacts/publish/TapMyPC; Android **0.8.0, build 14** was previously installed on the phone. Both add independent LAN/Tailscale access and four phone connection choices. See [Tailscale setup](tailscale.md) and verification.md for delivery status. Previous versions: desktop/server **0.7.0, build 11** is applied at artifacts/publish/TapMyPC, and Android **0.7.0, build 13** is installed on the connected phone. These add optional [Tailscale remote access](tailscale.md). Build/staging status is recorded in verification.md. Previously installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -72,7 +74,16 @@ Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic 
 
 Use a network you control for initial LAN operation. Hotspot/USB networking require device tests. VPN/relay support is future work and needs a permitted route. Do not expose the command port publicly or disable firewall protections as a workaround. See [mobile connections](mobile-connections.md).
 
-Hardware monitoring is the next implementation. Laptop Wi-Fi wake testing is closed for the current configuration; remote wake sending remains unimplemented. See [wake investigation](wake-investigation.md). The monitoring bridge preserves the standalone collector and website; see [monitoring integration](monitoring-integration.md).
+Hardware monitoring is next. The monitoring bridge preserves the standalone collector and website; see [monitoring integration](monitoring-integration.md).
+
+## Android Wake-on-LAN
+
+1. Start the updated, paired PC app while the PC is awake. Select that PC in Android and wait for it to connect. TapMyPC saves the MAC and subnet broadcast address of the active local adapter with UDP port 9.
+2. In **Settings > Wake-on-LAN**, check the detected values. Manual values from an earlier build take priority. Edit the fields for a custom setup, or choose **Use automatic** to clear a manual override once the PC reports its settings.
+3. Connect the phone to the PC’s local Wi-Fi, then put the PC to sleep. Wait for TapMyPC to show **Offline**, then open **Power** and tap **Wake PC**.
+4. Confirm that the PC resumes and TapMyPC reconnects. Repeat from hibernate.
+
+Wake PC is enabled when the selected PC is offline and has usable settings. The wake button sends one UDP magic packet per tap. TapMyPC shows packet feedback immediately and reports the PC back online after an authenticated status response. The PC needs working network wake settings. The development laptop's Wi-Fi wake investigation is closed for its current configuration. See [wake investigation](wake-investigation.md).
 
 ## HTTPS identity and certificates
 
@@ -204,7 +215,7 @@ This script targets only the simulator port, uses an isolated browser profile, a
 
 ## Remaining limitations
 
-The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, a desktop installer, presets (deferred), remote input (deferred), display arrangement, iOS deployment, Bluetooth peripheral management, and remote wake are not implemented. The current build is a prototype, not a verified production release.
+The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, a desktop installer, presets (deferred), remote input (deferred), display arrangement, iOS deployment, and Bluetooth peripheral management are not implemented. The current build is a prototype, not a verified production release.
 
 ## Certificate lifecycle checks
 

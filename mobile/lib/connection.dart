@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'certificate_identity.dart';
 import 'phone_identity.dart';
+import 'wake_on_lan.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 String normalizePin(String value) =>
@@ -49,6 +50,8 @@ class PcProfile {
   final String name, address, pin, token;
   final String? keyPin, bluetoothAddress, localAddress, tailscaleAddress;
   final String connectionMode;
+  final WakeOnLanSettings? wakeOnLan, automaticWakeOnLan;
+  WakeOnLanSettings? get effectiveWakeOnLan => wakeOnLan ?? automaticWakeOnLan;
   const PcProfile(
     this.name,
     this.address,
@@ -59,6 +62,8 @@ class PcProfile {
     this.localAddress,
     this.tailscaleAddress,
     this.connectionMode = 'auto',
+    this.wakeOnLan,
+    this.automaticWakeOnLan,
   });
   String? get localEndpoint =>
       localAddress ?? (isTailscaleAddress(address) ? null : address);
@@ -73,6 +78,9 @@ class PcProfile {
     String? localAddress,
     String? tailscaleAddress,
     String? connectionMode,
+    WakeOnLanSettings? wakeOnLan,
+    bool clearWakeOnLan = false,
+    WakeOnLanSettings? automaticWakeOnLan,
   }) => PcProfile(
     name,
     address ?? this.address,
@@ -83,6 +91,8 @@ class PcProfile {
     localAddress: localAddress ?? localEndpoint,
     tailscaleAddress: tailscaleAddress ?? tailscaleEndpoint,
     connectionMode: connectionMode ?? this.connectionMode,
+    wakeOnLan: clearWakeOnLan ? null : wakeOnLan ?? this.wakeOnLan,
+    automaticWakeOnLan: automaticWakeOnLan ?? this.automaticWakeOnLan,
   );
   PcProfile atAddress(String next) => copy(
     address: next,
@@ -94,6 +104,14 @@ class PcProfile {
   PcProfile withConnectionMode(String mode) => copy(connectionMode: mode);
   PcProfile withBluetoothAddress(String address) =>
       copy(bluetoothAddress: address);
+  PcProfile withWakeOnLan(WakeOnLanSettings? settings) =>
+      copy(wakeOnLan: settings, clearWakeOnLan: settings == null);
+
+  PcProfile withAutomaticWakeHint(Object? network) => network is Map
+      ? copy(
+          automaticWakeOnLan: WakeOnLanSettings.fromJson(network['wakeOnLan']),
+        )
+      : this;
 
   PcProfile withNetworkHints(dynamic value) {
     if (value is! Map) return this;
@@ -132,6 +150,9 @@ class PcProfile {
     if (localEndpoint != null) 'localAddress': localEndpoint,
     if (tailscaleEndpoint != null) 'tailscaleAddress': tailscaleEndpoint,
     if (connectionMode != 'auto') 'connectionMode': connectionMode,
+    if (wakeOnLan != null) 'wakeOnLan': wakeOnLan!.toJson(),
+    if (automaticWakeOnLan != null)
+      'automaticWakeOnLan': automaticWakeOnLan!.toJson(),
   };
   factory PcProfile.fromJson(Map<String, dynamic> j) {
     var mode = j['connectionMode'] ?? 'auto';
@@ -148,6 +169,8 @@ class PcProfile {
       localAddress: j['localAddress'],
       tailscaleAddress: j['tailscaleAddress'],
       connectionMode: mode,
+      wakeOnLan: WakeOnLanSettings.fromJson(j['wakeOnLan']),
+      automaticWakeOnLan: WakeOnLanSettings.fromJson(j['automaticWakeOnLan']),
     );
   }
 }

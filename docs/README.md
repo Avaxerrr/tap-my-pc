@@ -10,7 +10,7 @@
 | [Tailscale remote access](tailscale.md) | Explicit PC adapter selection, Android address editing, setup and firewall limits |
 | [Bluetooth](bluetooth.md) | Secondary RFCOMM connection, transport selection, authentication, and hardware tests |
 | [Mobile connections](mobile-connections.md) | Implemented QR pairing, discovery, persistent trust, certificate renewal/recovery, multi-PC profiles, and network limits |
-| [Remote wake investigation](wake-investigation.md) | Closed laptop Wi-Fi investigation, packet/sleep/Wolow evidence, and limits for future wake work |
+| [Remote wake investigation](wake-investigation.md) | Closed laptop Wi-Fi investigation and desktop wake test status |
 | [Monitoring integration](monitoring-integration.md) | Planned PC Stats Tray bridge, Android monitoring, and standalone website preservation |
 | [Versioning](versioning.md) | Automatic version/build decisions, component ownership, and release verification |
 | [Verification](verification.md) | Checks performed and remaining device testing |

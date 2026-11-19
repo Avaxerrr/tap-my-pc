@@ -1,6 +1,6 @@
 namespace TapMyPC.Core.Networking;
 
-public record NetworkAddress(string Address, string Name, bool IsWifi, bool HasGateway, bool IsTailscale = false)
+public record NetworkAddress(string Address, string Name, bool IsWifi, bool HasGateway, bool IsTailscale = false, WakeOnLanInfo? WakeOnLan = null)
 {
     public string Label => Address switch
     {

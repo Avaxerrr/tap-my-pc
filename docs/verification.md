@@ -323,3 +323,28 @@ At that planning checkpoint, QR enrollment, automatic discovery/reconnection, mo
 
 - After the user confirmed the phone was ready, retried adb install -r with the existing normal artifacts/mobile/TapMyPC-0.8.0-build14.apk. Installation succeeded.
 - Verified installed dev.tapmypc.tapmypc_mobile metadata: versionName=0.8.0, versionCode=14. No uninstall, data clear, rebuild, version change or PC control command was performed. The earlier separate-package direct-Tailscale integration test remains unrun.
+
+## Android Wake-on-LAN 0.9.0+15
+
+November 19, 2026 (Asia/Taipei).
+
+- Flutter analyzer reported no issues. The Flutter suite passed 61 tests and skipped the certificate end-to-end test, which requires its isolated Windows fixture. The new widget test verified validation, per-PC secure save and removal, the exact 102-byte payload and destination sent to the native bridge, and reconnection feedback without command replay.
+- Built the debug APK at artifacts/mobile/TapMyPC-0.9.0-build15.apk. Verified package dev.tapmypc.tapmypc_mobile, version name 0.9.0, version code 15, and matching signing certificate for build 14. Installed as an in-place update on the connected phone, verified version name 0.9.0 and code 15 with ADB, and launched the app.
+- Physical wake from sleep and hibernate in TapMyPC remains to be tested on the desktop that wakes with Wolow.
+
+## Automatic Android Wake-on-LAN and Power controls
+
+November 19, 2026 (Asia/Taipei).
+
+- Windows 0.9.0+13 passed 82 .NET tests, including IPv4 broadcast calculation for multiple prefix lengths and authentication of wake hints. Published to artifacts/publish/TapMyPC-next and verified product metadata on both TapMyPC.exe and TapMyPC.Api.dll. The complete 22-file Windows x64 ZIP is at artifacts/publish/TapMyPC-0.9.0-build13-win-x64.zip. The Windows update is staged.
+- Android 0.9.0+17 passed analysis and 61 Flutter tests. One certificate fixture test was skipped. The Wake-on-LAN test exercises the Power tab, automatic settings saved from status, precedence of an existing manual override, reversion to automatic, packet dispatch, and verified reconnect feedback. Verified APK and installed package metadata, and installed in place on the connected phone.
+- On that phone, inspected the final Power screen and Wake-on-LAN editor by screenshot. Confirmed that Wake PC is visible before configuration and that all fields, the inline MAC error, Cancel and Save fit with the keyboard open. The phone retained its saved PC. No power action was sent during this visual check.
+- Desktop hardware wake from sleep and hibernate still needs to be tested with the updated Windows host on the PC that wakes with Wolow.
+
+## Android Wake-on-LAN layout 0.9.1+18
+
+November 19, 2026 (Asia/Taipei).
+
+- Compared both saved profiles on build 17. The newer host populated the editor and suppressed the extra setup shortcut in Power. The 0.8.0 host needed manual values and showed that shortcut. Settings > Wake-on-LAN opened for both.
+- Verified Android package 0.9.1+18 after an in-place update. Inspected the final Power grid on the phone and opened the editor from Settings for both hosts. Both showed Wake PC in Power with no setup shortcut. The detected laptop settings and the manual editor for the older PC remained available. The phone displayed no Wolow wording.
+- Flutter analysis reported no issues. The suite passed 61 tests and skipped the certificate fixture test. The wake regression verifies that Wake PC shares the Power action grid, settings remain reachable, and a saved profile sends the expected packet while offline.

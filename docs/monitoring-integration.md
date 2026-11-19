@@ -1,6 +1,6 @@
 # Hardware monitoring integration — planned
 
-Hardware monitoring is the next implementation as of November 18, 2026. Bluetooth secondary connectivity is complete and laptop Wi-Fi wake investigation is closed for its current configuration; remote wake sending remains unimplemented. This supersedes the earlier monitoring deferral. The bridge and mobile monitoring screen remain unimplemented. See [wake investigation](wake-investigation.md) for the hardware findings.
+Hardware monitoring is the next implementation as of November 18, 2026. Bluetooth secondary connectivity and the Android Wake-on-LAN sender are implemented. The laptop Wi-Fi wake investigation is closed for its current configuration. This supersedes the earlier monitoring deferral. The bridge and mobile monitoring screen remain unimplemented. See [wake investigation](wake-investigation.md) for the hardware findings.
 
 ## Existing project and goal
 
