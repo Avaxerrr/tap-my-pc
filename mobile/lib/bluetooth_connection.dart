@@ -6,6 +6,8 @@ class PhoneBluetooth {
   static const channel = MethodChannel('dev.tapmypc/bluetooth');
   static Future<bool> requestAccess() async =>
       await channel.invokeMethod<bool>('requestAccess') ?? false;
+  static Future<void> pair(String address) =>
+      channel.invokeMethod<void>('pair', {'address': address});
   static Future<void> openSettings() => channel.invokeMethod<void>('settings');
 }
 

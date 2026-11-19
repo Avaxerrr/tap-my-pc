@@ -23,7 +23,7 @@ public sealed class BluetoothConnectionHost(LocalSettings settings, PairingServi
     private X509Certificate2? certificate;
     public BluetoothConnectionInfo Info { get; private set; } = new(false, null, BluetoothConnectionInfo.ServiceUuid, "Bluetooth is stopped.");
 
-    public async Task EnsureAsync()
+    public async Task EnsureAsync(bool restart = false)
     {
         try
         {
@@ -33,7 +33,7 @@ public sealed class BluetoothConnectionHost(LocalSettings settings, PairingServi
                 Info = new(false, null, BluetoothConnectionInfo.ServiceUuid, "Turn on PC Bluetooth to connect without Wi-Fi.");
                 return;
             }
-            if (transport is not null && certificate is not null &&
+            if (!restart && transport is not null && certificate is not null &&
                 !HostCertificate.NeedsRenewal(certificate) && settings.ReadIdentity()?.CertificateThumbprint == certificate.Thumbprint) return;
             await StopAsync();
             certificate = new CertificateIdentity(settings, pairing).Load(IPAddress.Loopback);

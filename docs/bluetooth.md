@@ -6,7 +6,7 @@ TapMyPC Android supports encrypted Classic Bluetooth RFCOMM with the Windows hos
 
 1. Update both apps and start connections on the PC. Keep Bluetooth on on both devices.
 2. Pair/reconnect over Wi-Fi once. Authenticated status supplies the PC's Bluetooth address and service identifier, saved with that PC's protected profile. Existing credentials and certificate identity are reused.
-3. On Android open Settings > Connection for the selected PC. Allow Nearby devices when requested. Choose **Automatic** or **Bluetooth only**. If Windows and Android ask to pair for the first Bluetooth connection, confirm the matching code on both devices. **Phone Bluetooth settings** opens Android’s system settings.
+3. On Android open **Settings > Connection** for the selected PC and choose **Bluetooth only**. Allow Nearby devices when requested. Confirm the matching system pairing code on both devices if prompted. TapMyPC keeps the previous connection mode until pairing finishes.
 4. **Automatic** tries the local network, Tailscale, then Bluetooth. **Bluetooth only** stays on Bluetooth. See [all connection choices](tailscale.md#connection-choices).
 5. The phone labels an active Bluetooth connection. The PC shows Bluetooth readiness separately from each active phone's name and actual authenticated transport, for example POCO X6 5G · Bluetooth. Readiness is availability, not the current connection.
 
@@ -34,7 +34,7 @@ Connection recovery sends only read-only status probes. A failed command is repo
 
 ## Platform implementation and limits
 
-WindowsRfcommServer owns adapter checks, advertisement, encrypted accept, four concurrent streams, cancellation, and cleanup. Its target must be loopback. WinRT stream adapters disable buffering so small TLS/HTTP messages are delivered immediately. BluetoothConnectionHost composes that transport with the existing ApiHost and shared Core services. The existing ten-second host health check retries Bluetooth after radio/service failures and renews certificates without changing the identity key.
+WindowsRfcommServer owns adapter checks, advertisement, encrypted accept, four concurrent streams, cancellation, and cleanup. Its target must be loopback. WinRT stream adapters disable buffering so small TLS/HTTP messages are delivered immediately. BluetoothConnectionHost composes that transport with the existing ApiHost and shared Core services. When Windows resumes with connections enabled, TapMyPC closes the old Bluetooth listener and advertises the service again. The existing ten-second host health check retries if the radio is still coming back. It also renews certificates without changing the identity key.
 
 Android requests BLUETOOTH_CONNECT on Android 12+; legacy Bluetooth permissions are restricted to Android 11 and earlier. It needs no Bluetooth scanning or location permission because the authenticated PC supplies its address. Optional HTTP requests share one Bluetooth TLS/RFCOMM stream rather than opening simultaneous same-service connections. Native sockets have bounded connection timeouts and close when the Dart client, profile, or activity closes. Nearby devices permission denial and disabled radios remain visible; Wi-Fi stays available.
 

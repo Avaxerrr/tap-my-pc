@@ -9,6 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Win32;
 using TapMyPC.Api;
 using TapMyPC.Desktop.Connections;
 using TapMyPC.Api.Contracts;
@@ -159,6 +160,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         refreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Tick(), dispatcher);
         Tick();
         NetworkChange.NetworkAddressChanged += OnNetworkChanged;
+        if (bluetoothHost is not null) SystemEvents.PowerModeChanged += OnPowerModeChanged;
     }
 
     public AppearanceViewModel Appearance { get; }
@@ -326,10 +328,11 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         finally { isChangingHost = false; hostGate.Release(); NotifyHost(); }
     }
 
-    private async Task StartListenerAsync()
+    private async Task StartListenerAsync(bool afterResume = false)
     {
         if (shuttingDown || !connectionsEnabled) return;
-        if (bluetoothHost is not null) await bluetoothHost.EnsureAsync();
+        if (afterResume) pairing.ClearPresence(RemoteTransport.Bluetooth);
+        if (bluetoothHost is not null) await bluetoothHost.EnsureAsync(restart: afterResume);
         Notify(nameof(BluetoothConnectionSummary));
         if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535)
             throw new ArgumentException("Port must be between 1024 and 65535.");
@@ -445,10 +448,19 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private void OnNetworkChanged(object? sender, EventArgs e) =>
         dispatcher.BeginInvoke(() => _ = CheckNetworkAsync());
 
-    private async Task CheckNetworkAsync()
+    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
-        if (shuttingDown || !connectionsEnabled || !await hostGate.WaitAsync(0)) return;
-        try { await StartListenerAsync(); }
+        if (e.Mode == PowerModes.Resume)
+            dispatcher.BeginInvoke(() => _ = CheckNetworkAsync(afterResume: true));
+    }
+
+    private async Task CheckNetworkAsync(bool afterResume = false)
+    {
+        if (shuttingDown || !connectionsEnabled) return;
+        // A resume must still rebuild the advertisement when a network check is already in progress.
+        if (afterResume) await hostGate.WaitAsync();
+        else if (!await hostGate.WaitAsync(0)) return;
+        try { await StartListenerAsync(afterResume); }
         catch (Exception ex) { Message = ex.Message; }
         finally { hostGate.Release(); NotifyHost(); }
     }
@@ -584,6 +596,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     {
         shuttingDown = true;
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
+        if (bluetoothHost is not null) SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         refreshTimer.Stop();
         scheduler.Activity.Published -= OnActivity;
         await hostGate.WaitAsync();

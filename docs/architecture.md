@@ -113,6 +113,8 @@ Hardware monitoring is the next implementation after completed Bluetooth work. T
 
 Windows computes a subnet broadcast address from the active LAN listener’s adapter and prefix and provides it with the adapter MAC and UDP port 9 in authenticated status. Android caches the last valid hint on that PC’s secure profile and gives saved manual values priority. The phone builds a magic packet from the configured adapter MAC and checks that its destination is on a connected Wi-Fi network. It binds the UDP socket to Wi-Fi when no VPN applies. With a VPN active, it uses Android’s normal routing for local destinations that the VPN leaves on the LAN. Destinations are limited to local IPv4 routes or the IPv4 limited broadcast. An explicit tap sends a single packet. Existing pinned HTTPS status polling confirms that the selected PC is reachable after wake. An unreachable PC stays Offline during background retries. Wake delivery feedback remains visible independently of that status.
 
+After Windows resumes, the desktop restarts the RFCOMM listener if connections are enabled. Android discards a failed status connection and opens a fresh connection during recovery. The Windows host keeps its paired-client records, identity, and pending timers during listener recovery.
+
 ## Action feedback and presentation
 
 Core `RemoteCommands` coordinates immediate audio/media/display commands. `ActionFeed` provides ordered, bounded activity records without referencing WPF or HTTP. `PowerScheduler` owns the shared feed and emits schedule, cancellation, execution, and failure notices. The API returns command feedback and includes recent activity in status, allowing Flutter to reuse the same behavior.

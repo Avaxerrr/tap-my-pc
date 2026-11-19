@@ -2,6 +2,8 @@
 
 ## Current state
 
+Android 0.9.5+22 starts system pairing from Bluetooth only and waits for it to finish before switching routes. Failed status clients are closed before the next reconnect attempt. Windows 0.9.1+14 recreates the Bluetooth listener after system resume when connections are enabled. See [Bluetooth setup](bluetooth.md) and [verification](verification.md) for test and delivery status.
+
 Installed Android 0.9.4+21 shows a steady Offline status, reports when a wake packet was sent, and preserves the parent settings screens when leaving the wake and address editors. The Wi-Fi wake sender supports an active split-tunnel VPN. Wake PC appears first in the Power action grid, which shows why wake is unavailable while connected or when settings are missing. Setup is in Settings for both automatic and manual profiles. Android learns local Wi-Fi settings from authenticated status on desktop 0.9.0+13. Saved manual settings take priority. See [setup](setup.md#android-wake-on-lan).
 
 Desktop 0.9.0+13 supplies automatic Wake-on-LAN settings. It continues to host independent local and Tailscale listeners, and both routes share the same paired HTTPS identity. See [Tailscale setup](tailscale.md) and [verification](verification.md) for checks and package status.

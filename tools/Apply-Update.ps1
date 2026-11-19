@@ -1,8 +1,13 @@
-param([switch]$Launch)
+param([switch]$Launch, [string]$InstallDirectory)
 $ErrorActionPreference = 'Stop'
 $workspacePath = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $stagedPath = [System.IO.Path]::GetFullPath((Join-Path $workspacePath 'artifacts\publish\TapMyPC-next'))
-$installedPath = [System.IO.Path]::GetFullPath((Join-Path $workspacePath 'artifacts\publish\TapMyPC'))
+$installedPath = if ($InstallDirectory) {
+    $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($InstallDirectory)
+} else {
+    Join-Path $workspacePath 'artifacts\publish\TapMyPC'
+}
+$installedPath = [System.IO.Path]::GetFullPath($installedPath)
 $installedExecutable = Join-Path $installedPath 'TapMyPC.exe'
 if (-not (Test-Path -LiteralPath (Join-Path $stagedPath 'TapMyPC.exe'))) {
     throw 'Build the staged release first. See docs/setup.md.'

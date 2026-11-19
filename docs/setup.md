@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.9.0 (build 13)** and Android **0.9.4 (build 21)**. The phone learns wake settings from the current Windows host and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.9.1 (build 14)** and Android **0.9.5 (build 22)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -18,7 +18,7 @@ The mobile Devices tab shows PC Bluetooth: On/Off. Local network and Tailscale o
 
 ## Bluetooth secondary connection
 
-Start connections on the PC with Bluetooth on. Connect Android over Wi-Fi once to save the verified PC's Bluetooth metadata. In Android Settings > Connection choose Automatic, Local network only, Tailscale only, or Bluetooth only; allow Nearby devices and complete OS pairing if prompted. Saved phones can then control without a reachable LAN. Start/Stop connections controls both transports; Public LAN restrictions do not disable Bluetooth. See [Bluetooth setup and limitations](bluetooth.md).
+Start connections on the PC with Bluetooth on. Connect Android over Wi-Fi once to save the verified PC’s Bluetooth address. In Android **Settings > Connection**, choose **Bluetooth only**, allow Nearby devices, and confirm the matching system code on both devices if prompted. TapMyPC keeps the previous connection mode if pairing fails. After setup, **Automatic** can use Bluetooth as a fallback. Windows re-advertises the Bluetooth service after waking when connections are enabled. See [Bluetooth setup and limitations](bluetooth.md).
 
 ## Certificate renewal and recovery
 
@@ -193,6 +193,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Apply-Update.ps1
 ```
 
 Open the usual `artifacts/publish/TapMyPC/TapMyPC.exe` afterward, then resume connections if paused and reopen the phone app/page. The script refuses to update a running copy. It copies staged files into the existing location, leaves user preferences/paired devices untouched, and preserves the executable path used by startup and program-scoped firewall rules. It does not kill the old host, change firewall settings, or run PC controls. Optional `-Launch` starts the updated executable after copying.
+
+If you normally run TapMyPC from a versioned folder, pass that folder to `-InstallDirectory` so the update uses your existing executable path and firewall rule.
 
 ## Simulator
 

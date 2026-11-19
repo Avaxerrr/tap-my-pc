@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -9,7 +10,7 @@ import 'package:tapmypc_mobile/main.dart';
 import 'package:tapmypc_mobile/ui/app_theme.dart';
 import 'package:tapmypc_mobile/ui/widgets.dart';
 
-const profile = PcProfile(
+const testProfile = PcProfile(
   'Test desktop',
   'https://192.168.0.239:45831',
   'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -17,10 +18,18 @@ const profile = PcProfile(
 );
 
 class FakePcApi extends PcApi {
-  FakePcApi() : super(profile);
+  FakePcApi([super.profile = testProfile]);
   final failures = <String, Object>{};
   final calls = <String>[];
   Map<String, dynamic>? networkConnection;
+  int closeCount = 0;
+
+  @override
+  void close() {
+    closeCount++;
+    super.close();
+  }
+
   @override
   Future<dynamic> request(
     String path, {
@@ -59,8 +68,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({
-      'tapmypc.profiles.v1': jsonEncode([profile.toJson()]),
-      'tapmypc.selected.v1': profile.pin,
+      'tapmypc.profiles.v1': jsonEncode([testProfile.toJson()]),
+      'tapmypc.selected.v1': testProfile.pin,
     });
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
@@ -125,12 +134,116 @@ void main() {
       );
       expect(api.calls.length, greaterThan(before));
       final saved = await const ProfileStore().load();
-      expect(saved.single.token, profile.token);
-      expect(saved.single.pin, profile.pin);
+      expect(saved.single.token, testProfile.token);
+      expect(saved.single.pin, testProfile.pin);
       expect(api.calls.where((c) => !c.startsWith('GET ')), isEmpty);
       await dispose(tester);
     },
   );
+
+  testWidgets(
+    'Bluetooth only waits for system pairing before changing routes',
+    (tester) async {
+      final bluetoothProfile = testProfile.withBluetoothAddress(
+        '02:00:00:00:00:01',
+      );
+      FlutterSecureStorage.setMockInitialValues({
+        'tapmypc.profiles.v1': jsonEncode([bluetoothProfile.toJson()]),
+        'tapmypc.selected.v1': bluetoothProfile.pin,
+      });
+      final api = FakePcApi(bluetoothProfile);
+      final appearance = AppearanceController();
+      addTearDown(appearance.dispose);
+      final pairing = Completer<void>();
+      final calls = <MethodCall>[];
+      const channel = MethodChannel('dev.tapmypc/bluetooth');
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        calls.add(call);
+        if (call.method == 'requestAccess') return true;
+        if (call.method != 'pair') {
+          throw StateError('Unexpected Bluetooth call: ${call.method}');
+        }
+        await pairing.future;
+        return null;
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      await tester.pumpWidget(
+        AppearanceScope(
+          controller: appearance,
+          child: MaterialApp(
+            theme: appTheme(AccentPalette.choices.first),
+            home: RemotePage(createApi: (_) => api),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Connection'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Bluetooth only'));
+      await tester.tap(find.text('Bluetooth only'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+
+      expect(calls.map((call) => call.method), ['requestAccess', 'pair']);
+      expect(calls.last.arguments, {
+        'address': bluetoothProfile.bluetoothAddress,
+      });
+      expect((await const ProfileStore().load()).single.connectionMode, 'auto');
+
+      pairing.completeError(
+        PlatformException(
+          code: 'pairing_failed',
+          message: 'Bluetooth pairing was canceled.',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Bluetooth pairing was canceled.'), findsOneWidget);
+      expect(
+        find.text('Connected to Test desktop · Local network'),
+        findsOneWidget,
+      );
+      expect((await const ProfileStore().load()).single.connectionMode, 'auto');
+      await dispose(tester);
+    },
+  );
+
+  testWidgets('A failed status connection closes before the next poll', (
+    tester,
+  ) async {
+    final initial = FakePcApi();
+    final reconnected = FakePcApi();
+    var attempts = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(AccentPalette.choices.first),
+        home: RemotePage(
+          createApi: (_) => attempts++ == 0 ? initial : reconnected,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    initial.failures['/status'] = const SocketException('The PC is asleep.');
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('Offline'), findsOneWidget);
+    expect(initial.closeCount, 1);
+    final oldCalls = initial.calls.length;
+
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Connected to Test desktop · Local network'),
+      findsOneWidget,
+    );
+    expect(reconnected.calls.first, 'GET /status');
+    expect(initial.calls, hasLength(oldCalls));
+    await dispose(tester);
+  });
 
   for (final route in ['/monitors', '/audio/outputs', '/shortcuts']) {
     testWidgets(
@@ -280,7 +393,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final saved = (await const ProfileStore().load()).single;
-    expect(saved.token, profile.token);
+    expect(saved.token, testProfile.token);
     expect(
       saved.atAddress('https://192.168.0.15:45831').wakeOnLan?.mac,
       '02:12:34:56:78:9A',

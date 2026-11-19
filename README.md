@@ -6,8 +6,8 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 | Component | Current development version |
 | --- | --- |
-| Windows desktop and API | **0.9.0 (build 13)** |
-| Android | **0.9.4 (build 21)** |
+| Windows desktop and API | **0.9.1 (build 14)** |
+| Android | **0.9.5 (build 22)** |
 
 ## Get started
 
@@ -19,7 +19,7 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 - On the **local network**, use Android or a browser to control your PC.
 - To use **Tailscale**, enable **Allow access through Tailscale** under **Configure → Remote access** on Windows. Android can then control the awake PC from another network or cellular while local access stays available. [Tailscale setup](docs/tailscale.md)
-- After pairing over the local network, Android can connect over encrypted **Bluetooth**. The first Bluetooth connection may ask you to confirm a matching code on the phone and PC. [Bluetooth setup](docs/bluetooth.md)
+- After pairing over Wi-Fi, select **Bluetooth only** in Android connection settings. TapMyPC waits for system pairing before switching. Confirm the matching code on the phone and PC if prompted. [Bluetooth setup](docs/bluetooth.md)
 - To use **Wake-on-LAN**, join the PC’s local Wi‑Fi, then select **Power → Wake PC** once the selected PC shows **Offline**. Set or review the adapter details in **Settings → Wake-on-LAN**. The PC must support wake in its current power state. [Wake-on-LAN setup](docs/setup.md#android-wake-on-lan)
 
 Android saves profiles separately for each PC. Reconnection verifies the saved PC identity before sending credentials. The Windows host owns power timers.

@@ -1,5 +1,7 @@
 # TapMyPC Android client
 
+Android **0.9.5 (build 22)** waits for system pairing to finish when you choose **Bluetooth only**. It also closes failed connections before retrying status. See [verification](../docs/verification.md) for package and installation status.
+
 The current Android development build is **0.9.4 (build 21)**. Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 
 Open **Settings > Connection** to choose Automatic, Local network only, Tailscale only, or Bluetooth only. TapMyPC learns separate local and Tailscale addresses from authenticated status. Both address editors accept a bare IP and reuse the saved port. **Advanced** reveals the editable port and **Back** returns to Connection. See [Tailscale setup](../docs/tailscale.md) and [verification](../docs/verification.md).
@@ -62,7 +64,7 @@ Devices shows PC Bluetooth: On/Off and one applicable action on Wi-Fi. Actual Bl
 
 ## Bluetooth secondary connection
 
-Connect to the PC over Wi-Fi once to save authenticated Bluetooth metadata. Open Settings > Connection, allow Nearby devices, and choose **Automatic** or **Bluetooth only**. Phone Bluetooth settings opens Android settings for radio power/system pairing. Both radios must be on. Already enrolled profiles can then control without LAN access. The phone labels active Bluetooth control; commands never retry across transports. Pair the app over the trusted local network before using Bluetooth. Android and Windows may ask you to confirm a matching code the first time they pair over Bluetooth.
+Connect to the PC over Wi-Fi once to save authenticated Bluetooth metadata. Open **Settings > Connection** and choose **Bluetooth only**. Allow Nearby devices and confirm the matching pairing code on both devices if prompted. When pairing succeeds, the phone switches to Bluetooth and verifies the existing PC identity. After the first setup, **Automatic** can use Bluetooth when the network is unavailable. Both radios must be on. The phone shows which connection is active, and commands never retry across transports.
 
 Native Android carries opaque TLS bytes over secure RFCOMM; the existing Dart client verifies the PC identity before sending credentials. Old profile JSON remains compatible through optional bluetoothAddress and connectionMode fields. See [Bluetooth architecture and hardware tests](../docs/bluetooth.md).
 

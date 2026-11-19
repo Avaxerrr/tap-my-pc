@@ -221,6 +221,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           next = Map<String, dynamic>.from(await client.request('/status'));
         } catch (error) {
           if (!mounted || generation != epoch) return;
+          client.close();
+          api = null;
           if (error is PcApiException && error.statusCode == 401) rethrow;
           if (status != null) {
             setState(() {
@@ -322,9 +324,12 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       }
     } catch (error) {
       if (mounted && generation == epoch) {
+        api?.close();
+        api = null;
         setState(() {
           status = null;
           if (error is PcApiException && error.statusCode == 401) {
+            awaitingWake = false;
             pairingRequired.add(selected!.pin);
             message = 'Pairing required. Scan a new QR on ${selected!.name}.';
           } else {
@@ -734,24 +739,32 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           busy) {
         return false;
       }
-      if (mode == 'bluetooth' && current.bluetoothAddress == null) {
-        setState(
-          () => message =
-              'Connect to this PC over a network once before selecting Bluetooth.',
-        );
+      final prepareBluetooth = mode == 'bluetooth';
+      final address = current.bluetoothAddress;
+      if (prepareBluetooth && address == null) {
+        setState(() {
+          feedback =
+              'Connect to this PC over Wi-Fi before setting up Bluetooth.';
+          feedbackError = true;
+        });
         return true;
       }
       try {
-        if (mode == 'bluetooth' &&
-            current.bluetoothAddress != null &&
-            !await PhoneBluetooth.requestAccess()) {
-          if (mounted) {
-            setState(
-              () => message =
-                  'Nearby devices permission is needed for Bluetooth.',
+        if (prepareBluetooth) {
+          setState(() {
+            busy = true;
+            feedback =
+                'Setting up Bluetooth. Confirm the pairing prompt on both devices if shown.';
+            feedbackError = false;
+          });
+          if (!await PhoneBluetooth.requestAccess()) {
+            throw const FormatException(
+              'Allow Nearby devices to set up Bluetooth.',
             );
           }
-          return true;
+          if (!mounted || selected?.pin != target.pin) return false;
+          await PhoneBluetooth.pair(address!);
+          if (!mounted || selected?.pin != target.pin) return false;
         }
         if (!mounted || selected?.pin != target.pin) return false;
         final updated = current.withConnectionMode(mode);
@@ -763,7 +776,14 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         setState(() => profiles = saved);
         select(updated);
       } catch (error) {
-        if (mounted) setState(() => message = friendly(error));
+        if (mounted && selected?.pin == target.pin) {
+          setState(() {
+            feedback = friendly(error);
+            feedbackError = true;
+          });
+        }
+      } finally {
+        if (mounted && prepareBluetooth) setState(() => busy = false);
       }
       return true;
     } finally {
