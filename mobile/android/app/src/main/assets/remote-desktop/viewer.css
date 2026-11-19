@@ -1,0 +1,51 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  margin: 0;
+  background: #000;
+  color: #f2f3f6;
+}
+#screen {
+  flex: 1;
+  min-height: 0;
+}
+#controls {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px;
+  background: #101218;
+}
+button, select {
+  font: inherit;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid #434a58;
+  border-radius: 8px;
+  background: #20252e;
+  color: inherit;
+}
+.quality-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#remote-keyboard {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+[hidden] {
+  display: none !important;
+}

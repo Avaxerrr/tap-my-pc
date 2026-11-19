@@ -402,7 +402,7 @@ class PowerControls extends StatefulWidget {
   final bool busy;
   final PowerCommand power;
   final bool wakeConfigured;
-  final VoidCallback? onWake;
+  final VoidCallback? onWake, onRemoteDesktop;
   const PowerControls({
     super.key,
     required this.status,
@@ -410,6 +410,7 @@ class PowerControls extends StatefulWidget {
     required this.power,
     required this.wakeConfigured,
     this.onWake,
+    this.onRemoteDesktop,
   });
 
   @override
@@ -480,6 +481,15 @@ class _PowerControlsState extends State<PowerControls> {
             ],
           ),
         ),
+        if (widget.onRemoteDesktop != null)
+          SectionCard(
+            title: 'Remote Desktop',
+            child: FilledButton.icon(
+              onPressed: widget.busy ? null : widget.onRemoteDesktop,
+              icon: const Icon(Icons.desktop_windows_outlined),
+              label: const Text('Open desktop'),
+            ),
+          ),
         SectionCard(
           title: 'Set a timer',
           subtitle: 'The PC keeps time, even if this phone disconnects',

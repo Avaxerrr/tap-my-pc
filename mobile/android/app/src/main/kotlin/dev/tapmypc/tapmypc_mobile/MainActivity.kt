@@ -27,6 +27,9 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         registerWakeOnLan(applicationContext, flutterEngine)
+        flutterEngine.platformViewsController.registry.registerViewFactory(
+            "dev.tapmypc/remote-desktop-view", RemoteDesktopViewFactory(flutterEngine.dartExecutor.binaryMessenger)
+        )
         bluetoothBridge = BluetoothBridge(this, MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tapmypc/bluetooth"))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tapmypc/app")
             .setMethodCallHandler { call, result ->

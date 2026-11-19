@@ -10,6 +10,7 @@ import 'pairing_page.dart';
 import 'discovery.dart';
 import 'ui/app_theme.dart';
 import 'ui/remote_dashboard.dart';
+import 'ui/remote_desktop_page.dart';
 import 'ui/network_address_editor.dart';
 import 'ui/wake_on_lan_editor.dart';
 import 'wake_on_lan.dart';
@@ -98,6 +99,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   String discoveryMessage = 'Looking for saved PCs on this network.';
   bool probing = false;
   int ticks = 0;
+  ValueNotifier<int?>? desktopRevision;
 
   @override
   void initState() {
@@ -273,6 +275,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         network: next['networkConnection'],
       );
       if (!mounted || generation != epoch) return;
+      final revision = next['remoteDesktopRevision'];
+      desktopRevision?.value = revision is int ? revision : null;
       final loadDevices = devices || status == null;
       // A verified status response establishes connectivity. Optional device
       // lists must not turn a reachable PC into an offline one.
@@ -485,6 +489,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
     updated = updated
         .withWakeOnLan(original.wakeOnLan)
+        .withDesktopPassword(original.desktopPassword)
         .copy(automaticWakeOnLan: automatic);
     setState(() {
       profiles = profiles
@@ -1057,6 +1062,76 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     ),
   );
 
+  Future<void> openRemoteDesktop() async {
+    final client = api;
+    final target = selected;
+    if (client == null ||
+        target == null ||
+        client.isBluetooth ||
+        desktopRevision != null ||
+        status?['remoteDesktopEnabled'] != true) {
+      return;
+    }
+    final value = status?['remoteDesktopRevision'];
+    final revision = ValueNotifier<int?>(value is int ? value : null);
+    desktopRevision = revision;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => RemoteDesktopPage(
+            profile: client.verifiedProfile.withDesktopPassword(
+              target.desktopPassword,
+            ),
+            revision: revision,
+            savePassword: (password) =>
+                saveRemoteDesktopPassword(target, password),
+          ),
+        ),
+      );
+    } finally {
+      desktopRevision = null;
+      revision.dispose();
+    }
+  }
+
+  Future<void> saveRemoteDesktopPassword(
+    PcProfile target,
+    String? password,
+  ) async {
+    PcProfile? getCurrent() => profiles
+        .where(
+          (profile) =>
+              profile.pin == target.pin && profile.token == target.token,
+        )
+        .firstOrNull;
+
+    void update(PcProfile current, String? value) {
+      final updated = current.withDesktopPassword(value);
+      setState(() {
+        profiles = profiles
+            .map((p) => identical(p, current) ? updated : p)
+            .toList();
+        if (selected?.pin == current.pin && selected?.token == current.token) {
+          selected = updated;
+        }
+      });
+    }
+
+    final current = getCurrent();
+    if (!mounted || current == null) throw StateError('Pair this PC again.');
+    if (current.desktopPassword == password) return;
+    update(current, password);
+    try {
+      await store.save(profiles);
+    } catch (_) {
+      final latest = getCurrent();
+      if (mounted && latest != null && latest.desktopPassword == password) {
+        update(latest, current.desktopPassword);
+      }
+      rethrow;
+    }
+  }
+
   @override
   Widget build(BuildContext context) => RemoteDashboard(
     profiles: profiles,
@@ -1082,6 +1157,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     onConnection: connectionSettings,
     onWakeSettings: wakeSettings,
     onWake: pairingRequired.contains(selected?.pin) ? null : wakeSelected,
+    onRemoteDesktop: status?['remoteDesktopEnabled'] == true
+        ? openRemoteDesktop
+        : null,
     onRefresh: () => refresh(devices: true),
     onHelp: explainConnections,
     send: command,

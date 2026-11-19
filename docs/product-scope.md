@@ -34,13 +34,14 @@ Audio output switching, locally approved app/website shortcuts, and per-monitor 
 
 ## Next priorities
 
-Updated November 18, 2026, in the user's requested order:
+Updated November 19, 2026.
 
 1. Implemented: certificate renewal/recovery before Bluetooth. Delivery and checks are recorded in [verification](verification.md).
 2. Implemented: Bluetooth as a secondary Android connection alongside Wi-Fi, including saved transport choice and physical-link validation. See [Bluetooth](bluetooth.md).
 3. Implemented: Android Stats reads the same cached data as the standalone PC Stats Tray dashboard. [Hardware monitoring](monitoring-integration.md)
 4. Android supports Wake-on-LAN for a saved PC over local Wi-Fi. The phone learns the adapter MAC and broadcast IPv4 address during a verified connection and shows Wake PC alongside the other Power actions. Manual overrides live in Settings > Wake-on-LAN. The user reported successful TapMyPC wake on the desktop after the Android VPN routing fix. Sleep and hibernate wake were also verified separately with Wolow. See [setup](setup.md#android-wake-on-lan).
-5. Reassess further features afterward. Media information is useful but lower priority; consider an earlier addition only if implementation is small.
+5. The in-app Remote Desktop preview for Android has a viewer, basic input, image quality presets, and per-phone access over Wi-Fi and Tailscale. TapMyPC manages the background capture service, viewer password, and common capture settings on Windows. Its dashboard offers setup and, after configuration, shows the service readiness and the active viewer. The target flow is to follow the Windows sign-in screen into the same desktop and continue controlling it after sign-in. Physical verification and an optional home-network relay for away-from-home wake remain planned. See [Remote Desktop prototype](implementation-plan.md#phase-8-remote-desktop--prototype).
+6. Media information remains a lower priority.
 
 Certificates automatically renew with the same PC identity key. Updated Android profiles preserve pairing across renewal. A missing or unusable key requires a locally confirmed Reset connection identity, which revokes previous phone credentials and requires re-pairing. Pending PC timers continue during renewal/reset. See [mobile connections](mobile-connections.md) for legacy-profile migration limits.
 
@@ -96,4 +97,4 @@ The desktop displays recently active remote clients on the main connection card 
 
 ## Boundaries
 
-The initial release is for a trusted local network, with authenticated clients. Direct private remote access through an optional Tailscale listener alongside LAN is supported, with separate saved mobile endpoints and explicit/automatic route choices; see [Tailscale setup](tailscale.md). Public internet hosting, arbitrary remote shell execution, full remote desktop streaming, and a custom Windows driver are outside the initial scope.
+The initial release is for a trusted local network, with authenticated clients. Direct private remote access through an optional Tailscale listener alongside LAN is supported, with separate saved mobile endpoints and explicit/automatic route choices; see [Tailscale setup](tailscale.md). Public internet hosting, arbitrary remote shell execution, and a custom Windows driver are outside the initial scope.

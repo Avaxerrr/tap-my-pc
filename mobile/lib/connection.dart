@@ -49,6 +49,7 @@ String connectionModeLabel(String mode) => switch (mode) {
 class PcProfile {
   final String name, address, pin, token;
   final String? keyPin, bluetoothAddress, localAddress, tailscaleAddress;
+  final String? desktopPassword;
   final String connectionMode;
   final WakeOnLanSettings? wakeOnLan, automaticWakeOnLan;
   WakeOnLanSettings? get effectiveWakeOnLan => wakeOnLan ?? automaticWakeOnLan;
@@ -64,6 +65,7 @@ class PcProfile {
     this.connectionMode = 'auto',
     this.wakeOnLan,
     this.automaticWakeOnLan,
+    this.desktopPassword,
   });
   String? get localEndpoint =>
       localAddress ?? (isTailscaleAddress(address) ? null : address);
@@ -81,6 +83,8 @@ class PcProfile {
     WakeOnLanSettings? wakeOnLan,
     bool clearWakeOnLan = false,
     WakeOnLanSettings? automaticWakeOnLan,
+    String? desktopPassword,
+    bool clearDesktopPassword = false,
   }) => PcProfile(
     name,
     address ?? this.address,
@@ -93,6 +97,9 @@ class PcProfile {
     connectionMode: connectionMode ?? this.connectionMode,
     wakeOnLan: clearWakeOnLan ? null : wakeOnLan ?? this.wakeOnLan,
     automaticWakeOnLan: automaticWakeOnLan ?? this.automaticWakeOnLan,
+    desktopPassword: clearDesktopPassword
+        ? null
+        : desktopPassword ?? this.desktopPassword,
   );
   PcProfile atAddress(String next) => copy(
     address: next,
@@ -104,6 +111,8 @@ class PcProfile {
   PcProfile withConnectionMode(String mode) => copy(connectionMode: mode);
   PcProfile withBluetoothAddress(String address) =>
       copy(bluetoothAddress: address);
+  PcProfile withDesktopPassword(String? password) =>
+      copy(desktopPassword: password, clearDesktopPassword: password == null);
   PcProfile withWakeOnLan(WakeOnLanSettings? settings) =>
       copy(wakeOnLan: settings, clearWakeOnLan: settings == null);
 
@@ -145,6 +154,7 @@ class PcProfile {
     'address': address,
     'pin': pin,
     'token': token,
+    if (desktopPassword != null) 'desktopPassword': desktopPassword,
     if (keyPin != null) 'keyPin': keyPin,
     if (bluetoothAddress != null) 'bluetoothAddress': bluetoothAddress,
     if (localEndpoint != null) 'localAddress': localEndpoint,
@@ -165,6 +175,10 @@ class PcProfile {
       j['pin'],
       j['token'],
       keyPin: j['keyPin'],
+      desktopPassword: switch (j['desktopPassword']) {
+        final String password when password.isNotEmpty => password,
+        _ => null,
+      },
       bluetoothAddress: j['bluetoothAddress'],
       localAddress: j['localAddress'],
       tailscaleAddress: j['tailscaleAddress'],
@@ -375,6 +389,36 @@ class PcApi {
       );
     }
     return result;
+  }
+
+  static const remoteDesktopViewerStatusProtocol = 'tapmypc.viewer-status.v1';
+
+  Future<WebSocket> openRemoteDesktop() async {
+    if (isBluetooth || profile.token.isEmpty) {
+      throw StateError('Connect to a paired PC over Wi-Fi or Tailscale.');
+    }
+    final uri = Uri.parse(
+      _requestAddress,
+    ).resolve('/api/v1/remote-desktop').replace(scheme: 'wss');
+    final connection = WebSocket.connect(
+      uri.toString(),
+      customClient: _client,
+      compression: CompressionOptions.compressionOff,
+      protocols: const [remoteDesktopViewerStatusProtocol],
+      headers: {'Authorization': 'Bearer ${profile.token}'},
+    );
+    final socket = await connection.timeout(
+      _timeout,
+      onTimeout: () {
+        close();
+        connection.then<void>(
+          (lateSocket) => lateSocket.close(),
+          onError: (Object _) {},
+        );
+        throw TimeoutException('Remote Desktop did not connect.');
+      },
+    );
+    return socket..pingInterval = const Duration(seconds: 20);
   }
 
   void close() => _client.close(force: true);

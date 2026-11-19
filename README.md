@@ -6,8 +6,8 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 | Component | Current development version |
 | --- | --- |
-| Windows desktop and API | **0.12.0 (build 20)** |
-| Android | **0.11.0 (build 24)** |
+| Windows desktop and API | **0.15.2 (build 26)** |
+| Android | **0.14.1 (build 29)** |
 
 ## Get started
 
@@ -29,6 +29,8 @@ The Windows connection card shows each active phone and a color-coded Wi-Fi, Tai
 Android shows the same connection colors and lets you set power timers in seconds or minutes. With an updated Windows host, Android sends Lock, Sleep, and Hibernate immediately after confirmation. [Power actions and timers](docs/setup.md#timers-and-controls)
 
 On Android, open **Stats** to see hardware readings. On the PC, run PC Stats Tray 0.7.1 or newer and select **Show Stats → Local apps**. Check the collector status in TapMyPC Desktop under **Configure → Hardware monitoring**. [Hardware monitoring](docs/monitoring-integration.md)
+
+The experimental Android **Power → Remote Desktop** viewer shows and controls the Windows console over Wi-Fi or Tailscale. TapMyPC for Windows downloads the latest stable UltraVNC installer when needed, shows progress during setup, and manages the local capture service and viewer password. The dashboard offers Remote Desktop setup and identifies the connected viewer once the service is configured and the phone reports successful VNC sign-in. Android offers three quality presets, a saved VNC password for each paired PC, and a full-screen refresh after Windows changes desktops. [Remote Desktop setup](docs/setup.md#remote-desktop-preview)
 
 ## Development
 

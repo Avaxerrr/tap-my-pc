@@ -596,6 +596,33 @@
 
       <!-- D. Essential Settings (Exposed Directly in Apple Inset-Grouped Style) -->
       <StackPanel x:Name="Preferences" Grid.Row="3">
+        <Border x:Name="RemoteDesktopDashboardCard" Style="{StaticResource GroupedCard}" Margin="0,0,0,16">
+          <Grid Margin="18,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Margin="0,0,10,0" VerticalAlignment="Center">
+              <TextBlock Text="Remote Desktop" FontSize="13.5" FontWeight="Medium" />
+              <TextBlock Text="{Binding RemoteDesktop.DashboardStatus}" FontSize="11.5" Margin="0,2,0,0"
+                         TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding RemoteDesktop.HasViewer}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource AccentText}" />
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </StackPanel>
+            <Button Grid.Column="1" Content="{Binding RemoteDesktop.DashboardAction}" Click="OpenRemoteDesktopSettings_Click"
+                    AutomationProperties.Name="Remote Desktop settings" FontSize="12" Padding="10,6" />
+          </Grid>
+        </Border>
+
         <TextBlock Text="ESSENTIAL PREFERENCES" Style="{StaticResource SectionLabel}" />
 
         <Border Style="{StaticResource GroupedCard}">
@@ -856,7 +883,52 @@
               <TextBlock Text="Phone name" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,12,0,6" />
               <TextBox Text="{Binding DeviceName, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" AutomationProperties.Name="Paired phone name" />
               <Button Content="Save phone name" Command="{Binding RenameDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,8,0,0" />
+              <CheckBox Content="Allow Remote Desktop for this phone" IsChecked="{Binding SelectedRemoteDesktopEnabled}"
+                        IsEnabled="{Binding HasSelectedDevice}" Foreground="{DynamicResource TextPrimary}" Margin="0,10,0,0" />
               <Button Content="Revoke selected access" Command="{Binding RevokeDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,10,0,0" />
+            </StackPanel>
+          </Border>
+
+          <TextBlock Text="REMOTE DESKTOP" Style="{StaticResource SectionLabel}" />
+          <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22" DataContext="{Binding RemoteDesktop}" x:Name="RemoteDesktopSettingsCard">
+            <StackPanel>
+              <TextBlock Text="{Binding Status}" Foreground="{DynamicResource TextPrimary}" FontSize="12.5" />
+              <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource AccentText}" FontSize="11.5" Margin="0,6,0,0" />
+              <ProgressBar Height="4" Minimum="0" Maximum="100" Margin="0,6,0,6"
+                           IsIndeterminate="{Binding ProgressIndeterminate}" Value="{Binding ProgressValue, Mode=OneWay}"
+                           Foreground="{DynamicResource AccentBlue}"
+                           Visibility="{Binding Working, Converter={StaticResource BoolVisibility}}" />
+              <StackPanel IsEnabled="{Binding Ready}">
+                <WrapPanel Margin="0,8,0,0">
+                  <Button Content="{Binding ConfigureLabel}" Command="{Binding Configure}" Padding="10,6" FontSize="12" Margin="0,0,8,8" />
+                  <Button Content="{Binding ToggleLabel}" Command="{Binding ToggleService}" Padding="10,6" FontSize="12" Margin="0,0,8,8"
+                          Visibility="{Binding Installed, Converter={StaticResource BoolVisibility}}" />
+                  <Button Content="Reset viewer password" Command="{Binding ResetPassword}" Padding="10,6" FontSize="12" Margin="0,0,8,8"
+                          Visibility="{Binding Installed, Converter={StaticResource BoolVisibility}}" />
+                </WrapPanel>
+                <StackPanel Visibility="{Binding Installed, Converter={StaticResource BoolVisibility}}">
+                  <DockPanel Margin="0,6,0,8">
+                    <TextBox DockPanel.Dock="Right" Width="65" MaxLength="2"
+                             Text="{Binding MaxFps, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Maximum capture FPS" />
+                    <TextBlock Text="Max capture FPS (5–60)" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimary}" FontSize="12.5" />
+                  </DockPanel>
+                  <CheckBox Content="Keep wallpaper while connected" IsChecked="{Binding KeepWallpaper}"
+                            Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8" />
+                  <WrapPanel>
+                    <Button Content="Save settings" Command="{Binding Save}" Padding="10,6" FontSize="12" Margin="0,0,8,0" />
+                    <TextBlock VerticalAlignment="Center" FontSize="12" Margin="6,0,0,0">
+                      <Hyperlink Command="{Binding ToggleDiagnostics}" Foreground="{DynamicResource AccentText}">Diagnostics</Hyperlink>
+                    </TextBlock>
+                  </WrapPanel>
+                  <StackPanel Visibility="{Binding ShowDiagnostics, Converter={StaticResource BoolVisibility}}" Margin="0,8,0,0">
+                    <TextBlock Text="{Binding Diagnostics}" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" />
+                    <Button Content="Refresh service status" Command="{Binding Refresh}" HorizontalAlignment="Left"
+                            Padding="10,6" FontSize="12" Margin="0,6,0,0" />
+                  </StackPanel>
+                  <TextBlock Text="Saving settings restarts a running capture service and disconnects the viewer."
+                             TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" Margin="0,6,0,0" />
+                </StackPanel>
+              </StackPanel>
             </StackPanel>
           </Border>
 

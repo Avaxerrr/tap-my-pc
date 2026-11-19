@@ -35,6 +35,24 @@ class RouteApi extends PcApi {
 }
 
 void main() {
+  test('Saved VNC password belongs to the PC profile across route changes', () {
+    final remembered = pc.withDesktopPassword('testonly');
+    final restored = PcProfile.fromJson(remembered.toJson()).atAddress(tail);
+    expect(restored.desktopPassword, 'testonly');
+    expect(
+      restored.withDesktopPassword(null).toJson(),
+      isNot(contains('desktopPassword')),
+    );
+    expect(
+      replacePcProfile(
+        [restored],
+        pc,
+        recovering: restored,
+      ).single.desktopPassword,
+      isNull,
+    );
+  });
+
   test(
     'Automatic tries LAN then Tailscale before Bluetooth and retains both',
     () async {

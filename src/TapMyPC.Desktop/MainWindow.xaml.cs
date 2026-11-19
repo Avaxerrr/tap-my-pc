@@ -55,6 +55,8 @@ public partial class MainWindow : Window
                 if (toggle != selected) toggle.IsChecked = false;
         }
         finally { switchingDrawer = false; }
+        if (selected == SettingsDrawerToggle && DataContext is SettingsViewModel settings)
+            _ = settings.RemoteDesktop.PollAsync();
         var panel = selected == PairDrawerToggle ? PairPanel : selected == ActivityDrawerToggle ? ActivityPanel : SettingsPanel;
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
@@ -73,6 +75,15 @@ public partial class MainWindow : Window
             if (returnFocus is UIElement { IsVisible: true, IsEnabled: true } element) element.Focus();
             else PairAction.Focus();
             returnFocus = null;
+        }));
+    }
+
+    private void OpenRemoteDesktopSettings_Click(object sender, RoutedEventArgs e)
+    {
+        SettingsDrawerToggle.IsChecked = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (SettingsDrawerToggle.IsChecked == true) RemoteDesktopSettingsCard.BringIntoView();
         }));
     }
 

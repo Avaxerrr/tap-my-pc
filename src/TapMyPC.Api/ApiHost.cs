@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TapMyPC.Api.Contracts;
+using TapMyPC.Api.Endpoints;
 using TapMyPC.Core.Devices;
 using TapMyPC.Core.Bluetooth;
 using TapMyPC.Core.Audio;
@@ -22,6 +23,7 @@ namespace TapMyPC.Api;
 
 public static class ApiHost
 {
+    private static readonly object ClientIdKey = new();
     private static string? ReadDeviceName(string encoded)
     {
         if (string.IsNullOrEmpty(encoded) || encoded.Length > 512) return null;
@@ -31,7 +33,7 @@ public static class ApiHost
     }
 
     public static async Task<WebApplication> StartAsync(IPAddress address, int port, X509Certificate2 certificate,
-        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null, IMonitoringSource? monitoring = null)
+        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null, IMonitoringSource? monitoring = null, int? remoteDesktopPort = null, Func<int>? remoteDesktopRevision = null)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(ApiHost).Assembly.FullName });
         builder.Logging.ClearProviders();
@@ -51,6 +53,7 @@ public static class ApiHost
         });
         var app = builder.Build();
         var commands = new RemoteCommands(device, scheduler.Activity);
+        var desktopPort = transport == RemoteTransport.Bluetooth ? null : remoteDesktopPort;
         app.Use(async (context, next) =>
         {
             context.Response.Headers.CacheControl = "no-store";
@@ -85,11 +88,20 @@ public static class ApiHost
             if (context.Request.Path.StartsWithSegments("/api") && context.Request.Path != "/api/v1/pair" && context.Request.Path != "/api/v1/pair/qr")
             {
                 var auth = context.Request.Headers.Authorization.ToString();
-                if (!auth.StartsWith("Bearer ", StringComparison.Ordinal) || !pairing.Authorize(auth[7..], transport, ReadDeviceName(context.Request.Headers["X-TapMyPC-Device-Name"].ToString())))
+                if (!auth.StartsWith("Bearer ", StringComparison.Ordinal) ||
+                    pairing.Authenticate(auth[7..], transport, ReadDeviceName(context.Request.Headers["X-TapMyPC-Device-Name"].ToString())) is not { } clientId)
                 { context.Response.StatusCode = 401; await context.Response.WriteAsJsonAsync(new { error = "Pair this device with the PC." }); return; }
+                context.Items[ClientIdKey] = clientId;
             }
             await next();
         });
+        if (desktopPort is { } remotePort)
+        {
+            app.UseWebSockets();
+            app.MapGet(RemoteDesktopEndpoint.Path, (HttpContext context) =>
+                RemoteDesktopEndpoint.RunAsync(context, (Guid)context.Items[ClientIdKey]!, pairing,
+                    remotePort, scheduler.Activity, app.Lifetime.ApplicationStopping));
+        }
         foreach (var (path, file, contentType) in new[] { ("/", "index.html", "text/html"), ("/app.js", "app.js", "text/javascript"), ("/styles.css", "styles.css", "text/css") })
         {
             app.MapGet(path, async context =>
@@ -103,13 +115,15 @@ public static class ApiHost
             Results.Ok(new { token = pairing.Pair(request.Code ?? "", request.Name ?? "") }));
         app.MapPost("/api/v1/pair/qr", (QrPairRequest request) =>
             Results.Ok(new { token = pairing.PairQr(request.Secret ?? "", request.Name ?? "") }));
-        app.MapGet("/api/v1/status", async () =>
+        app.MapGet("/api/v1/status", async (HttpContext context) =>
         {
             var capabilities = device.Capabilities;
             AudioState? audio = null;
             try { if (capabilities.Audio) audio = device.ReadAudio(); } catch { capabilities = capabilities with { Audio = false }; }
             var bluetoothState = bluetooth is null ? new BluetoothStatus(false, false, BluetoothRadioState.Unavailable, "Bluetooth control is unavailable.") : await bluetooth.ReadAsync();
-            return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, supportsImmediatePower = true, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
+            var desktopEnabled = desktopPort.HasValue && pairing.AllowsRemoteDesktop((Guid)context.Items[ClientIdKey]!);
+            return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, remoteDesktopEnabled = desktopEnabled,
+                remoteDesktopRevision = desktopEnabled ? remoteDesktopRevision?.Invoke() : null, supportsImmediatePower = true, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
         });
         app.MapGet("/api/v1/monitoring", async (CancellationToken cancellation) =>
         {

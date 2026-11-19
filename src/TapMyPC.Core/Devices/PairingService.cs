@@ -3,10 +3,10 @@ using System.Text;
 
 namespace TapMyPC.Core.Devices;
 
-public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt, bool NameCustomized = false);
+public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt, bool NameCustomized = false, bool RemoteDesktopEnabled = false);
 public enum RemoteTransport { WiFi, Bluetooth, Tailscale }
 public record PairingSession(string Code, string QrSecret, DateTimeOffset ExpiresAt);
-public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt, RemoteTransport? Transport = null);
+public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt, RemoteTransport? Transport = null, bool RemoteDesktopEnabled = false);
 public interface IDeviceStore
 {
     IReadOnlyList<PairedDevice> Load();
@@ -20,6 +20,7 @@ public sealed class PairingService
     private readonly TimeProvider clock;
     private List<PairedDevice> devices;
     private readonly Dictionary<Guid, (DateTimeOffset SeenAt, RemoteTransport Transport)> lastAuthenticated = new();
+    private (Guid ClientId, CancellationTokenSource Stop, bool Ready)? remoteDesktopSession;
     public static TimeSpan PresenceTimeout { get; } = TimeSpan.FromSeconds(10);
     private string? code;
     private string? qrSecret;
@@ -80,14 +81,17 @@ public sealed class PairingService
         }
     }
 
-    public bool Authorize(string token, RemoteTransport transport = RemoteTransport.WiFi, string? reportedName = null)
+    public bool Authorize(string token, RemoteTransport transport = RemoteTransport.WiFi, string? reportedName = null) =>
+        Authenticate(token, transport, reportedName) is not null;
+
+    public Guid? Authenticate(string token, RemoteTransport transport, string? reportedName = null)
     {
-        if (token.Length != 64) return false;
+        if (token.Length != 64) return null;
         var hash = Hash(token);
         lock (gate)
         {
             var device = devices.FirstOrDefault(d => CryptographicOperations.FixedTimeEquals(Convert.FromHexString(d.TokenHash), Convert.FromHexString(hash)));
-            if (device is null) return false;
+            if (device is null) return null;
             if (!device.NameCustomized && IsValidName(reportedName) && device.Name != reportedName!.Trim())
             {
                 var renamed = device with { Name = reportedName!.Trim() };
@@ -97,12 +101,74 @@ public sealed class PairingService
                 catch (UnauthorizedAccessException) { }
             }
             lastAuthenticated[device.Id] = (clock.GetUtcNow(), transport);
-            return true;
+            return device.Id;
         }
     }
 
     public IReadOnlyList<PairedClient> Clients
-    { get { lock (gate) return devices.Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt)).ToArray(); } }
+    { get { lock (gate) return devices.Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt, RemoteDesktopEnabled: d.RemoteDesktopEnabled)).ToArray(); } }
+
+    public bool AllowsRemoteDesktop(Guid clientId)
+    {
+        lock (gate) return devices.Any(d => d.Id == clientId && d.RemoteDesktopEnabled);
+    }
+
+    public void SetRemoteDesktopAccess(Guid clientId, bool enabled)
+    {
+        lock (gate)
+        {
+            if (!devices.Any(d => d.Id == clientId)) throw new InvalidOperationException("Select an existing paired device.");
+            var updated = devices.Select(d => d.Id == clientId ? d with { RemoteDesktopEnabled = enabled } : d).ToList();
+            store.Save(updated);
+            devices = updated;
+            if (!enabled) StopRemoteDesktop(clientId);
+        }
+    }
+
+    public async Task RunRemoteDesktopAsync(Guid clientId, Func<CancellationToken, Task> run)
+    {
+        using var stop = new CancellationTokenSource();
+        lock (gate)
+        {
+            if (!AllowsRemoteDesktop(clientId)) throw new UnauthorizedAccessException("Enable Remote Desktop for this phone on the PC.");
+            if (remoteDesktopSession is not null) throw new InvalidOperationException("A Remote Desktop session is already open.");
+            remoteDesktopSession = (clientId, stop, false);
+        }
+        try { await run(stop.Token); }
+        finally
+        {
+            lock (gate) remoteDesktopSession = null;
+        }
+    }
+
+    public string? RemoteDesktopViewer
+    {
+        get
+        {
+            lock (gate)
+            {
+                if (remoteDesktopSession is not { Ready: true } session || session.Stop.IsCancellationRequested) return null;
+                return devices.FirstOrDefault(device => device.Id == session.ClientId)?.Name;
+            }
+        }
+    }
+
+    public bool MarkRemoteDesktopReady(Guid clientId)
+    {
+        lock (gate)
+        {
+            if (remoteDesktopSession is not { Ready: false } session || session.ClientId != clientId ||
+                session.Stop.IsCancellationRequested) return false;
+            remoteDesktopSession = (clientId, session.Stop, true);
+            return true;
+        }
+    }
+
+    private void StopRemoteDesktop(Guid? clientId = null)
+    {
+        if (remoteDesktopSession is { } session && (clientId is null || session.ClientId == clientId))
+            session.Stop.Cancel();
+    }
 
     // Ephemeral presence comes from authenticated activity, never from stored pairing alone.
     public IReadOnlyList<PairedClient> ActiveClients
@@ -146,6 +212,7 @@ public sealed class PairingService
             store.Save(Array.Empty<PairedDevice>());
             devices.Clear();
             lastAuthenticated.Clear();
+            StopRemoteDesktop();
             ClosePairing();
         }
     }
@@ -157,6 +224,7 @@ public sealed class PairingService
             var updated = devices.Where(d => d.Id != id).ToList();
             store.Save(updated); devices = updated;
             lastAuthenticated.Remove(id);
+            StopRemoteDesktop(id);
         }
     }
 

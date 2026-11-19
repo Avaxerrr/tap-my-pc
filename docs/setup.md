@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.12.0 (build 20)** and Android **0.11.0 (build 24)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.15.2 (build 26)** and Android **0.14.1 (build 29)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -82,6 +82,22 @@ For Android **Stats**, update the Windows TapMyPC host and run PC Stats Tray 0.7
 4. Confirm that the PC resumes and TapMyPC reconnects. Repeat from hibernate.
 
 Wake PC is enabled when the selected PC is offline and has usable settings. The Power screen explains when the PC is still connected or needs wake settings. The wake button sends one UDP magic packet per tap. With a VPN active, the phone uses Android’s normal routing for destinations on the connected Wi-Fi subnet that the VPN leaves on the LAN. Once a connection attempt fails, the app shows **Offline**. After sending a packet it shows **Wake packet sent. Waiting for PC…** and reports the PC back online after an authenticated status response. The PC needs working network wake settings. The development laptop's Wi-Fi wake investigation is closed for its current configuration. See [wake investigation](wake-investigation.md).
+
+## Remote Desktop preview
+
+The Android viewer shows the physical Windows session, including a locked screen and the desktop after sign-in. It uses TapMyPC pairing over the current Wi-Fi or Tailscale route. Windows 0.13.0 and Android 0.12.0 are required. The device checks for sign-in after sleep or hibernate and for cellular performance are pending.
+
+1. On Windows 0.15.2 or newer, select **Set up** on the **Remote Desktop** dashboard card, then **Set up Remote Desktop** in settings. Enter a viewer password or use **Generate password** to fill the field. **Show password** reveals the entry. Select **Continue**, then approve the Windows administrator prompt. On x64 Windows, TapMyPC checks the official UltraVNC downloads page for the latest stable version when the service is missing. Setup verifies the x64 installer’s published SHA-256 checksum, signing publisher, and version before running it. It then disables the installer’s inbound VNC firewall rules, configures the service for `127.0.0.1:5900`, and starts it. TapMyPC itself still runs from the extracted folder. TapMyPC installs silently and displays download progress and setup stages. **Copy** is available in its generated-password dialog. Repairing an existing service keeps its viewer password. [UltraVNC downloads](https://uvnc.com/downloads/ultravnc.html)
+2. In TapMyPC on Windows, open **Configure → Authorized phones**, select the phone, and turn on **Allow Remote Desktop for this phone**. Existing pairings start with this permission off.
+3. On Android, open **Power → Open desktop** while connected to the PC. Enter the UltraVNC password, optionally use **Show password** to verify it, and select **Remember for this PC** if you want the app to reuse it. Android saves it securely after a successful connection. To remove it or replace an older credential, open the viewer’s menu and select **Forget saved VNC password**. Enter your Windows sign-in credentials on the Windows screen if prompted.
+4. Use **Keyboard** to type, **Quality** to select **Save data**, **Balanced**, or **Sharper** for the session, **Refresh screen** to request a full frame, and **Disconnect** to close the viewer. With both updated apps, Android also requests a full frame when the PC reports that Windows locked or unlocked.
+5. To try the viewer from outside the home network, use [Tailscale](tailscale.md) while the PC is running. The existing **Wake PC** action still sends a local Wi-Fi packet. Away-from-home wake depends on a separate always-on sender on the home network. The first viewer targets lock and resume of an existing session.
+
+The Windows dashboard always shows the **Remote Desktop** card. It offers **Set up** until the local-only service is configured. After setup, it shows readiness and offers a **Settings** shortcut. **Connected** identifies the phone once Android 0.14.1 or newer reports successful VNC sign-in. Earlier phone versions can still stream.
+
+Use the settings card to start, stop, or repair the service and reset the viewer password. For a reset, enter a custom password of 1–8 printable ASCII characters or generate one, then select **Save password**. **Max capture FPS** and **Keep wallpaper while connected** apply to this PC. **Diagnostics** shows the server version and listener status. Saving settings or resetting the password restarts a running capture service and disconnects the viewer. After changing the password, use **Forget saved VNC password** on a phone that saved the old one, then reconnect with the new password.
+
+For manual UltraVNC setup, use Windows service mode on `127.0.0.1:5900` with **Loopback Only**, **Password required**, and a separate VNC password. Disable the HTTP viewer, file transfer, and MS-Logon. Restart the service after saving a password change.
 
 ## HTTPS identity and certificates
 

@@ -2,6 +2,20 @@
 
 ## Current state
 
+Windows 0.15.2+26 keeps the Remote Desktop card available for setup and simplifies the viewer password dialog with a visibility toggle, inline generation, and one confirmation action. [Setup](setup.md#remote-desktop-preview)
+
+Windows 0.15.1+25 adds an optional dashboard status card, live setup progress, and generated or custom viewer passwords with a Copy action for generated passwords. Android 0.14.1+29 adds password visibility and reports viewer readiness on a compatible Windows host. [Setup](setup.md#remote-desktop-preview)
+
+Windows 0.15.0+24 checks for the latest stable UltraVNC installer on fresh setup and adds in-app capture service controls, password reset, and capture settings. Android 0.14.0+28 adds three viewer quality presets. [Setup](setup.md#remote-desktop-preview)
+
+Windows 0.14.1+23 corrects the firewall rule query in Remote Desktop setup and creates a viewer password on a fresh setup from TapMyPC. [Setup](setup.md#remote-desktop-preview)
+
+Windows 0.14.0+22 adds in-app setup for the local capture service and reports Windows lock and unlock transitions. Android 0.13.0+27 adds a full-frame refresh, a manual Refresh screen button, and opt-in VNC password saving. [Setup](setup.md#remote-desktop-preview)
+
+Android 0.12.1+26 identifies a desktop disconnect during VNC password checking and excludes the remote viewer from automatic Android autofill. [Setup](setup.md#remote-desktop-preview)
+
+Windows 0.13.0+21 and Android 0.12.0+25 add the experimental Remote Desktop viewer with per-phone approval, one paired stream over Wi-Fi or Tailscale, and tap and keyboard input. The Windows host uses a separately configured UltraVNC service. [Setup](setup.md#remote-desktop-preview)
+
 Windows 0.12.0+20 adds Dark, Light, Midnight, Forest, and Plum desktop themes in **Configure → Appearance**. The chosen theme and accent update the window, tray menu, and notification banners immediately.
 
 Windows 0.11.2+19 moves Authorized phones to the top of Configure and places Quick launch shortcuts before Appearance. Advanced Network & Security stays collapsed at the bottom.
@@ -95,6 +109,28 @@ Implemented the [PC Stats Tray bridge](monitoring-integration.md) and Android St
 ## Phase 7: Remote wake — Android sender implemented
 
 Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable on the current Legion 5 Pro configuration after independent sender and Wolow failures, despite verified awake packet delivery and armed wake settings. Ethernet is documented by Lenovo but remains untested and impractical at this location. Android sends wake packets using per-PC settings over local Wi-Fi. Sleep and hibernate wake are user-confirmed with Wolow on the desktop after enabling PCIe resume. The user reported successful desktop wake in TapMyPC after the Android VPN routing fix. See [remote wake investigation](wake-investigation.md) for evidence and limits. No further laptop sleep test is pending.
+
+## Phase 8: Remote Desktop — prototype
+
+The Android viewer follows the physical Windows session through the lock screen into the desktop. The user can keep watching, click, scroll, type, and open apps after signing in. This is an opt-in feature for a paired phone. Start with one display and basic input, and test over a cellular connection early.
+
+1. **Prove the viewer.** A loopback-only browser experiment used noVNC 1.7.0 with a simulated PC. One connection rendered both screen states, sent Enter and a touch tap, and disconnected cleanly over a binary message channel. Android WebView, the Windows service, and streaming performance still need device tests. [noVNC library API](https://novnc.com/noVNC/docs/API.html)
+2. **Prove the Windows session.** Test the official UltraVNC Server separately in Windows service mode with local-only access. On the target desktop, verify capture and input on the locked screen with the monitor off, the configured PIN or password, and the transition into the same desktop. Repeat after sleep and hibernate. Check that disconnecting leaves Windows in its current session and that locking again permits a fresh connection. [UltraVNC service configuration](https://uvnc.com/docs/ultravnc-server/49-ultravnc-server-configuration.html)
+3. **Build the in-app session.** The Android viewer and authenticated Windows stream are implemented in the preview. The simulator verified that the bundled viewer draws successive screen updates and sends touch and keyboard input. The API tests cover transport access, binary streaming, and active cancellation after permission removal. Measure time to first frame and input responsiveness on Wi-Fi and cellular with the lower-bandwidth setting during device testing. [Tailscale remote access](tailscale.md)
+4. **Add away-from-home wake.** Use an optional always-on device on the home LAN to send the Wake-on-LAN packet. Verify from cellular that the user can wake the desktop, wait for TapMyPC to reconnect, sign in, and continue using Windows. The first release targets lock and resume of a signed-in Windows session. A cold boot or sign-out would require the TapMyPC listener to be available before Windows sign-in. [Wake-on-LAN over Tailscale](https://tailscale.com/blog/wake-on-lan-tailscale-upsnap)
+
+### Deferred viewer work
+
+Validate monitor selection and lower stream resolution with the Android viewer, including touch accuracy and sign-in text readability.
+
+### Deferred: black patches after Windows unlock
+
+The Android viewer can stay mostly black after Windows unlocks. Touching the screen or moving content reveals individual patches. The user confirmed that **Refresh screen** restores the entire image. They observed it at 5 FPS and saw it clear at 25 and 60 FPS in initial checks. Repeat the comparison before attributing the issue to the capture limit.
+
+- [ ] Compare repeated unlocks at 5, 25, and 60 FPS with the same viewer quality and no phone input after sign-in. Check whether Android receives the unlock revision and requests a full frame. Compare the request time with the first usable desktop image.
+- [ ] If the request arrives during the desktop switch, test one delayed follow-up using the same full-frame request as **Refresh screen**.
+- [ ] If the follow-up fails, compare TapMyPC and the native UltraVNC viewer in separate sessions against the same server to narrow down the cause.
+- [ ] Verify that the whole desktop appears automatically after repeated lock and unlock cycles over both Wi-Fi and Tailscale, without touching the screen or pressing **Refresh screen**.
 
 ## Open decisions
 

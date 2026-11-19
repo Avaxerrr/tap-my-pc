@@ -20,6 +20,7 @@ Successful authenticated requests also refresh a transient desktop presence indi
 | POST | `/api/v1/pair/qr` | `{"secret":"<64 hex characters>","name":"My Android"}` | 200 `{"token":"..."}` |
 | GET | `/api/v1/status` | None | 200 status object below |
 | GET | `/api/v1/monitoring` | None | 200 monitoring response below |
+| GET | `/api/v1/remote-desktop` | WebSocket upgrade | 101 binary VNC stream for an approved phone over LAN or Tailscale |
 | PUT | `/api/v1/audio/volume` | `{"volume":35}` | 200 `{"accepted":true}` |
 | PUT | `/api/v1/audio/mute` | `{"muted":true}` | 200 `{"accepted":true}` |
 | POST | `/api/v1/audio/step` | `{"direction":"Up"}` | 200 accepted + requested-key feedback |
@@ -28,6 +29,16 @@ Successful authenticated requests also refresh a transient desktop presence indi
 | PUT | `/api/v1/bluetooth` | {"enabled":true} | 200 accepted + feedback |
 | POST | `/api/v1/power` | `{"action":"Hibernate","delaySeconds":1800,"confirmed":true}` | 202 pending action object or immediate acceptance feedback |
 | DELETE | `/api/v1/power/{id}` | None | 200 `{"canceled":true}` or 404 |
+
+## Remote Desktop
+
+`GET /api/v1/status` includes `remoteDesktopEnabled` for the authenticated client on the current listener. It requires a local PC-side opt-in for that client and an eligible network route. Backend readiness is checked when the viewer connects. On Windows 0.14.0 and newer, `remoteDesktopRevision` changes when Windows locks or unlocks while the host is running. It is null for clients without access, unsupported listeners, and hosts without a session-change source. A connected viewer can request a full RFB frame when the revision changes.
+
+Open `wss://<PC>/api/v1/remote-desktop` with the saved PC TLS pin and `Authorization: Bearer <token>`. The authenticated upgrade carries the standard RFB byte stream in binary WebSocket messages. Treat message boundaries as stream chunks. The server allows one connection across its network listeners, resolves the backend to local loopback, and ends the stream if the paired permission is removed, the client is revoked, or the listener stops.
+
+Clients may offer the WebSocket subprotocol `tapmypc.viewer-status.v1`. If it is selected, send the UTF-8 text message `viewer-ready` once after VNC sign-in succeeds. The host uses it as a viewer-presence signal for that active authenticated socket. The relay handles the text locally and forwards only binary RFB chunks to UltraVNC. If the server selects no subprotocol, use the binary stream alone.
+
+The upgrade returns 401 for an invalid token, 403 when the paired client lacks Remote Desktop permission, 404 on an unsupported listener, 409 while a viewer is connected, and 503 when the local VNC backend is unavailable. A request without an upgrade returns 400 for an authorized viewer. [Setup](setup.md#remote-desktop-preview)
 
 ## Monitoring
 

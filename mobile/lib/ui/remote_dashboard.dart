@@ -24,6 +24,7 @@ class RemoteDashboard extends StatefulWidget {
   final Future<bool> Function()? onConnection;
   final Future<void> Function()? onRecover, onWakeSettings, onWake;
   final VoidCallback onHelp;
+  final VoidCallback? onRemoteDesktop;
   final SendCommand send;
   final PowerCommand power;
   final Future<void> Function(bool) onBluetooth;
@@ -52,6 +53,7 @@ class RemoteDashboard extends StatefulWidget {
     this.onConnection,
     this.onWakeSettings,
     this.onWake,
+    this.onRemoteDesktop,
     required this.onRefresh,
     required this.onHelp,
     required this.send,
@@ -617,6 +619,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                       widget.selected!.effectiveWakeOnLan !=
                                       null,
                                   onWake: widget.onWake,
+                                  onRemoteDesktop: widget.onRemoteDesktop,
                                 ),
                                 _ => StatsPanel(
                                   key: ValueKey(widget.selected?.pin),

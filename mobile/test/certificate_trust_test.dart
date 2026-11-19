@@ -24,6 +24,7 @@ void main() {
     String pinned, {
     required bool accepted,
     String? keyPin,
+    bool desktop = false,
   }) async {
     final fixture = data[served] as Map<String, dynamic>;
     final context = SecurityContext()
@@ -38,6 +39,12 @@ void main() {
     final subscription = server.listen(
       (request) async {
         requests.add(request);
+        if (desktop) {
+          final viewer = await WebSocketTransformer.upgrade(request);
+          viewer.add([82, 70, 66]);
+          await viewer.close();
+          return;
+        }
         request.response.headers.contentType = ContentType.json;
         request.response.write('{"pcName":"TLS test"}');
         await request.response.close();
@@ -59,7 +66,15 @@ void main() {
     );
     try {
       if (accepted) {
-        expect((await api.request('/status'))['pcName'], 'TLS test');
+        if (desktop) {
+          final viewer = await api.openRemoteDesktop();
+          expect(await viewer.first, [82, 70, 66]);
+          await viewer.close();
+          expect(requests.single.uri.path, '/api/v1/remote-desktop');
+          expect(requests.single.uri.hasQuery, isFalse);
+        } else {
+          expect((await api.request('/status'))['pcName'], 'TLS test');
+        }
         expect(requests, hasLength(1));
         expect(api.verifiedProfile.keyPin, keyFor(served));
         expect(
@@ -67,7 +82,10 @@ void main() {
           'Bearer TEST-CREDENTIAL-NEVER-SEND-TO-WRONG-IDENTITY',
         );
       } else {
-        await expectLater(api.request('/status'), throwsA(anything));
+        await expectLater(
+          desktop ? api.openRemoteDesktop() : api.request('/status'),
+          throwsA(anything),
+        );
         expect(
           requests,
           isEmpty,
@@ -82,6 +100,13 @@ void main() {
   }
 
   // These tests use real sockets rather than Flutter's mocked HTTP client.
+  test(
+    'Remote Desktop upgrades only after authenticating the pinned PC',
+    () async {
+      await check('valid', 'valid', accepted: true, desktop: true);
+      await check('replacement', 'valid', accepted: false, desktop: true);
+    },
+  );
   test('Valid pinned certificate allows authenticated status', () async {
     await check('valid', 'valid', accepted: true);
   });

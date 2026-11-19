@@ -418,3 +418,50 @@ November 19, 2026 (Asia/Taipei).
 
 - Windows 0.12.0+20 passed all 87 .NET tests and built with zero warnings. An isolated WPF check exercised all 25 theme and accent combinations, verified live updates across the window, tray menu and feedback banner, and confirmed that accent-only settings load as Dark with the saved accent.
 - Staged the 22-file Windows x64 publish tree in `artifacts/publish/TapMyPC-next` and verified the desktop and API product versions.
+
+## Remote Desktop preview — Windows 0.13.0+21 / Android 0.12.0+25
+
+- .NET release tests passed, 90 total. The Remote Desktop tests used a loopback VNC fixture and covered device permission, network-only routing, one session across Wi-Fi and Tailscale listeners, binary transfer, rejection of an unexpected backend, and active disconnect when permission was removed.
+- Flutter analysis passed. Flutter reported 74 passing tests and one opt-in certificate fixture skipped. A TLS test verified that an unexpected certificate receives no request or bearer credential for the viewer upgrade.
+- A mobile-sized Chromium smoke test loaded the packaged viewer assets against a simulated PC. It exercised the UltraVNC password prompt, rendering two screen states in one connection, typing and Enter, touch input, and the Save data switch.
+- Published the Windows preview to `artifacts/publish/TapMyPC-next-remote-desktop` alongside the existing staging folder. Verified the executable and API DLL product version and the nested Windows runtime dependency. Built `artifacts/mobile/TapMyPC-0.12.0-build25.apk`, verified its package version, signer, and embedded viewer assets, and staged it for device testing.
+- Physical Android WebView behavior, Windows console capture at sign-in after lock, sleep, or hibernate, and cellular performance remain pending on the target devices. Away-from-home wake needs a separate LAN sender.
+
+## Remote Desktop password setup follow-up — Android 0.12.1+26
+
+- On the target PC, UltraVNC 1.8.3.2 runs as a service on `127.0.0.1:5900` with its inbound firewall rules disabled. UltraVNC logged rejected password attempts before the service was restarted after saving its settings. After the restart, the physical Android client established an active VNC connection. The Windows lock and resume tests remain pending.
+- Android distinguishes a connection close during VNC password checking and excludes the viewer from automatic Android autofill. Analysis and Flutter tests passed. The browser fixture exercised successful and rejected VNC passwords. The staged APK at `artifacts/mobile/TapMyPC-0.12.1-build26.apk` has the verified version, signer, and updated viewer assets.
+
+## Remote Desktop refresh and setup — Windows 0.14.0+22 / Android 0.13.0+27
+
+- The .NET release suite passed 90 tests. Remote Desktop coverage verifies that the unlock refresh revision is visible only to approved devices on network listeners and changes without reconnecting. Flutter analysis passed, and 75 tests passed with one opt-in certificate fixture skipped. A profile test verifies that a saved VNC password survives route switching and clears with removal or re-pairing.
+- The mobile browser fixture drove the bundled viewer through VNC authentication, a blank frame, automatic refresh from the native bridge, and the manual Refresh screen action. Both refreshes requested the whole framebuffer without sending desktop input. The fixture also checked password rejection, keyboard, touch, and Save data.
+- Published and inspected Windows 0.14.0+22 at `artifacts/publish/TapMyPC-next-remote-desktop-0.14.0`. Verified the embedded service setup script and its PowerShell syntax and the complete publish tree. Staged Android at `artifacts/mobile/TapMyPC-0.13.0-build27.apk` with verified package metadata, signer, and viewer assets.
+- On-device lock and unlock with the new builds and fresh x64 capture service installation are pending. The previous preview was reported working over Wi-Fi and Tailscale on the target PC.
+
+## Remote Desktop setup correction — Windows 0.14.1+23
+
+- Reproduced the Windows firewall query error from combining DisplayName and Direction. The revised setup looks up UltraVNC’s two named rules and checks the direction and executable path before disabling an enabled inbound rule.
+- Ran the corrected setup on the target PC with its existing UltraVNC installation and password. The service completed setup and returned to Automatic and Running. Its only VNC listener was `127.0.0.1:5900`, returned an RFB greeting, and the UltraVNC inbound rules remained disabled.
+- Fresh setup generates and displays a viewer password from TapMyPC. An isolated Windows INI test verified the generated password format and round trip. The clean-install path still needs a fresh Windows environment.
+- Passed all 90 .NET tests and staged Windows at `artifacts/publish/TapMyPC-next-remote-desktop-0.14.1`. Android 0.13.0+27 already supports remembering the viewer password.
+
+## Managed Remote Desktop setup and quality presets — Windows 0.15.0+24 / Android 0.14.0+28
+
+- Published Windows to `artifacts/publish/TapMyPC-next` with the pinned .NET SDK. Verified 0.15.0+24 in the executable and API assembly. The .NET release suite passed all 90 tests. The staged Windows adapter read the service state, installed UltraVNC version, listener status, and capture options from the target PC.
+- The Windows PowerShell setup resolved stable UltraVNC 1.8.3.2 from the official site and verified the real x64 installer’s SHA-256, code-signing publisher, and file version. The verification rejected a mismatched checksum. A fixture exercised fresh setup with simulated Windows services and a real isolated INI. A separate INI check verified saving capture settings and creating a viewer password.
+- Flutter analysis passed. Flutter tests passed 75 cases and skipped the opt-in certificate fixture. Built the Android release APK and verified version 0.14.0/build 28 and the packaged viewer assets. A viewer smoke test confirmed that Balanced is the default and all three preset choices apply the expected noVNC quality and compression values.
+- Both releases are staged. A real fresh installation and phone connection after uninstalling UltraVNC remain to be tested on the target PC.
+- On November 20, 2026, installed Android 0.14.0+28 over the existing app on the connected phone and verified the installed package version and build number with ADB.
+
+## Remote Desktop status, setup progress, and passwords — Windows 0.15.1+25 / Android 0.14.1+29
+
+- Published Windows to `artifacts/publish/TapMyPC-next` with the pinned .NET SDK. Verified 0.15.1+25 in the executable and API assembly. All 91 .NET tests passed. The Remote Desktop relay test now exercises both legacy binary-only viewers and negotiated viewer status. It checks that connection activity begins after the ready signal and clears on revocation.
+- The WPF smoke check covered the dashboard status and settings shortcut, Diagnostics disclosure, custom password validation, and the generated password dialog. A separate Windows PowerShell fixture used a private local pipe to verify progress from a real installer download, installer verification, a custom credential in an isolated INI, and the generated credential response.
+- Flutter analysis passed. Flutter tests passed 75 cases and skipped the opt-in certificate fixture. Installed Android 0.14.1+29 over the existing app and verified the installed package version on the phone with ADB.
+- Windows is staged. The existing UltraVNC service was left available for the user's next real setup or viewer session.
+
+## Remote Desktop dashboard and password dialog — Windows 0.15.2+26
+
+- Published the portable release to `artifacts/publish/TapMyPC-next-remote-desktop-0.15.2` while the previous release remained open. Confirmed the executable and API assembly version. All 91 .NET tests passed.
+- WPF smoke checks covered the persistent card with missing, unconfigured, stopped, ready, and connected service states and the setup shortcut. The same check verified revealing and hiding the same password, inline generation without submitting, validation, and the separate setup and reset confirmation labels. The read-only status check recognized the existing configured UltraVNC service.

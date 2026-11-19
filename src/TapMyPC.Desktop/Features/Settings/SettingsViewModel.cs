@@ -54,6 +54,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private bool connectionsEnabled;
     private bool shuttingDown;
     private int networkCheck;
+    private int remoteDesktopRevision;
     private string discoverySummary = "";
     private WebApplication? server;
     private X509Certificate2? certificate;
@@ -163,8 +164,10 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         DetectNetwork();
         scheduler.Activity.Published += OnActivity;
         refreshTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => Tick(), dispatcher);
+        _ = RemoteDesktop.PollAsync();
         Tick();
         NetworkChange.NetworkAddressChanged += OnNetworkChanged;
+        SystemEvents.SessionSwitch += OnDesktopSessionSwitch;
         if (bluetoothHost is not null) SystemEvents.PowerModeChanged += OnPowerModeChanged;
     }
 
@@ -177,10 +180,38 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public ObservableCollection<ActionNotice> Activity { get; } = [];
     public PairedClient? SelectedDevice {
         get => selectedDevice;
-        set { selectedDevice = value; deviceName = value?.Name ?? ""; Notify(); Notify(nameof(DeviceName)); }
+        set
+        {
+            selectedDevice = value;
+            deviceName = value?.Name ?? "";
+            Notify(); Notify(nameof(DeviceName)); Notify(nameof(HasSelectedDevice)); Notify(nameof(SelectedRemoteDesktopEnabled));
+        }
+    }
+    public bool HasSelectedDevice => selectedDevice is not null;
+    public bool SelectedRemoteDesktopEnabled
+    {
+        get => selectedDevice?.RemoteDesktopEnabled == true;
+        set
+        {
+            if (selectedDevice is null || selectedDevice.RemoteDesktopEnabled == value) return;
+            try
+            {
+                pairing.SetRemoteDesktopAccess(selectedDevice.Id, value);
+                Message = value
+                    ? "Remote Desktop enabled for this phone. Use Set up Remote Desktop to prepare the local capture service."
+                    : "Remote Desktop access removed for this phone.";
+                Tick();
+            }
+            catch (Exception ex)
+            {
+                Message = ex.Message;
+                dispatcher.BeginInvoke(() => Notify(nameof(SelectedRemoteDesktopEnabled)));
+            }
+        }
     }
     public string DeviceName { get => deviceName; set { deviceName = value; Notify(); } }
     public RelayCommand RenameDevice { get; }
+    public RemoteDesktopViewModel RemoteDesktop { get; } = new();
     public string Address { get => address; set { address = value; Notify(); } }
     public string Port { get => port; set { port = value; Notify(); } }
     public string Message { get => message; private set { message = value; Notify(); } }
@@ -437,7 +468,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private Task<WebApplication> StartNetworkApiAsync(IPAddress ip, int number, RemoteTransport transport) =>
         ApiHost.StartAsync(ip, number, certificate!, device, pairing, scheduler,
             bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors,
-            bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection, monitoring: monitoring);
+            bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection, monitoring: monitoring,
+            remoteDesktopPort: 5900, remoteDesktopRevision: () => Volatile.Read(ref remoteDesktopRevision));
+
+    private void OnDesktopSessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason is SessionSwitchReason.SessionLock or SessionSwitchReason.SessionUnlock)
+            Interlocked.Increment(ref remoteDesktopRevision);
+    }
 
     private async Task StopNetworkListenersAsync()
     {
@@ -571,7 +609,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     {
         _ = RefreshMonitoringAsync();
         RefreshPresence();
-        if (++networkCheck % 10 == 0) _ = CheckNetworkAsync();
+        RemoteDesktop.UpdateViewer(pairing.RemoteDesktopViewer, server is not null || tailscaleServer is not null);
+        if (++networkCheck % 10 == 0)
+        {
+            _ = CheckNetworkAsync();
+            _ = RemoteDesktop.PollAsync();
+        }
         if (!pairing.IsPairingOpen) ClearPairingQr();
         if (pairingExpires is { } expiry)
         {
@@ -673,6 +716,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         shuttingDown = true;
         SetMonitoringVisible(false);
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
+        SystemEvents.SessionSwitch -= OnDesktopSessionSwitch;
         if (bluetoothHost is not null) SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         refreshTimer.Stop();
         scheduler.Activity.Published -= OnActivity;
