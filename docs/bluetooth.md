@@ -1,16 +1,16 @@
 # Bluetooth secondary connection
 
-Current installed development builds are desktop 0.6.0+10 and Android 0.6.2+12. Bluetooth was introduced before the Android 0.6.2 onboarding polish. The browser remains a Wi-Fi client; iOS is deferred.
+TapMyPC Android supports encrypted Classic Bluetooth RFCOMM with the Windows host. See [current versions](setup.md#versions-and-qr-visibility) and [verification history](verification.md).
 
 ## Setup and normal use
 
 1. Update both apps and start connections on the PC. Keep Bluetooth on on both devices.
 2. Pair/reconnect over Wi-Fi once. Authenticated status supplies the PC's Bluetooth address and service identifier, saved with that PC's protected profile. Existing credentials and certificate identity are reused.
-3. On Android open Settings > Connection for the selected PC. Allow Nearby devices when requested. Choose Automatic, Wi-Fi only, or Bluetooth only. Complete Windows/Android system Bluetooth pairing if prompted; Phone Bluetooth settings opens the native settings screen.
-4. Automatic starts with Wi-Fi and tries Bluetooth during connection recovery. It retains a healthy Bluetooth connection; reselect Automatic, reopen the app, or reselect the PC to start with Wi-Fi again. Wi-Fi only and Bluetooth only never silently use the other transport.
+3. On Android open Settings > Connection for the selected PC. Allow Nearby devices when requested. Choose **Automatic** or **Bluetooth only**. If Windows and Android ask to pair for the first Bluetooth connection, confirm the matching code on both devices. **Phone Bluetooth settings** opens Android’s system settings.
+4. **Automatic** tries the local network, Tailscale, then Bluetooth. **Bluetooth only** stays on Bluetooth. See [all connection choices](tailscale.md#connection-choices).
 5. The phone labels an active Bluetooth connection. The PC shows Bluetooth readiness separately from each active phone's name and actual authenticated transport, for example POCO X6 5G · Bluetooth. Readiness is availability, not the current connection.
 
-Initial enrollment requires reachable trusted Wi-Fi. An already enrolled phone with saved Bluetooth metadata can control the PC without a LAN. Saved pairing cannot wake a sleeping PC; remote wake is separate work.
+Initial enrollment requires reachable trusted Wi-Fi. An already enrolled phone with saved Bluetooth metadata can control the PC without a LAN. Use [Wake-on-LAN](setup.md#android-wake-on-lan) over the local network when the PC is asleep and supports wake.
 
 Start/Stop connections controls both listeners and remains remembered. Public/unidentified LANs pause Wi-Fi without disabling Bluetooth for already paired phones. Turning off a PC/phone radio or moving out of range disconnects Bluetooth. PC radio changes are disabled in the Android UI and rejected by the Bluetooth API listener. Switch to Wi-Fi to change radio power. Over Wi-Fi the card shows PC Bluetooth: On/Off and offers only the applicable action; unknown/unavailable/mixed states offer no guessed action. No command is automatically replayed.
 
@@ -28,7 +28,7 @@ Windows advertises custom Classic Bluetooth RFCOMM service 8cf69287-4d5e-47f1-97
 
 The phone verifies the enrolled leaf/identity-key pin and certificate dates before sending any HTTP request or credential. A Bluetooth name, MAC address, OS bond, or service UUID never authorizes control by itself. The same bearer authentication, revocation, validation, request limits, feedback, power confirmations, and PC-owned timers apply on both listeners. No arbitrary forwarding destination, plaintext command protocol, unauthenticated localhost exemption, or separate command implementation is introduced.
 
-The phone's Bluetooth address is learned only from authenticated status. Saved fields are optional bluetoothAddress and connectionMode (auto by default) alongside the existing keyPin. The HTTPS LAN address and selected-profile identity remain unchanged when using the temporary local socket. Re-pairing/key reset retains the existing explicit identity-verification rules.
+The PC’s Bluetooth address is learned only from authenticated status. Saved fields are optional bluetoothAddress and connectionMode (auto by default) alongside the existing keyPin. The HTTPS LAN address and selected-profile identity remain unchanged when using the temporary local socket. Re-pairing/key reset retains the existing explicit identity-verification rules.
 
 Connection recovery sends only read-only status probes. A failed command is reported without retrying it on another transport, preventing duplicate media, shortcut launches, or power scheduling. An authentication rejection requires re-pairing rather than transport fallback. Changing PCs isolates responses and never selects another PC because one connection failed.
 

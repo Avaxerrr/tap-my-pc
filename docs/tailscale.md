@@ -12,6 +12,8 @@ TapMyPC saves separate local and Tailscale addresses for each paired PC. All rou
 
 Both address editors return to Connection with **Back**. Expanding **Advanced** brings the TapMyPC port into view. Changing an address verifies exactly that endpoint before saving. It does not change the connection preference unless setup was opened by choosing Tailscale only. Failed verification leaves the old profile intact and shows feedback. Existing pairing is preserved.
 
+To test access from outside your home network, keep the PC awake, turn off Wi-Fi on the phone, and use cellular data. The app reports **Connected · Tailscale** when it reaches the PC through that route. Direct access between your Tailscale devices works with **Exit Node** set to **None**.
+
 ## Connection choices
 
 | Phone choice | Behavior |
@@ -33,7 +35,7 @@ Only read-only status establishes or recovers connections. No command is automat
 - Global Stop connections pauses every listener and persists across restart. Restarting listeners or changing routes does not cancel PC-owned timers.
 - Local discovery advertises only the trusted LAN listener. Authenticated status contains optional networkConnection.localAddress and networkConnection.tailscaleAddress location hints. Disconnected/disabled listeners report null; saved clients retain last-known hints and verify before use.
 - Numeric HTTPS IPv4 addresses remain required by strict Host validation. MagicDNS, IPv6 and custom Tailscale IP pools are outside this implementation. Tailscale Serve/TLS termination is not configured.
-- The PC must remain awake, online and running TapMyPC. Tailscale does not add remote wake.
+- Tailscale carries TapMyPC commands while the PC is awake, online, and running the host. The Android [Wake PC action](setup.md#android-wake-on-lan) sends its packet over the local Wi-Fi network. Waking from outside that network requires a separate always-on device that can relay the wake packet on the home network.
 
 ## Compatibility
 

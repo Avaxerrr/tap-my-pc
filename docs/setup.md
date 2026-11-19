@@ -2,9 +2,7 @@
 
 ## Versions and QR visibility
 
-Installed Android **0.9.4, build 21** adds clearer offline and wake feedback and Back navigation in the wake and address editors. Each selected PC has its own **Settings > Wake-on-LAN** entry and can learn wake settings from desktop **0.9.0, build 13**. The Windows update is staged in `artifacts/publish/TapMyPC-next` and available as a complete `TapMyPC-0.9.0-build13-win-x64.zip` in the publish directory. The phone supports manual settings with earlier desktop builds.
-
-Versions before Wake-on-LAN: desktop/server **0.8.0, build 12** is unpacked at artifacts/publish/TapMyPC; Android **0.8.0, build 14** was previously installed on the phone. Both add independent LAN/Tailscale access and four phone connection choices. See [Tailscale setup](tailscale.md) and verification.md for delivery status. Previous versions: desktop/server **0.7.0, build 11** is applied at artifacts/publish/TapMyPC, and Android **0.7.0, build 13** is installed on the connected phone. These add optional [Tailscale remote access](tailscale.md). Build/staging status is recorded in verification.md. Previously installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
+Current development versions are Windows desktop/API **0.9.0 (build 13)** and Android **0.9.4 (build 21)**. The phone learns wake settings from the current Windows host and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -79,7 +77,7 @@ Hardware monitoring is next. The monitoring bridge preserves the standalone coll
 ## Android Wake-on-LAN
 
 1. Start the updated, paired PC app while the PC is awake. Select that PC in Android and wait for it to connect. TapMyPC saves the MAC and subnet broadcast address of the active local adapter with UDP port 9.
-2. In **Settings > Wake-on-LAN**, check the detected values. Manual values from an earlier build take priority. Edit the fields for a custom setup, or choose **Use automatic** to clear a manual override once the PC reports its settings.
+2. In **Settings > Wake-on-LAN**, check the detected values. Back returns to Settings. Manual values from an earlier build take priority. Edit the fields for a custom setup, or choose **Use automatic** to clear a manual override once the PC reports its settings.
 3. Connect the phone to the PC’s local Wi-Fi, then put the PC to sleep. Wait for TapMyPC to show **Offline**, then open **Power** and tap **Wake PC**.
 4. Confirm that the PC resumes and TapMyPC reconnects. Repeat from hibernate.
 

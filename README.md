@@ -2,17 +2,31 @@
 
 *Your PC, a tap away.*
 
-A personal Windows PC remote for controlling audio, media, displays, and power from bed.
+TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or the browser remote to manage audio, media, displays, shortcuts, and power. The C# desktop host runs in the Windows tray.
 
-The Windows host uses C# and WPF, with a responsive browser remote and a native Flutter Android client. Communication uses Wi-Fi or a secondary encrypted Bluetooth RFCOMM connection; iOS remains planned.
+| Component | Current development version |
+| --- | --- |
+| Windows desktop and API | **0.9.0 (build 13)** |
+| Android | **0.9.4 (build 21)** |
 
-Installed Android **0.9.4 (build 21)** adds clearer offline and wake feedback, Back navigation in the wake and address editors, and a visible Advanced port field. Wake PC is in Power. Wake setup is in Settings. Staged desktop **0.9.0 (build 13)** supplies the local adapter MAC and IPv4 broadcast address automatically. Earlier Windows builds support manual wake setup through the phone. See [Wake-on-LAN setup](docs/setup.md#android-wake-on-lan).
+## Get started
 
-Built development versions before Wake-on-LAN: desktop/server **0.8.0 (build 12)** is unpacked at artifacts/publish/TapMyPC; Android **0.8.0 (build 14)** was previously installed on the phone. Both add independent LAN/Tailscale listeners, separate saved addresses, four clear connection choices and IP-only setup. Package/install status is recorded in verification.md. Previous development versions: desktop/server **0.7.0 (build 11)** is applied at artifacts/publish/TapMyPC and Android **0.7.0 (build 13)** is installed on the connected phone. These add configurable Tailscale access while preserving existing pairing. See [Tailscale setup](docs/tailscale.md). Previously installed development versions: desktop/server **0.6.0 (build 10)** and Android **0.6.2 (build 12)**, adding encrypted Bluetooth secondary connectivity and saved-PC transport selection, alongside certificate renewal/recovery. Installation results are recorded in [verification](docs/verification.md). See [versioning guidelines](docs/versioning.md). The prototype includes a WPF tray/dashboard host, authenticated HTTPS API, audio output switching, approved app/website shortcuts, monitor controls, power timers, and command feedback. Android supports one-time QR pairing, protected saved profiles, automatic discovery/reconnection, and independent PC selection.
+1. [Build and run the Windows host](docs/setup.md#build-and-launch), or [apply a staged desktop update](docs/setup.md#apply-a-staged-update).
+2. [Build the Android app](mobile/README.md#development). Put your phone and PC on the same trusted network, open TapMyPC on the PC, and pair from the phone with **Add PC → Scan PC QR**. The [browser remote](docs/setup.md#connect-a-phone) uses the displayed HTTPS address and a one-time code.
+3. Leave Android on **Automatic** to prefer the local connection and try other saved routes when needed. See the [connection guide](docs/tailscale.md#connection-choices).
 
-## Run
+## Connect and wake
 
-Requires Windows and the .NET 10 SDK for development.
+- On the **local network**, use Android or a browser to control your PC.
+- To use **Tailscale**, enable **Allow access through Tailscale** under **Configure → Remote access** on Windows. Android can then control the awake PC from another network or cellular while local access stays available. [Tailscale setup](docs/tailscale.md)
+- After pairing over the local network, Android can connect over encrypted **Bluetooth**. The first Bluetooth connection may ask you to confirm a matching code on the phone and PC. [Bluetooth setup](docs/bluetooth.md)
+- To use **Wake-on-LAN**, join the PC’s local Wi‑Fi, then select **Power → Wake PC** once the selected PC shows **Offline**. Set or review the adapter details in **Settings → Wake-on-LAN**. The PC must support wake in its current power state. [Wake-on-LAN setup](docs/setup.md#android-wake-on-lan)
+
+Android saves profiles separately for each PC. Reconnection verifies the saved PC identity before sending credentials. The Windows host owns power timers.
+
+## Development
+
+The Windows host uses the .NET 10 SDK version in `global.json`. Run from the repository root.
 
 ```powershell
 dotnet build TapMyPC.sln -c Release -m:1
@@ -20,10 +34,4 @@ dotnet test TapMyPC.sln -c Release -m:1
 dotnet run --project src/TapMyPC.Desktop -c Release
 ```
 
-Normal launch resumes connections on a Windows Private/Domain network unless previously paused. The initial QR appears automatically; scan it from Android Add PC to pair once. After pairing, the QR hides and saved PCs reconnect automatically when reachable. Stop connections persists across restarts; Add another phone creates a fresh QR. Localhost, port overrides, certificates, and paired-device management are under Advanced settings. Read [setup](docs/setup.md) for phone pairing, HTTPS, firewall details, and applying staged updates.
-
-For secondary Bluetooth setup and connection behavior, see [Bluetooth](docs/bluetooth.md). For Android build and device-test instructions, see [mobile setup](mobile/README.md). Initial pairing needs a reachable local network. Saved phones can separately use Bluetooth; saved Wi-Fi pairing cannot bypass AP isolation. Optional [Tailscale remote access](docs/tailscale.md) uses an explicitly selected adapter and the same paired HTTPS identity.
-
-For development without changing any actual PC controls, use the [simulator](docs/setup.md#simulator).
-
-See the [documentation index](docs/README.md) for scope, architecture, and the implementation sequence. Project-wide coding guidance is in [AGENTS.md](AGENTS.md).
+See the [Android build and test guide](mobile/README.md), [simulator](docs/setup.md#simulator), and [verification history](docs/verification.md). The [documentation index](docs/README.md) links the API contract, architecture, and product scope. Repository guidance is in [AGENTS.md](AGENTS.md).

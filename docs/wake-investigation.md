@@ -4,7 +4,7 @@
 
 Investigation closed for the current laptop configuration on November 18, 2026. Treat Wi-Fi wake as unavailable on this laptop: independent diagnostic packets and the user's Wolow test did not wake it. This is a practical compatibility decision, not proof that every MT7921 or every possible firmware/driver combination is incapable.
 
-TapMyPC Android provides a [local Wi-Fi wake sender](setup.md#android-wake-on-lan). The user's desktop wakes with Wolow over Wi-Fi from sleep and hibernate after enabling PCIe resume in its BIOS. TapMyPC sleep and hibernate tests on that desktop are pending.
+TapMyPC Android provides a [local Wi-Fi wake sender](setup.md#android-wake-on-lan). The user's desktop wakes with Wolow over Wi-Fi from sleep and hibernate after enabling PCIe resume in its BIOS. The user later confirmed that TapMyPC woke the desktop after the Android VPN routing fix. The user’s report confirms wake on that PC, and the Wolow tests separately confirm sleep and hibernate support.
 
 ## Laptop and documented support
 

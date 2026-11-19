@@ -1,6 +1,6 @@
 # Mobile connections and trust
 
-Current installed development versions: desktop/server **0.6.0 (build 10)** and Android **0.6.2 (build 12)**, adding encrypted Bluetooth secondary connectivity and saved transport preferences, including the earlier certificate work. Installation results are recorded in verification.md. QR enrollment, saved PC discovery/reconnection, stable certificate identity across IP changes, and remembered desktop connection state were introduced in the earlier 0.3.0 work. Hardware monitoring is next. Laptop Wi-Fi wake investigation is closed for the current configuration; remote wake remains unimplemented. See [wake investigation](wake-investigation.md). See [setup](setup.md) and [verification](verification.md) for current delivery evidence.
+Android supports QR and manual pairing, saved PC profiles, and connections over the local network, Tailscale, and Bluetooth. See [current versions](setup.md#versions-and-qr-visibility) and [verification history](verification.md). Wake-on-LAN uses the PC’s local network. See [wake setup](setup.md#android-wake-on-lan).
 
 ## Current Android enrollment
 
@@ -64,10 +64,9 @@ Saved pairing cannot make blocked traffic pass. A connection timeout alone does 
 | Reachable trusted LAN, PC wired or wireless | Existing IP API can work with correct host/firewall setup |
 | Discovery blocked but direct traffic allowed | Last-known/manual address may work; verify identity |
 | AP/client isolation blocks peer traffic | QR, saved pairing, and a known IP cannot restore direct control |
-| Different networks or mobile data | Current LAN implementation has no route by itself |
+| Different networks or mobile data | Use [Tailscale](tailscale.md) while the paired PC is awake and running TapMyPC |
 | Personal hotspot/private router | Candidate alternate LAN; test phone-to-client traffic, discovery, and firewall profile |
 | USB networking/tethering | Future candidate; support and addressing require device/platform tests |
-| VPN/overlay or encrypted outbound relay | Future remote-access option; needs a permitted routed/relayed path and may be blocked by network policy |
 
 Ethernet does not guarantee an isolated Wi-Fi phone can reach a wired PC. A VPN is not automatically a workaround: direct peer traffic may still be blocked; internet-based relaying/routing may be required.
 
@@ -85,6 +84,6 @@ Do not bypass managed-network policy, disable firewall protections, or expose/fo
 
 Saved profiles have independent localAddress and tailscaleAddress slots alongside the active address and Bluetooth metadata. Automatic tries local candidates, Tailscale, then Bluetooth; the three Only modes never cross routes. Authenticated status supplies optional networkConnection hints, which are validated as local/Tailscale numeric HTTPS addresses before saving. Each candidate still requires pinned TLS identity before credentials. On a preferred-route recovery probe, an active Bluetooth stream is reused rather than opening a second RFCOMM session. Commands never replay.
 
-Settings > Connection shows the active route, all four preferences and separate Local network address / Tailscale address entries. The editor accepts a bare IP and preserves the known port; Advanced exposes port editing. Exact-endpoint verification precedes saving and preserves the selected preference and other endpoint. Choosing Tailscale only without an address opens setup and selects that preference after successful verification. Bluetooth stays available independently of Wi-Fi/Tailscale and only requires permission when actually used.
+Settings > Connection shows the active route, all four preferences and separate Local network address / Tailscale address entries. The editor accepts a bare IP and preserves the known port; Expanding Advanced reveals the port field, and Back returns to Connection. Exact-endpoint verification precedes saving and preserves the selected preference and other endpoint. Choosing Tailscale only without an address opens setup and selects that preference after successful verification. Bluetooth stays available independently of Wi-Fi/Tailscale and only requires permission when actually used.
 
 Legacy wifi profiles migrate to local or tailscale based on the saved IP; identity and credentials are retained. Missing slots can be learned on the next verified connection. See [Tailscale setup](tailscale.md) for listener behavior, compatibility and firewall scope.

@@ -4,7 +4,7 @@
 
 Installed Android 0.9.4+21 shows a steady Offline status, reports when a wake packet was sent, and preserves the parent settings screens when leaving the wake and address editors. The Wi-Fi wake sender supports an active split-tunnel VPN. Wake PC appears first in the Power action grid, which shows why wake is unavailable while connected or when settings are missing. Setup is in Settings for both automatic and manual profiles. Android learns local Wi-Fi settings from authenticated status on desktop 0.9.0+13. Saved manual settings take priority. See [setup](setup.md#android-wake-on-lan).
 
-Unpacked desktop 0.8.0+12 and the previous Android build 0.8.0+14 add simultaneous local/Tailscale listeners, separate saved endpoints, authenticated address learning, four connection choices and IP-only manual setup with the port under Advanced. Pairing, pinned HTTPS and no-command-replay behavior are preserved. See [Tailscale setup](tailscale.md) and verification.md for checks and package status.
+Desktop 0.9.0+13 supplies automatic Wake-on-LAN settings. It continues to host independent local and Tailscale listeners, and both routes share the same paired HTTPS identity. See [Tailscale setup](tailscale.md) and [verification](verification.md) for checks and package status.
 
 Certificate lifecycle and Bluetooth secondary connectivity are implemented. Hardware monitoring in the app is next. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
 
@@ -72,7 +72,7 @@ Monitoring is the next implementation after completed Bluetooth work. Preserve P
 
 Proved an encrypted Classic RFCOMM exchange on the development PC and Android phone. Windows advertises a secure custom RFCOMM service and forwards to a fixed process-owned loopback HTTPS listener; native Android forwards opaque TLS bytes to the Dart client. Existing TLS identity verification, bearer credentials, commands, feedback, timers, and revocation are reused. No separate command dispatcher is needed.
 
-Android saves Automatic/Wi-Fi-only/Bluetooth-only selection per PC. First enrollment and Bluetooth-address learning use authenticated Wi-Fi; saved phones can then control without LAN access. Global Start/Stop controls both listeners, while Public-network restrictions apply to Wi-Fi. Only read-only status recovery can switch transports; commands are never replayed. iOS remains deferred. See [Bluetooth](bluetooth.md).
+Android saves Automatic, Local network only, Tailscale only, or Bluetooth only per PC. First enrollment and Bluetooth-address learning use authenticated Wi-Fi; saved phones can then control without LAN access. Global Start/Stop controls both listeners, while Public-network restrictions apply to Wi-Fi. Only read-only status recovery can switch transports; commands are never replayed. iOS remains deferred. See [Bluetooth](bluetooth.md).
 
 ## Phase 6: Hardware monitoring
 
@@ -80,7 +80,7 @@ Implement the [PC Stats Tray bridge](monitoring-integration.md) and Android moni
 
 ## Phase 7: Remote wake — Android sender implemented
 
-Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable on the current Legion 5 Pro configuration after independent sender and Wolow failures, despite verified awake packet delivery and armed wake settings. Ethernet is documented by Lenovo but remains untested and impractical at this location. Android sends wake packets using per-PC settings over local Wi-Fi. Sleep and hibernate wake are user-confirmed with Wolow on the desktop after enabling PCIe resume. The same tests are pending with TapMyPC. See [remote wake investigation](wake-investigation.md) for evidence and limits. Hardware monitoring is next; no further laptop sleep test is pending.
+Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable on the current Legion 5 Pro configuration after independent sender and Wolow failures, despite verified awake packet delivery and armed wake settings. Ethernet is documented by Lenovo but remains untested and impractical at this location. Android sends wake packets using per-PC settings over local Wi-Fi. Sleep and hibernate wake are user-confirmed with Wolow on the desktop after enabling PCIe resume. The user reported successful desktop wake in TapMyPC after the Android VPN routing fix. See [remote wake investigation](wake-investigation.md) for evidence and limits. Hardware monitoring is next; no further laptop sleep test is pending.
 
 ## Open decisions
 
