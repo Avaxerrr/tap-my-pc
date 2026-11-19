@@ -40,6 +40,53 @@ Map<String, dynamic> sampleStatus() => {
   ],
 };
 
+class _MonitoringApi extends PcApi {
+  _MonitoringApi()
+    : super(
+        const PcProfile(
+          'Home desktop',
+          'https://192.168.0.239:45831',
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          'test-token',
+        ),
+      );
+
+  int calls = 0;
+
+  @override
+  Future<dynamic> request(
+    String path, {
+    String method = 'GET',
+    Object? body,
+  }) async {
+    expect(path, '/monitoring');
+    calls++;
+    return {
+      'stale': false,
+      'snapshot': {
+        'generatedAtUtc': '2026-11-19T08:00:00Z',
+        'refreshIntervalMs': 2000,
+        'metrics': [
+          {
+            'label': 'CPU Load',
+            'group': 'CPU',
+            'value': '15%',
+            'available': true,
+            'defaultVisible': true,
+          },
+          {
+            'label': 'Average Clock',
+            'group': 'CPU',
+            'value': '3250 MHz',
+            'available': true,
+            'defaultVisible': false,
+          },
+        ],
+      },
+    };
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
@@ -53,6 +100,7 @@ void main() {
     await icons.load();
   });
   setUp(() => FlutterSecureStorage.setMockInitialValues({}));
+
   Future<void> screenshot(WidgetTester tester, String name) async {
     await tester.pump(const Duration(milliseconds: 220));
     final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -82,6 +130,7 @@ void main() {
     Size size = const Size(393, 852),
     List<Object?>? sent,
     ValueChanged<PcProfile>? select,
+    PcApi? monitoringApi,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -114,6 +163,7 @@ void main() {
             discoveryMessage: 'Automatically looking for saved PCs nearby.',
             busy: busy,
             connectionTransport: transport,
+            monitoringApi: monitoringApi,
             pending: pending
                 ? {
                     'id': 'timer-test',
@@ -215,6 +265,32 @@ void main() {
     expect(saved, isNot(contains('motion')));
     appearance.dispose();
   });
+  testWidgets('Stats polls only on its tab and can expand the default view', (
+    tester,
+  ) async {
+    final api = _MonitoringApi();
+    addTearDown(api.close);
+    await render(tester, monitoringApi: api);
+    expect(api.calls, 0);
+
+    await tester.tap(find.text('Stats'));
+    await tester.pumpAndSettle();
+    expect(api.calls, 1);
+    expect(find.text('CPU Load'), findsOneWidget);
+    expect(find.text('Average Clock'), findsNothing);
+
+    await tester.tap(find.text('Show all'));
+    await tester.pumpAndSettle();
+    expect(find.text('Average Clock'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 2));
+    expect(api.calls, 2);
+    await tester.tap(find.text('Remote'));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 6));
+    expect(api.calls, 2);
+  });
+
   testWidgets('App transitions follow changes to Android reduced motion', (
     tester,
   ) async {
@@ -510,9 +586,17 @@ void main() {
   testWidgets('Small phone and large text keep every tab usable', (
     tester,
   ) async {
-    await render(tester, size: const Size(320, 760), scale: 1.8, pending: true);
+    final api = _MonitoringApi();
+    addTearDown(api.close);
+    await render(
+      tester,
+      size: const Size(320, 760),
+      scale: 1.8,
+      pending: true,
+      monitoringApi: api,
+    );
     expect(tester.takeException(), isNull);
-    for (final tab in ['Devices', 'Power', 'Remote']) {
+    for (final tab in ['Devices', 'Power', 'Stats', 'Remote']) {
       await tester.tap(find.text(tab).last);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

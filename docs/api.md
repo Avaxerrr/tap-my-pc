@@ -19,6 +19,7 @@ Successful authenticated requests also refresh a transient desktop presence indi
 | POST | `/api/v1/pair` | `{"code":"123456","name":"My Android"}` | 200 `{"token":"..."}` |
 | POST | `/api/v1/pair/qr` | `{"secret":"<64 hex characters>","name":"My Android"}` | 200 `{"token":"..."}` |
 | GET | `/api/v1/status` | None | 200 status object below |
+| GET | `/api/v1/monitoring` | None | 200 monitoring response below |
 | PUT | `/api/v1/audio/volume` | `{"volume":35}` | 200 `{"accepted":true}` |
 | PUT | `/api/v1/audio/mute` | `{"muted":true}` | 200 `{"accepted":true}` |
 | POST | `/api/v1/audio/step` | `{"direction":"Up"}` | 200 accepted + requested-key feedback |
@@ -27,6 +28,14 @@ Successful authenticated requests also refresh a transient desktop presence indi
 | PUT | `/api/v1/bluetooth` | {"enabled":true} | 200 accepted + feedback |
 | POST | `/api/v1/power` | `{"action":"Hibernate","delaySeconds":1800,"confirmed":true}` | 202 pending action object or immediate acceptance feedback |
 | DELETE | `/api/v1/power/{id}` | None | 200 `{"canceled":true}` or 404 |
+
+## Monitoring
+
+`GET /api/v1/monitoring` uses the usual bearer authentication. The response includes `snapshot` and `stale`. A missing collector returns `{"snapshot":null,"stale":false}`. Otherwise the snapshot contains `generatedAtUtc`, `refreshIntervalMs`, and `metrics`. A sample is stale after the greater of five seconds or three refresh intervals.
+
+Metric entries preserve the collector's `key`, `label`, `group`, `sourceName`, `value`, `available`, `defaultVisible`, `numericValue`, `unit`, and `totalValue`. The endpoint serves cached readings and leaves command and status handling independent. [Hardware monitoring](monitoring-integration.md)
+
+## Command details
 
 Media actions: `PlayPause`, `Previous`, `Next`.
 

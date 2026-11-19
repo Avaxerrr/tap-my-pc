@@ -2,6 +2,8 @@
 
 ## Current state
 
+Windows 0.11.0+17 reads cached PC Stats Tray metrics and serves them through the paired API. Android 0.11.0+24 adds Stats with the dashboard's default and expanded views. [Hardware monitoring](monitoring-integration.md)
+
 Windows 0.10.0+16 applies the theme accent to enabled preference switches and adds confirmed zero-delay dispatch for Lock, Sleep, and Hibernate. Android 0.10.0+23 uses the active connection's badge color, supports timers in seconds or minutes, and hides due countdowns while offline. See [verification](verification.md) for delivery status.
 
 Windows 0.9.2+15 shows the connected phone name and its active connection on the dashboard. Bluetooth is blue, Wi-Fi is green, and Tailscale is purple. The card uses a neutral border for mixed connections. See [verification](verification.md) for delivery status.
@@ -12,7 +14,7 @@ Installed Android 0.9.4+21 shows a steady Offline status, reports when a wake pa
 
 Desktop 0.9.0+13 supplies automatic Wake-on-LAN settings. It continues to host independent local and Tailscale listeners, and both routes share the same paired HTTPS identity. See [Tailscale setup](tailscale.md) and [verification](verification.md) for checks and package status.
 
-Certificate lifecycle and Bluetooth secondary connectivity are implemented. Hardware monitoring in the app is next. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
+Certificate lifecycle and Bluetooth secondary connectivity are implemented. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
 
 Previous installed desktop/server development build: **0.3.4 (build 7)**, removing the custom companion shadow for smoother dragging and showing a muted No phone connected badge until a remote is active, keeping app animations enabled independently of Windows effects, and removing the animation setting, alongside dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android is **0.4.3 (build 7)** with a desktop-matched UI, Remote/Devices/Power navigation, persistent timer/feedback presentation, saved accent themes, and installed version visibility. The Android polish patches keep selected navigation icons white in every accent theme, follow Android reduced motion automatically, and isolate optional device-list failures from verified PC connectivity. The desktop updater now preserves nested runtime dependencies; its earlier flat copy omitted the Windows monitoring library and caused monitor-list errors. QR pairing, pinned discovery/address recovery, and multi-PC selection are preserved. See [setup](setup.md) and [versioning](versioning.md).
 
@@ -72,7 +74,7 @@ The first Android client is implemented in mobile/ using the existing manual enr
 
 Reuse core behavior and rebuild presentation in Dart. Manual browser setup remains a fallback. See [mobile connections](mobile-connections.md).
 
-Monitoring is the next implementation after completed Bluetooth work. Preserve PC Stats Tray and its website using the [recorded bridge proposal](monitoring-integration.md). Presets/remote input stay deferred. The laptop wake investigation was brought forward and is now closed for its current configuration; monitoring remains next.
+The Android Stats tab uses the [PC Stats Tray bridge](monitoring-integration.md). Presets/remote input stay deferred. The laptop wake investigation was brought forward and is now closed for its current configuration.
 
 ## Phase 5: Bluetooth secondary connection — implemented
 
@@ -82,11 +84,11 @@ Android saves Automatic, Local network only, Tailscale only, or Bluetooth only p
 
 ## Phase 6: Hardware monitoring
 
-Implement the [PC Stats Tray bridge](monitoring-integration.md) and Android monitoring presentation. Keep the standalone collector and website intact, reuse cached samples, and show stale/unavailable data without disabling remote controls. Decide monitoring update rates and Bluetooth payload suitability during design.
+Implemented the [PC Stats Tray bridge](monitoring-integration.md) and Android Stats tab. The tab follows the collector's refresh interval and labels stale or unavailable data.
 
 ## Phase 7: Remote wake — Android sender implemented
 
-Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable on the current Legion 5 Pro configuration after independent sender and Wolow failures, despite verified awake packet delivery and armed wake settings. Ethernet is documented by Lenovo but remains untested and impractical at this location. Android sends wake packets using per-PC settings over local Wi-Fi. Sleep and hibernate wake are user-confirmed with Wolow on the desktop after enabling PCIe resume. The user reported successful desktop wake in TapMyPC after the Android VPN routing fix. See [remote wake investigation](wake-investigation.md) for evidence and limits. Hardware monitoring is next; no further laptop sleep test is pending.
+Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable on the current Legion 5 Pro configuration after independent sender and Wolow failures, despite verified awake packet delivery and armed wake settings. Ethernet is documented by Lenovo but remains untested and impractical at this location. Android sends wake packets using per-PC settings over local Wi-Fi. Sleep and hibernate wake are user-confirmed with Wolow on the desktop after enabling PCIe resume. The user reported successful desktop wake in TapMyPC after the Android VPN routing fix. See [remote wake investigation](wake-investigation.md) for evidence and limits. No further laptop sleep test is pending.
 
 ## Open decisions
 

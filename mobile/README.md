@@ -6,7 +6,7 @@ Android saves paired PC profiles, reconnects automatically, and controls audio, 
 
 Open **Settings > Connection** to choose Automatic, Local network only, Tailscale only, or Bluetooth only. TapMyPC learns separate local and Tailscale addresses from authenticated status. Both address editors accept a bare IP and reuse the saved port. **Advanced** reveals the editable port and **Back** returns to Connection. See [Tailscale setup](../docs/tailscale.md) and [verification](../docs/verification.md).
 
-iOS deployment remains deferred. Hardware monitoring is next. Laptop Wi-Fi wake investigation is closed for the current configuration. See [wake investigation](../docs/wake-investigation.md). Manual enrollment retains the browser protocol. QR uses the single-use `/api/v1/pair/qr` endpoint.
+iOS deployment remains deferred. Laptop Wi-Fi wake investigation is closed for the current configuration. See [wake investigation](../docs/wake-investigation.md). Manual enrollment retains the browser protocol. QR uses the single-use `/api/v1/pair/qr` endpoint.
 
 ## QR pairing
 
@@ -23,6 +23,8 @@ Start the host in the PC app. In Advanced settings copy its SHA-256 certificate 
 Connections use an empty TLS trust store and a dedicated TLS socket which verifies the enrolled leaf fingerprint or a previously verified identity-key pin, plus validity, before HTTP receives the socket. Redirects are not followed. Credentials/profile data use flutter_secure_storage; Android backup is disabled. Address changes recover automatically when discovery reaches the PC. Same-key renewal preserves updated profiles. Missing/replaced keys require desktop reset and Android Settings > Re-pair selected PC. Leaf-only profiles must connect once to learn keyPin before their first renewal, or pair again afterward.
 
 Pairings persist across app restarts. Selecting another PC isolates old responses and never redirects actions. Commands are not automatically retried. Forget removes the saved local profile; revoke on the PC to invalidate its credential.
+
+**Stats** shows the selected PC's hardware readings when the Windows host and PC Stats Tray are running. Use **Show all** to expand the default view. [Hardware monitoring](../docs/monitoring-integration.md)
 
 ## Development
 

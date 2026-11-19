@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.10.0 (build 16)** and Android **0.10.0 (build 23)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.11.0 (build 17)** and Android **0.11.0 (build 24)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -72,7 +72,7 @@ Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic 
 
 Use a network you control for initial LAN operation. Hotspot/USB networking require device tests. VPN/relay support is future work and needs a permitted route. Do not expose the command port publicly or disable firewall protections as a workaround. See [mobile connections](mobile-connections.md).
 
-Hardware monitoring is next. The monitoring bridge preserves the standalone collector and website; see [monitoring integration](monitoring-integration.md).
+For Android **Stats**, update the Windows TapMyPC host and run PC Stats Tray 0.7.1 or newer. Select **Show Stats → Local apps** and keep the default port, 4587. [Hardware monitoring](monitoring-integration.md)
 
 ## Android Wake-on-LAN
 

@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Time.Testing;
 using TapMyPC.Api;
 using TapMyPC.Core.Devices;
+using TapMyPC.Core.Monitoring;
 using TapMyPC.Core.Shortcuts;
 using TapMyPC.Core.Timers;
 
@@ -19,6 +20,7 @@ public sealed class ApiTests : IAsyncLifetime
     private readonly FakeDevice device = new();
     private readonly FakeBluetooth bluetooth = new();
     private readonly FakeHardware hardware = new();
+    private readonly TestMonitoringSource monitoring = new();
     private readonly FakeShortcutLauncher shortcutLauncher = new();
     private readonly ShortcutCatalog shortcuts;
     private readonly FakeTimeProvider clock = new();
@@ -36,7 +38,7 @@ public sealed class ApiTests : IAsyncLifetime
             .CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddHours(1));
         certificate = X509CertificateLoader.LoadPkcs12(generated.Export(X509ContentType.Pfx), null, X509KeyStorageFlags.UserKeySet);
         app = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler, bluetooth: bluetooth, outputs: hardware, monitors: hardware, shortcuts: shortcuts, bluetoothConnection: () => new(true, "10:6F:D9:9E:80:F0", TapMyPC.Core.Bluetooth.BluetoothConnectionInfo.ServiceUuid),
-            networkConnection: () => new("https://192.168.12.37:45831", null, new("02:00:00:00:00:01", "192.168.12.255")));
+            networkConnection: () => new("https://192.168.12.37:45831", null, new("02:00:00:00:00:01", "192.168.12.255")), monitoring: monitoring);
         // Test-only pinning of this ephemeral certificate. Production clients must verify the host identity.
         var handler = new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert?.Thumbprint == certificate.Thumbprint };
         client = new HttpClient(handler) { BaseAddress = new Uri(app.Urls.Single()) };
@@ -83,6 +85,40 @@ public sealed class ApiTests : IAsyncLifetime
         Assert.True(connection.GetProperty("available").GetBoolean());
         Assert.Equal("10:6F:D9:9E:80:F0", connection.GetProperty("address").GetString());
         Assert.Equal(TapMyPC.Core.Bluetooth.BluetoothConnectionInfo.ServiceUuid, connection.GetProperty("serviceId").GetString());
+    }
+
+    [Fact]
+    public async Task MonitoringRequiresAuthenticationAndLeavesStatusAvailable()
+    {
+        const string path = "/api/v1/monitoring";
+        using var unauthorized = await client.GetAsync(path);
+        Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+        Assert.Equal(0, monitoring.Reads);
+        await Authenticate();
+
+        var unavailable = await client.GetFromJsonAsync<JsonElement>(path);
+        Assert.Equal(JsonValueKind.Null, unavailable.GetProperty("snapshot").ValueKind);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/status")).StatusCode);
+
+        monitoring.Snapshot = new(DateTimeOffset.UtcNow.AddMinutes(-1), 2000,
+            [new("CpuTemp", "CPU Temp", "CPU", "Test CPU", "52°C", true, true, 51.75, "°C", null)]);
+        var response = await client.GetFromJsonAsync<JsonElement>(path);
+        Assert.True(response.GetProperty("stale").GetBoolean());
+        var snapshot = response.GetProperty("snapshot");
+        Assert.Equal(2000, snapshot.GetProperty("refreshIntervalMs").GetInt32());
+        Assert.Equal(51.75, snapshot.GetProperty("metrics")[0].GetProperty("numericValue").GetDouble());
+    }
+
+    private sealed class TestMonitoringSource : IMonitoringSource
+    {
+        public MonitoringSnapshot? Snapshot { get; set; }
+        public int Reads { get; private set; }
+
+        public Task<MonitoringSnapshot?> ReadAsync(CancellationToken cancellationToken)
+        {
+            Reads++;
+            return Task.FromResult(Snapshot);
+        }
     }
 
     [Fact]

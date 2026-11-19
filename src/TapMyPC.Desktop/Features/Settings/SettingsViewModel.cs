@@ -21,8 +21,10 @@ using TapMyPC.Core.Display;
 using TapMyPC.Core.Shortcuts;
 using TapMyPC.Core.Feedback;
 using TapMyPC.Core.Networking;
+using TapMyPC.Core.Monitoring;
 using TapMyPC.Core.Timers;
 using TapMyPC.Windows.Settings;
+using TapMyPC.Windows.Monitoring;
 
 namespace TapMyPC.Desktop.Features.Settings;
 
@@ -33,6 +35,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly IAudioOutputController? outputs;
     private readonly ShortcutCatalog? shortcuts;
     private readonly IMonitorController? monitors;
+    private readonly IMonitoringSource monitoring = new PcStatsTraySource();
     private readonly LocalSettings settings;
     private readonly Func<IReadOnlyList<NetworkAddress>> readNetworkAddresses;
     private readonly BluetoothConnectionHost? bluetoothHost;
@@ -83,7 +86,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         Appearance = new AppearanceViewModel(settings);
         this.pairing = pairing;
         this.scheduler = scheduler;
-        if (enableBluetoothTransport) bluetoothHost = new(settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors, () => NetworkConnection);
+        if (enableBluetoothTransport) bluetoothHost = new(settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors, () => NetworkConnection, monitoring);
         var saved = settings.ReadHost();
         address = saved.Address;
         tailscaleEnabled = saved.TailscaleEnabled;
@@ -430,7 +433,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private Task<WebApplication> StartNetworkApiAsync(IPAddress ip, int number, RemoteTransport transport) =>
         ApiHost.StartAsync(ip, number, certificate!, device, pairing, scheduler,
             bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors,
-            bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection);
+            bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection, monitoring: monitoring);
 
     private async Task StopNetworkListenersAsync()
     {

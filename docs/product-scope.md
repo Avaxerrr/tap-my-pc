@@ -38,7 +38,7 @@ Updated November 18, 2026, in the user's requested order:
 
 1. Implemented: certificate renewal/recovery before Bluetooth. Delivery and checks are recorded in [verification](verification.md).
 2. Implemented: Bluetooth as a secondary Android connection alongside Wi-Fi, including saved transport choice and physical-link validation. See [Bluetooth](bluetooth.md).
-3. Hardware monitoring in the app, preserving PC Stats Tray and its standalone website. See [monitoring integration](monitoring-integration.md).
+3. Implemented: Android Stats reads the same cached data as the standalone PC Stats Tray dashboard. [Hardware monitoring](monitoring-integration.md)
 4. Android supports Wake-on-LAN for a saved PC over local Wi-Fi. The phone learns the adapter MAC and broadcast IPv4 address during a verified connection and shows Wake PC alongside the other Power actions. Manual overrides live in Settings > Wake-on-LAN. The user reported successful TapMyPC wake on the desktop after the Android VPN routing fix. Sleep and hibernate wake were also verified separately with Wolow. See [setup](setup.md#android-wake-on-lan).
 5. Reassess further features afterward. Media information is useful but lower priority; consider an earlier addition only if implementation is small.
 
@@ -90,7 +90,7 @@ The desktop displays recently active remote clients on the main connection card 
 ## Android presentation
 
 - Match desktop's dark surfaces, Inter typography, modest corner radii, and Blue/Mint/Purple/Teal/Amber accents. Themes persist on the phone independently of the desktop.
-- Group controls into Remote, Devices, and Power; keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets. Device-list errors must not mark a PC offline when its authenticated status request succeeds; show a specific warning and retain working controls.
+- Group controls into Remote, Devices, and Power. Show hardware monitoring in Stats. Keep selected-PC identity and connection feedback visible. PC selection and profile management use focused sheets. Device-list errors must not mark a PC offline when its authenticated status request succeeds; show a specific warning and retain working controls.
 - Keep a pending PC action visible across tabs, with a live countdown and cancellation when online. Show the last-known countdown offline until it is due, then reconcile with the PC when it reconnects.
 - Provide a focused first-connection card with one Add your PC action, QR-first enrollment, manual fallback, version/build metadata in Settings > About, and native permission/failure feedback. Respect large text and compact screens; automatically follow system reduced-motion settings without a separate app animation preference.
 

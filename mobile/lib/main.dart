@@ -1088,6 +1088,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     power: power,
     onBluetooth: setBluetooth,
     usingBluetooth: api?.isBluetooth ?? false,
+    monitoringApi: status == null ? null : api,
     connectionTransport: api?.transportLabel,
     onVolumePreview: (value) =>
         setState(() => status!['audio']['volume'] = value.round()),

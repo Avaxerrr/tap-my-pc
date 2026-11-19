@@ -5,6 +5,7 @@ import 'widgets.dart';
 import 'remote_controls.dart';
 import 'pending_banner.dart';
 import 'pc_welcome.dart';
+import 'stats_panel.dart';
 
 class RemoteDashboard extends StatefulWidget {
   final List<PcProfile> profiles;
@@ -14,6 +15,7 @@ class RemoteDashboard extends StatefulWidget {
   final String? feedback, serverTime, connectionTransport;
   final bool busy, feedbackError;
   final bool usingBluetooth;
+  final PcApi? monitoringApi;
   final List<dynamic> outputs, monitors, shortcuts;
   final Map<String, String> deviceErrors;
   final String Function(PcProfile) profileStatus;
@@ -45,6 +47,7 @@ class RemoteDashboard extends StatefulWidget {
     required this.onForget,
     this.onRecover,
     this.usingBluetooth = false,
+    this.monitoringApi,
     this.connectionTransport,
     this.onConnection,
     this.onWakeSettings,
@@ -549,18 +552,22 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                             message: widget.message,
                           ),
                         ] else if (widget.selected != null) ...[
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
-                            child: Text(
-                              [
-                                'EVERYDAY CONTROLS',
-                                'DISPLAYS & CONNECTIONS',
-                                'POWER & TIMERS',
-                              ][tab],
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(fontSize: 10.5, letterSpacing: 1),
+                          if (tab < 3)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                              child: Text(
+                                [
+                                  'EVERYDAY CONTROLS',
+                                  'DISPLAYS & CONNECTIONS',
+                                  'POWER & TIMERS',
+                                ][tab],
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      fontSize: 10.5,
+                                      letterSpacing: 1,
+                                    ),
+                              ),
                             ),
-                          ),
                           AnimatedSwitcher(
                             duration: MediaQuery.disableAnimationsOf(context)
                                 ? Duration.zero
@@ -602,7 +609,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                   onBrightnessPreview:
                                       widget.onBrightnessPreview,
                                 ),
-                                _ => PowerControls(
+                                2 => PowerControls(
                                   status: widget.status,
                                   busy: widget.busy,
                                   power: widget.power,
@@ -610,6 +617,10 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                       widget.selected!.effectiveWakeOnLan !=
                                       null,
                                   onWake: widget.onWake,
+                                ),
+                                _ => StatsPanel(
+                                  key: ValueKey(widget.selected?.pin),
+                                  api: widget.monitoringApi,
                                 ),
                               },
                             ),
@@ -660,6 +671,11 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                     NavigationDestination(
                       icon: Icon(Icons.power_settings_new),
                       label: 'Power',
+                    ),
+                    NavigationDestination(
+                      icon: Icon(Icons.monitor_heart_outlined),
+                      selectedIcon: Icon(Icons.monitor_heart),
+                      label: 'Stats',
                     ),
                   ],
                 ),

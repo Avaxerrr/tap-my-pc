@@ -16,6 +16,7 @@ using TapMyPC.Core.Audio;
 using TapMyPC.Core.Display;
 using TapMyPC.Core.Shortcuts;
 using TapMyPC.Core.Timers;
+using TapMyPC.Core.Monitoring;
 
 namespace TapMyPC.Api;
 
@@ -30,7 +31,7 @@ public static class ApiHost
     }
 
     public static async Task<WebApplication> StartAsync(IPAddress address, int port, X509Certificate2 certificate,
-        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null)
+        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null, IMonitoringSource? monitoring = null)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(ApiHost).Assembly.FullName });
         builder.Logging.ClearProviders();
@@ -109,6 +110,11 @@ public static class ApiHost
             try { if (capabilities.Audio) audio = device.ReadAudio(); } catch { capabilities = capabilities with { Audio = false }; }
             var bluetoothState = bluetooth is null ? new BluetoothStatus(false, false, BluetoothRadioState.Unavailable, "Bluetooth control is unavailable.") : await bluetooth.ReadAsync();
             return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, supportsImmediatePower = true, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
+        });
+        app.MapGet("/api/v1/monitoring", async (CancellationToken cancellation) =>
+        {
+            var snapshot = monitoring is null ? null : await monitoring.ReadAsync(cancellation);
+            return Results.Ok(new { snapshot, stale = snapshot?.IsStaleAt(DateTimeOffset.UtcNow) ?? false });
         });
         app.MapPut("/api/v1/audio/volume", (VolumeRequest request) =>
         {

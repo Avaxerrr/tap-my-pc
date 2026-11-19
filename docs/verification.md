@@ -396,3 +396,10 @@ November 19, 2026 (Asia/Taipei).
 - Published and applied Windows build 16 after the host exited. All 26 installed files matched the publish tree. The live UI showed both enabled preferences using the selected blue accent. No native power action was sent in verification.
 - Android 0.10.0+23 passed analysis and 72 Flutter tests, with one opt-in certificate fixture skipped. Verified transport labels and colors, seconds and minutes input, short timer validation, direct zero-delay actions, older-host fallback, and the due card hiding offline. The debug APK at artifacts/mobile/TapMyPC-0.10.0-build23.apk uses a different signing key from build 21.
 - With the user's approval, removed Android build 21 and installed build 23 under the standard package ID. ADB verified version 0.10.0, build 23 and a successful cold launch. The clean install starts at PC setup.
+
+## Hardware monitoring 0.11.0
+
+- Windows 0.11.0+17 passed all 87 .NET tests. An isolated pinned HTTPS host read 92 fresh metrics from the running PC Stats Tray at its configured one-second interval and rejected anonymous access. Applied the Windows update at the existing installation path, matched all 22 staged files by hash, verified desktop and API version metadata, and launched the host.
+- Android 0.11.0+24 passed analysis and 73 Flutter tests, with the opt-in certificate fixture skipped. Tests verified the Stats tab, the default and expanded views, polling, and layout on a small screen with large text. The APK is at `artifacts/mobile/TapMyPC-0.11.0-build24.apk`.
+- Android rejected the in-place update because the installed build 23 has a different signing certificate. Build 23 and its saved PCs stayed in place after that attempt.
+- On the approved clean reinstall, the device removed build 23 and canceled the USB installation of build 24. Copied the APK to the phone Downloads folder and verified its SHA-256 hash. The user then completed the installation and confirmed Stats is working. ADB verified version 0.11.0 and build 24.
