@@ -119,9 +119,25 @@ The Android viewer follows the physical Windows session through the lock screen 
 3. **Build the in-app session.** The Android viewer and authenticated Windows stream are implemented in the preview. The simulator verified that the bundled viewer draws successive screen updates and sends touch and keyboard input. The API tests cover transport access, binary streaming, and active cancellation after permission removal. Measure time to first frame and input responsiveness on Wi-Fi and cellular with the lower-bandwidth setting during device testing. [Tailscale remote access](tailscale.md)
 4. **Add away-from-home wake.** Use an optional always-on device on the home LAN to send the Wake-on-LAN packet. Verify from cellular that the user can wake the desktop, wait for TapMyPC to reconnect, sign in, and continue using Windows. The first release targets lock and resume of a signed-in Windows session. A cold boot or sign-out would require the TapMyPC listener to be available before Windows sign-in. [Wake-on-LAN over Tailscale](https://tailscale.com/blog/wake-on-lan-tailscale-upsnap)
 
+### Remote Desktop audio preview
+
+Windows 0.16.0+27 and Android 0.16.0+31 add optional, permission-gated playback audio over Wi-Fi and Tailscale. Windows shares a loopback copy of the default multimedia output and follows changes during a session. Verify playback on the phone, normal local playback, and output changes with the laptop speakers, DAC, and NVIDIA Broadcast. Compare delay over Wi-Fi and Tailscale. See [audio setup](setup.md#play-pc-audio-on-android).
+
+### Android stream controls and fullscreen
+
+Android 0.17.0+32 adds landscape fullscreen, a compact controls handle with PC audio, scrollbars in Fill, and independent RFB stream settings. The options sheet reports the received size, receive and update rates, and observed encoding and JPEG chroma. See [setup](setup.md#remote-desktop-preview).
+
+Android 0.17.1+33 adds a bounded reconnect after an unexpected viewer interruption, more specific failure messages, and a reset to saved stream defaults. The viewer centers Fit and Fill on resize, uses full color, and shows the quality controls supported by the preferred encoding.
+
+Android 0.17.2+34 restores Fit or Fill in a centered view at the saved stream size, compacts the dropdowns, and explains the visual tradeoffs of each encoding. Automatic and Tight use compression levels 1–9 for decoder compatibility. Zlib supports 0–9. JPEG chroma is reported in Stream details.
+
+Android 0.17.3+36 lets UltraVNC finish its first desktop update before restoring a saved stream scale. The viewer also skips the extended desktop-size advertisement that can replace the confirmed stream size.
+
+Android 0.17.4+37 requests a fresh frame when UltraVNC is slow to confirm a stream resize. If desktop updates stop while the resize is pending, the viewer reconnects at the selected scale. Manual refresh also works while a resize is pending.
+
 ### Deferred viewer work
 
-Validate monitor selection and lower stream resolution with the Android viewer, including touch accuracy and sign-in text readability.
+Validate monitor selection and check UltraVNC server-side scaling on the target setup, including touch accuracy and sign-in text readability.
 
 ### Deferred: black patches after Windows unlock
 

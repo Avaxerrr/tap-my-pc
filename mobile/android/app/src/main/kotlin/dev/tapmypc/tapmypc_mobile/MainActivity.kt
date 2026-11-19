@@ -6,6 +6,9 @@ import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.provider.Settings
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -39,6 +42,15 @@ class MainActivity : FlutterActivity() {
                     @Suppress("DEPRECATION")
                     val number = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
                     result.success(mapOf("version" to info.versionName, "build" to number.toString()))
+                } else if (call.method == "viewerFullscreen") {
+                    val fullscreen = call.arguments == true
+                    val controller = WindowCompat.getInsetsController(window, window.decorView)
+                    controller.systemBarsBehavior = if (fullscreen)
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    else WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                    if (fullscreen) controller.hide(WindowInsetsCompat.Type.systemBars())
+                    else controller.show(WindowInsetsCompat.Type.systemBars())
+                    result.success(null)
                 } else if (call.method == "deviceName") {
                     val configured = try { if (Build.VERSION.SDK_INT >= 25) Settings.Global.getString(contentResolver, Settings.Global.DEVICE_NAME) else null } catch (_: SecurityException) { null }
                     val model = Build.MODEL?.trim().orEmpty()

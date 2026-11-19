@@ -8,4 +8,5 @@
 - Select the active network IP automatically; localhost is an Advanced debugging override. Keep command feedback visible on both clients and PC, with silent non-modal notifications that do not steal focus.
 - Before relevant work, read [architecture](docs/architecture.md), [product scope](docs/product-scope.md), and [implementation plan](docs/implementation-plan.md). The [documentation index](docs/README.md) describes their purpose.
 - Follow [versioning guidelines](docs/versioning.md) automatically when delivering app changes; keep desktop and mobile versions independent unless coordinating a release.
+- After building a verified TapMyPC Android app APK, automatically install it in place on the owner's connected phone (ADB serial `a8c1d7b2`) and verify the installed version. See [Android delivery](docs/versioning.md#delivery-workflow).
 - Update the relevant docs when scope, architecture, or command behavior changes. Keep this file limited to durable essentials and links.

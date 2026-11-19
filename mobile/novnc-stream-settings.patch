@@ -1,0 +1,63 @@
+diff --git a/core/rfb.js b/core/rfb.js
+index 80011e4..3528a21 100644
+--- a/core/rfb.js
++++ b/core/rfb.js
+@@ -165,0 +166,5 @@ export default class RFB extends EventTargetMixin {
++        this._preferredEncoding = null;
++        this._onStreamRectangle = options.onStreamRectangle;
++        this._onStreamUpdate = options.onStreamUpdate;
++        this._onStreamFailure = options.onStreamFailure;
++        this._onServerScaleChanged = options.onServerScaleChanged;
+@@ -263,0 +269 @@ export default class RFB extends EventTargetMixin {
++            this._display.onStreamImage = options.onStreamImage;
+@@ -415,0 +422,10 @@ export default class RFB extends EventTargetMixin {
++    // TapMyPC updates these values together to send one SetEncodings message.
++    setStreamEncoding(preferredEncoding, quality, compression) {
++        this._preferredEncoding = preferredEncoding;
++        this._qualityLevel = quality;
++        this._compressionLevel = compression;
++        if (this._rfbConnectionState === 'connected') {
++            this._sendEncodings();
++        }
++    }
++
+@@ -955,0 +972 @@ export default class RFB extends EventTargetMixin {
++        this._onStreamFailure?.(details);
+@@ -2234 +2251,3 @@ export default class RFB extends EventTargetMixin {
+-        if (this._fbDepth == 24) {
++        if (this._fbDepth === 24 && this._preferredEncoding !== null) {
++            encs.push(this._preferredEncoding);
++        } else if (this._fbDepth === 24) {
+@@ -2246 +2265,3 @@ export default class RFB extends EventTargetMixin {
+-        encs.push(encodings.encodingRaw);
++        if (!encs.includes(encodings.encodingRaw)) {
++            encs.push(encodings.encodingRaw);
++        }
+@@ -2256 +2272 @@ export default class RFB extends EventTargetMixin {
+-        encs.push(encodings.pseudoEncodingExtendedDesktopSize);
++        // TapMyPC omits ExtendedDesktopSize because UltraVNC can overwrite the scaled size.
+@@ -2570,0 +2592 @@ export default class RFB extends EventTargetMixin {
++                if (ret) this._onStreamUpdate?.();
+@@ -2589,0 +2612,12 @@ export default class RFB extends EventTargetMixin {
++            case 4: {  // UltraVNC ResizeFrameBuffer, following a server scale request
++                if (this._sock.rQwait("UltraVNC framebuffer size", 5, 1)) { return false; }
++                this._sock.rQskipBytes(1);
++                const width = this._sock.rQshift16();
++                const height = this._sock.rQshift16();
++                if (!width || !height) return this._fail("Invalid UltraVNC framebuffer size");
++                this._resize(width, height);
++                RFB.messages.fbUpdateRequest(this._sock, false, 0, 0, width, height);
++                this._onServerScaleChanged?.();
++                return true;
++            }
++
+@@ -2656,0 +2691,3 @@ export default class RFB extends EventTargetMixin {
++            if (this._decoders[this._FBU.encoding]) {
++                this._onStreamRectangle?.(this._FBU.encoding);
++            }
+diff --git a/core/display.js b/core/display.js
+index 4efd6f4..736bb98 100644
+--- a/core/display.js
++++ b/core/display.js
+@@ -369,0 +370 @@ export default class Display {
++        this.onStreamImage?.(mime, arr);

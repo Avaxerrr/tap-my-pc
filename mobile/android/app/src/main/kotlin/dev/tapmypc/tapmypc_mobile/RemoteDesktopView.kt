@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -33,6 +34,9 @@ internal class RemoteDesktopViewFactory(private val messenger: BinaryMessenger) 
 private class RemoteDesktopView(context: Context, private val channel: MethodChannel) : PlatformView {
     private val webView = WebView(context)
     private var reply: JavaScriptReplyProxy? = null
+    private var rendererGone = false
+    private var audioId: Int? = null
+    private var audioPlayer: RemoteDesktopAudioPlayer? = null
     private val supported = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER) &&
         WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_ARRAY_BUFFER)
 
@@ -51,6 +55,13 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
             domStorageEnabled = false
         }
         webView.webViewClient = object : WebViewClient() {
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                rendererGone = true
+                reply = null
+                channel.invokeMethod("viewerFailure", "renderer")
+                return true
+            }
+
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
 
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
@@ -81,6 +92,12 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
                             else -> {
                                 if (event?.startsWith("resolution:") == true) {
                                     channel.invokeMethod("resolution", event.removePrefix("resolution:"))
+                                } else if (event?.startsWith("stats:") == true) {
+                                    channel.invokeMethod("stats", event.removePrefix("stats:"))
+                                } else if (event?.startsWith("viewerFailure:") == true) {
+                                    channel.invokeMethod("viewerFailure", event.removePrefix("viewerFailure:"))
+                                } else if (event == "scaleUnconfirmed") {
+                                    channel.invokeMethod("scaleUnconfirmed", null)
                                 }
                             }
                         }
@@ -119,6 +136,37 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
                         result.success(null)
                     }
                 }
+                "startAudio" -> {
+                    val id = call.arguments as? Int
+                    if (id == null) {
+                        result.error("audio", "Invalid audio session.", null)
+                    } else {
+                        stopAudio()
+                        audioId = id
+                        audioPlayer = RemoteDesktopAudioPlayer {
+                            webView.post {
+                                if (audioId == id) {
+                                    stopAudio()
+                                    channel.invokeMethod("audioError", id)
+                                }
+                            }
+                        }.also { it.start() }
+                        result.success(null)
+                    }
+                }
+                "audioPacket" -> {
+                    val packet = call.arguments as? ByteArray
+                    if (packet == null || packet.isEmpty() || packet.size > 1275) {
+                        result.error("audio", "Invalid audio packet.", null)
+                    } else {
+                        audioPlayer?.offer(packet)
+                        result.success(null)
+                    }
+                }
+                "stopAudio" -> {
+                    if (audioId == call.arguments) stopAudio()
+                    result.success(null)
+                }
                 "screen" -> {
                     val bytes = call.arguments as? ByteArray
                     val page = reply
@@ -134,12 +182,19 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
         }
     }
 
+    private fun stopAudio() {
+        audioId = null
+        audioPlayer?.stop()
+        audioPlayer = null
+    }
+
     override fun getView(): WebView = webView
 
     override fun dispose() {
+        stopAudio()
         channel.setMethodCallHandler(null)
         reply = null
-        webView.stopLoading()
+        if (!rendererGone) webView.stopLoading()
         webView.destroy()
     }
 }

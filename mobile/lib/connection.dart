@@ -393,32 +393,69 @@ class PcApi {
 
   static const remoteDesktopViewerStatusProtocol = 'tapmypc.viewer-status.v1';
 
-  Future<WebSocket> openRemoteDesktop() async {
+  static const _remoteDesktopAudioProtocol = 'tapmypc.audio.opus.v1';
+
+  Future<WebSocket> openRemoteDesktop() => _openRemoteDesktop(
+    '/api/v1/remote-desktop',
+    remoteDesktopViewerStatusProtocol,
+  );
+
+  Future<WebSocket> openRemoteDesktopAudio() async {
+    final socket = await _openRemoteDesktop(
+      '/api/v1/remote-desktop/audio',
+      _remoteDesktopAudioProtocol,
+    );
+    if (socket.protocol != _remoteDesktopAudioProtocol) {
+      unawaited(socket.close());
+      throw const FormatException(
+        'The PC did not negotiate Remote Desktop audio.',
+      );
+    }
+    return socket;
+  }
+
+  Future<WebSocket> _openRemoteDesktop(String path, String protocol) async {
     if (isBluetooth || profile.token.isEmpty) {
       throw StateError('Connect to a paired PC over Wi-Fi or Tailscale.');
     }
-    final uri = Uri.parse(
-      _requestAddress,
-    ).resolve('/api/v1/remote-desktop').replace(scheme: 'wss');
+    final uri = Uri.parse(_requestAddress).resolve(path).replace(scheme: 'wss');
     final connection = WebSocket.connect(
       uri.toString(),
       customClient: _client,
       compression: CompressionOptions.compressionOff,
-      protocols: const [remoteDesktopViewerStatusProtocol],
+      protocols: [protocol],
       headers: {'Authorization': 'Bearer ${profile.token}'},
     );
     final socket = await connection.timeout(
       _timeout,
       onTimeout: () {
         close();
-        connection.then<void>(
-          (lateSocket) => lateSocket.close(),
-          onError: (Object _) {},
+        unawaited(
+          connection.then<void>(closeRemoteDesktop, onError: (Object _) {}),
         );
         throw TimeoutException('Remote Desktop did not connect.');
       },
     );
-    return socket..pingInterval = const Duration(seconds: 20);
+    // A pause while a large screen update crosses the Android bridge also
+    // pauses processing of pong frames. Allow extra time for that queue.
+    return socket
+      ..pingInterval = path.endsWith('/audio')
+          ? const Duration(seconds: 20)
+          : const Duration(seconds: 45);
+  }
+
+  Future<void> closeRemoteDesktop(WebSocket? socket) async {
+    try {
+      if (socket != null) {
+        await socket
+            .close(WebSocketStatus.normalClosure)
+            .timeout(const Duration(seconds: 2));
+      }
+    } on Object {
+      // A failed transport can also fail its close frame.
+    } finally {
+      close();
+    }
   }
 
   void close() => _client.close(force: true);

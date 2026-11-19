@@ -11,6 +11,7 @@ import 'discovery.dart';
 import 'ui/app_theme.dart';
 import 'ui/remote_dashboard.dart';
 import 'ui/remote_desktop_page.dart';
+import 'ui/remote_desktop_preferences.dart';
 import 'ui/network_address_editor.dart';
 import 'ui/wake_on_lan_editor.dart';
 import 'wake_on_lan.dart';
@@ -101,6 +102,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   bool probing = false;
   int ticks = 0;
   ValueNotifier<int?>? desktopRevision;
+  ValueNotifier<bool?>? desktopAudioPermission;
 
   @override
   void initState() {
@@ -278,6 +280,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       if (!mounted || generation != epoch) return;
       final revision = next['remoteDesktopRevision'];
       desktopRevision?.value = revision is int ? revision : null;
+      if (next['remoteDesktopAudioEnabled'] case final bool allowed) {
+        desktopAudioPermission?.value = allowed;
+      }
       final loadDevices = devices || status == null;
       // A verified status response establishes connectivity. Optional device
       // lists must not turn a reachable PC into an offline one.
@@ -1075,7 +1080,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
     final value = status?['remoteDesktopRevision'];
     final revision = ValueNotifier<int?>(value is int ? value : null);
+    final audio = status?['remoteDesktopAudioEnabled'];
+    final audioPermission = ValueNotifier<bool?>(audio is bool ? audio : null);
     desktopRevision = revision;
+    desktopAudioPermission = audioPermission;
     try {
       await Navigator.of(context).push<void>(
         MaterialPageRoute(
@@ -1084,6 +1092,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
               target.desktopPassword,
             ),
             revision: revision,
+            audioPermission: audioPermission,
             preferences: desktopPreferences,
             savePassword: (password) =>
                 saveRemoteDesktopPassword(target, password),
@@ -1093,6 +1102,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     } finally {
       desktopRevision = null;
       revision.dispose();
+      desktopAudioPermission = null;
+      audioPermission.dispose();
     }
   }
 

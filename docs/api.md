@@ -40,6 +40,16 @@ Clients may offer the WebSocket subprotocol `tapmypc.viewer-status.v1`. If it is
 
 The upgrade returns 401 for an invalid token, 403 when the paired client lacks Remote Desktop permission, 404 on an unsupported listener, 409 while a viewer is connected, and 503 when the local VNC backend is unavailable. A request without an upgrade returns 400 for an authorized viewer. [Setup](setup.md#remote-desktop-preview)
 
+### Remote Desktop audio
+
+On Windows 0.16.0 and newer, `remoteDesktopAudioEnabled` in authenticated status is true or false when the listener supports audio and the client has Remote Desktop access. It reflects the separate PC-side permission for that phone. The field is null when audio is unavailable on that listener and absent on older hosts.
+
+Open `wss://<PC>/api/v1/remote-desktop/audio` with the same pinned TLS identity and bearer credential, and offer `tapmypc.audio.opus.v1`. The endpoint allows one stream for the paired client that owns the active viewer and has reported `viewer-ready`. That report is supplied by the viewer. The separate PC-side audio permission authorizes access to system playback independently of the UltraVNC password.
+
+Each server-to-client binary message is one raw Opus packet with 20 ms of stereo audio at 48 kHz. The flow can pause while the selected Windows endpoint is silent. Close the WebSocket to end audio while keeping the viewer open. Closing the viewer, revoking audio or desktop permission, revoking the pairing, or stopping the listener ends capture.
+
+The audio upgrade returns 401 for a missing or invalid bearer token, 403 for missing audio permission, 404 when the listener does not expose audio, 400 for missing upgrade or subprotocol, and 409 if the viewer is unavailable or an audio stream is already open. A capture failure can close an open audio stream with code 1011. [Setup](setup.md#play-pc-audio-on-android)
+
 ## Monitoring
 
 `GET /api/v1/monitoring` uses the usual bearer authentication. The response includes `snapshot` and `stale`. A missing collector returns `{"snapshot":null,"stale":false}`. Otherwise the snapshot contains `generatedAtUtc`, `refreshIntervalMs`, and `metrics`. A sample is stale after the greater of five seconds or three refresh intervals.

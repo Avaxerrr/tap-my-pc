@@ -24,6 +24,7 @@ using TapMyPC.Core.Networking;
 using TapMyPC.Core.Monitoring;
 using TapMyPC.Core.Timers;
 using TapMyPC.Windows.Settings;
+using TapMyPC.Windows.Audio;
 using TapMyPC.Windows.Monitoring;
 
 namespace TapMyPC.Desktop.Features.Settings;
@@ -36,6 +37,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly ShortcutCatalog? shortcuts;
     private readonly IMonitorController? monitors;
     private readonly IMonitoringSource monitoring = new PcStatsTraySource();
+    private readonly IRemoteDesktopAudioSource remoteDesktopAudio = new WindowsRemoteDesktopAudio();
     private CancellationTokenSource? monitoringRead;
     private bool monitoringVisible;
     private readonly LocalSettings settings;
@@ -185,6 +187,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             selectedDevice = value;
             deviceName = value?.Name ?? "";
             Notify(); Notify(nameof(DeviceName)); Notify(nameof(HasSelectedDevice)); Notify(nameof(SelectedRemoteDesktopEnabled));
+            Notify(nameof(SelectedRemoteDesktopAudioEnabled));
         }
     }
     public bool HasSelectedDevice => selectedDevice is not null;
@@ -206,6 +209,25 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             {
                 Message = ex.Message;
                 dispatcher.BeginInvoke(() => Notify(nameof(SelectedRemoteDesktopEnabled)));
+            }
+        }
+    }
+    public bool SelectedRemoteDesktopAudioEnabled
+    {
+        get => selectedDevice?.RemoteDesktopAudioEnabled == true;
+        set
+        {
+            if (selectedDevice is null || selectedDevice.RemoteDesktopAudioEnabled == value) return;
+            try
+            {
+                pairing.SetRemoteDesktopAudioAccess(selectedDevice.Id, value);
+                Message = value ? "Remote Desktop audio allowed for this phone." : "Remote Desktop audio access removed.";
+                Tick();
+            }
+            catch (Exception ex)
+            {
+                Message = ex.Message;
+                dispatcher.BeginInvoke(() => Notify(nameof(SelectedRemoteDesktopAudioEnabled)));
             }
         }
     }
@@ -469,7 +491,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         ApiHost.StartAsync(ip, number, certificate!, device, pairing, scheduler,
             bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors,
             bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection, monitoring: monitoring,
-            remoteDesktopPort: 5900, remoteDesktopRevision: () => Volatile.Read(ref remoteDesktopRevision));
+            remoteDesktopPort: 5900, remoteDesktopRevision: () => Volatile.Read(ref remoteDesktopRevision), remoteDesktopAudio: remoteDesktopAudio);
 
     private void OnDesktopSessionSwitch(object sender, SessionSwitchEventArgs e)
     {

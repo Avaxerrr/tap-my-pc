@@ -474,3 +474,45 @@ November 19, 2026 (Asia/Taipei).
 - A simulated RFB session recovered from a black opening frame and from a desktop switch where the first refresh arrived too early. It also verified manual refresh, VNC authentication failure, keyboard forwarding, Fit and Fill with touch coordinates, landscape viewport resizing, and preset negotiation.
 - Built and staged the development APK at `artifacts/mobile/TapMyPC-0.15.0-build30.apk`. Verified Android version name 0.15.0, version code 30, signing, the ARM64 runtime libraries, and the packaged viewer assets. Installed the APK over the existing app using ADB. Verified the phone reports version 0.15.0 with version code 30 and that the app launches.
 - Physical verification is pending for repeated viewer opens and Windows lock/unlock, Android keyboard display, and the rotation button. See the [black-screen verification checklist](implementation-plan.md#deferred-black-patches-after-windows-unlock).
+
+
+## Remote Desktop audio preview — Windows 0.16.0+27 / Android 0.16.0+31
+
+- All 93 .NET tests passed, including separate audio permission, active-viewer ownership, one audio stream, and cancellation when either audio permission or the viewer is removed. Flutter analysis and 76 tests passed. The opt-in certificate fixture was skipped.
+- A loopback-only fixture exercised the Windows WASAPI and Opus capture code with a test tone, the pinned WebSocket, and the Android viewer in an emulator. The emulator wrote decoded audio to AudioTrack, the toggle stopped capture, and Windows reported the same output, volume, and mute state before and after.
+- Published Windows to `artifacts/publish/TapMyPC-next` and verified the EXE and API product version, runtime files, and audio license notices. Staged `artifacts/mobile/TapMyPC-0.16.0-build31.apk` and verified its signature, version name and version code. Installed the APK over the existing app with ADB and verified version 0.16.0 with version code 31 on the connected phone. The running desktop is 0.15.2+26.
+- Physical validation remains for the speakers/DAC/NVIDIA Broadcast output changes and for playback over Wi-Fi and Tailscale.
+
+
+## Remote Desktop stream controls — Android 0.17.0+32
+
+- Flutter analysis passed and 77 tests passed, including legacy preset migration and custom-settings persistence. The opt-in certificate fixture was skipped.
+- Browser fixtures verified custom RFB encoding, JPEG quality, compression and chroma requests, decoding 64-color Raw updates, fragmented UltraVNC scale replies, and resolution, receive-rate and JPEG diagnostics. They also verified both Fill scrollbars, touch alignment, refresh recovery and password failure.
+- An Android emulator fixture verified the portrait and landscape controls, audio start and stop from the toolbar, and the options sheet. Android window insets reported both system bars hidden in landscape. Live verification against the physical UltraVNC host remains pending for server scaling and requested chroma.
+- Verified the signature, package ID, version, viewer assets and ARM64 runtime in `artifacts/mobile/TapMyPC-0.17.0-build32.apk`. Installed in place through ADB and confirmed version 0.17.0 and code 32 on the connected phone.
+
+
+## Remote Desktop recovery and options — Android 0.17.1+33
+
+- Build 32 logged closed TLS socket reads on the phone. Those logs did not identify the first event that ended the original sessions. The viewer now reports transport, UltraVNC protocol, and WebView failures and makes a bounded foreground reconnect.
+- Flutter analysis passed and 78 tests passed. The opt-in certificate fixture was skipped. The Android emulator exercised the pinned relay with a forced backend reset followed by a second close. The first loss recovered automatically and the second exposed the manual reconnect options. Reset and reconnect opened a third session with saved defaults.
+- Browser fixtures verified recovery refresh, Fit and Fill centering, pointer mapping, and sequential server-scale requests with fragmented replies. The real UltraVNC trigger on the target PC remains unverified.
+- Verified the APK signature, package metadata, viewer assets, and ARM64 runtime. Installed `artifacts/mobile/TapMyPC-0.17.1-build33.apk` in place with ADB and verified version 0.17.1 with code 33 on the connected phone.
+
+## Remote Desktop display and compression — Android 0.17.2+34
+
+- Flutter analysis passed and 80 tests passed. The opt-in certificate fixture was skipped. Tests covered legacy compression values, Zlib level 0, retired chroma settings, and persistence of Fit or Fill.
+- Browser fixtures verified that the viewer opened at a saved lower stream size with Fit and Fill centered in portrait and landscape. Automatic and Tight sent compression level 1 for a saved 0. Zlib sent 0. The fixtures also verified that JPEG chroma diagnostics remained available and the client stopped sending a chroma request.
+- Verified the signature, package ID, viewer assets, and ARM64 runtime in `artifacts/mobile/TapMyPC-0.17.2-build34.apk`. Installed it in place with ADB and confirmed version 0.17.2 and code 34 on the connected phone. Centering on reopen was verified against the browser fixture.
+
+## Remote Desktop scale on reopen — Android 0.17.3+36
+
+- Reproduced the misplaced image in build 34 by sending an original-size ExtendedDesktopSize update after the server confirmed the reduced size. Build 35 removed that advertisement but still reopened the live PC stream at 2560 × 1440 with half resolution saved.
+- Build 36 waits for the first desktop update and initial capture to settle before restoring the saved scale. Browser fixtures verified centered Fit and Fill on reopen, in-session scaling, and regular desktop resize messages. Flutter analysis and 80 tests passed during this update. The opt-in certificate fixture was skipped.
+- Verified the signature, package ID, assets, and ARM64 runtime in `artifacts/mobile/TapMyPC-0.17.3-build36.apk` and installed it in place. The connected phone reported version 0.17.3 and code 36. It opened the live session at the saved 1280 × 720 in Fill and retained that size after disconnecting and reopening. Screen samples confirmed that the desktop filled the viewer after reconnecting.
+
+## Remote Desktop resize recovery — Android 0.17.4+37
+
+- Flutter analysis and 80 tests passed. The opt-in certificate fixture was skipped. Browser fixtures verified one full-frame probe after a late resize reply, manual refresh during a pending resize, and recovery on a late confirmation. They also verified that ongoing pixel updates kept the viewer connected and that a stalled resize triggered recovery without sending a second scale request.
+- An Android emulator test withheld the reply and further desktop frames after changing from 1/4 to Original. The backend received the full-frame probe and recorded a second connection. The app reopened at Original using the saved selection.
+- Verified the signature, package ID, viewer assets, and ARM64 runtime in `artifacts/mobile/TapMyPC-0.17.4-build37.apk`. Installed it in place and confirmed Android version 0.17.4 and code 37 on the connected phone.

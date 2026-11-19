@@ -4,6 +4,12 @@ The viewer bundle novnc.js is built from the upstream @novnc/novnc 1.7.0 npm pac
 Source: https://github.com/novnc/noVNC/tree/v1.7.0
 Package: https://www.npmjs.com/package/@novnc/novnc/v/1.7.0
 
+In a temporary npm workspace outside the Git repository, enter the installed
+package directory and apply mobile/novnc-stream-settings.patch
+using git apply --unidiff-zero before bundling. The patch adds setting negotiation,
+stream diagnostics, and the UltraVNC framebuffer-resize reply. It skips
+ExtendedDesktopSize so UltraVNC cannot overwrite an acknowledged stream size.
+
 Build the bundle with esbuild 0.28.0 using @novnc/novnc/core/rfb.js as the entry point.
 Options: --bundle --format=esm --target=es2022 --minify.
 The TapMyPC page and its channel are in index.html, viewer.css and viewer.js.

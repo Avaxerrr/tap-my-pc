@@ -7,6 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup><PackageReference Include="Makaretu.Dns.Multicast" Version="0.27.0" /><PackageReference Include="System.Management" Version="10.0.0" /></ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" Version="3.3.0" />
+    <PackageReference Include="Concentus" Version="2.2.2" />
+  </ItemGroup>
   <ItemGroup><ProjectReference Include="../TapMyPC.Core/TapMyPC.Core.csproj" /></ItemGroup>
   <ItemGroup><EmbeddedResource Include="RemoteDesktop/SetupCaptureService.ps1" /></ItemGroup>
+  <ItemGroup>
+    <None Update="ThirdParty/*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

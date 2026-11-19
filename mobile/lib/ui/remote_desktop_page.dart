@@ -1,62 +1,29 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../connection.dart';
-
-enum RemoteDesktopQuality {
-  saveData('save-data', 'Save data'),
-  balanced('balanced', 'Balanced'),
-  sharper('sharper', 'Sharper');
-
-  const RemoteDesktopQuality(this.id, this.label);
-  final String id, label;
-}
-
-class RemoteDesktopPreferences {
-  RemoteDesktopPreferences([this.storage = const FlutterSecureStorage()]);
-
-  static const _qualityKey = 'tapmypc.remoteDesktop.quality.v1';
-  final FlutterSecureStorage storage;
-  Future<void> _writes = Future.value();
-
-  Future<RemoteDesktopQuality> loadQuality() async {
-    await _writes.catchError((Object _) {});
-    final saved = await storage.read(key: _qualityKey);
-    return RemoteDesktopQuality.values
-            .where((q) => q.id == saved)
-            .firstOrNull ??
-        RemoteDesktopQuality.balanced;
-  }
-
-  Future<void> saveQuality(RemoteDesktopQuality value) => _writes = _writes
-      .catchError((Object _) {})
-      .then((_) => storage.write(key: _qualityKey, value: value.id));
-}
-
-enum _ScreenFit {
-  fit('Fit'),
-  fill('Fill');
-
-  const _ScreenFit(this.label);
-  final String label;
-}
+import 'remote_desktop_audio.dart';
+import 'remote_desktop_preferences.dart';
+import 'remote_desktop_stream_options.dart';
 
 class RemoteDesktopPage extends StatefulWidget {
   const RemoteDesktopPage({
     super.key,
     required this.profile,
     required this.revision,
+    required this.audioPermission,
     required this.preferences,
     required this.savePassword,
   });
 
   final PcProfile profile;
   final ValueListenable<int?> revision;
+  final ValueListenable<bool?> audioPermission;
   final RemoteDesktopPreferences preferences;
   final Future<void> Function(String?) savePassword;
 
@@ -64,12 +31,28 @@ class RemoteDesktopPage extends StatefulWidget {
   State<RemoteDesktopPage> createState() => _RemoteDesktopPageState();
 }
 
+class _DesktopAttempt {
+  _DesktopAttempt(this.profile);
+
+  final PcProfile profile;
+  PcApi? api;
+  MethodChannel? bridge;
+  WebSocket? socket;
+  Timer? timeout;
+  DateTime? connectedAt;
+  bool opening = false;
+}
+
 class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     with WidgetsBindingObserver {
-  late final PcApi _api = PcApi(widget.profile);
-  MethodChannel? _bridge;
-  WebSocket? _socket;
-  Timer? _viewerStartup;
+  late final _audio = RemoteDesktopAudio(widget.profile);
+  _DesktopAttempt? _attempt;
+  MethodChannel? get _bridge => _attempt?.bridge;
+  Timer? _retryTimer;
+  bool _autoRecoveryUsed = false;
+  bool _canReconnect = false;
+  bool _resumeAudio = false;
+  String? _sessionPassword;
   final _password = TextEditingController();
   late bool _hasSavedPassword = widget.profile.desktopPassword != null;
   bool _passwordRequired = false;
@@ -77,30 +60,29 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
   bool _rememberPassword = false;
   bool _savingPassword = false;
   String? _pendingPassword;
-  bool _started = false;
   bool _ended = false;
   bool _connected = false;
   bool _passwordSubmitted = false;
   String? _error;
-  RemoteDesktopQuality _quality = RemoteDesktopQuality.balanced;
-  _ScreenFit _screenFit = _ScreenFit.fit;
+  RemoteDesktopStreamSettings _stream = const RemoteDesktopStreamSettings();
+  final _streamStats = ValueNotifier<Map<String, dynamic>>({});
+  bool _fullscreen = false;
+  bool _toolbarExpanded = false;
+  RemoteDesktopScreenFit _screenFit = RemoteDesktopScreenFit.fit;
   final _resolution = ValueNotifier<String?>(null);
   bool _orientationOverridden = false;
 
-  String get _disconnectMessage => _passwordSubmitted && !_connected
-      ? 'UltraVNC closed the connection while checking the VNC password. Check the password and restart UltraVNC after changing it.'
-      : 'The desktop session ended.';
+  bool _isCurrent(_DesktopAttempt attempt) =>
+      mounted && !_ended && identical(_attempt, attempt);
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.revision.addListener(_desktopChanged);
-    _viewerStartup = Timer(const Duration(seconds: 10), () {
-      _end(
-        'The desktop viewer could not start. Update Android System WebView and try again.',
-      );
-    });
+    widget.audioPermission.addListener(_audioPermissionChanged);
+    _audio.addListener(_audioChanged);
+    _beginAttempt();
   }
 
   @override
@@ -111,71 +93,182 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     }
   }
 
-  Future<void> _attach(int id) async {
-    if (_ended) return;
+  void _beginAttempt() {
+    final attempt = _DesktopAttempt(widget.profile);
+    _attempt = attempt;
+    attempt.timeout = Timer(const Duration(seconds: 10), () {
+      if (_isCurrent(attempt)) {
+        _end(
+          'The viewer could not start. Check Android System WebView.',
+          reconnect: true,
+        );
+      }
+    });
+  }
+
+  void _watchHandshake(_DesktopAttempt attempt) {
+    attempt.timeout?.cancel();
+    attempt.timeout = Timer(const Duration(seconds: 12), () {
+      if (_isCurrent(attempt)) {
+        _end('UltraVNC did not finish signing in.', reconnect: true);
+      }
+    });
+  }
+
+  Future<void> _attach(_DesktopAttempt attempt, int id) async {
+    if (!_isCurrent(attempt)) return;
     final bridge = MethodChannel('dev.tapmypc/remote-desktop/$id');
-    _bridge = bridge;
+    attempt.bridge = bridge;
+    _audio.attach(bridge);
     bridge.setMethodCallHandler((call) async {
+      if (!_isCurrent(attempt)) return;
       switch (call.method) {
         case 'ready':
-          _viewerStartup?.cancel();
-          unawaited(_open(bridge));
+          attempt.timeout?.cancel();
+          // Dart can report a late TLS read as an uncaught socket event.
+          // Attribute it to this attempt, including when it has since closed.
+          runZonedGuarded(() => unawaited(_open(attempt, bridge)), (
+            error,
+            stack,
+          ) {
+            if (error is SocketException) {
+              if (_isCurrent(attempt)) {
+                _interrupted(
+                  attempt,
+                  'The desktop connection was interrupted.',
+                );
+              }
+            } else {
+              Zone.current.handleUncaughtError(error, stack);
+            }
+          });
         case 'input':
           final bytes = call.arguments;
-          if (!_ended && bytes is Uint8List) _socket?.add(bytes);
+          final socket = attempt.socket;
+          if (bytes is Uint8List && socket?.readyState == WebSocket.open) {
+            try {
+              socket!.add(bytes);
+            } on StateError {
+              _interrupted(
+                attempt,
+                'The desktop connection closed while sending input.',
+              );
+            }
+          }
         case 'passwordRequired':
-          if (_ended || _passwordRequired || _passwordSubmitted) return;
-          final saved = _hasSavedPassword
-              ? widget.profile.desktopPassword
-              : null;
+          if (_passwordRequired || _passwordSubmitted) return;
+          attempt.timeout?.cancel();
+          final saved =
+              _sessionPassword ??
+              (_hasSavedPassword ? widget.profile.desktopPassword : null);
           if (saved != null) {
-            unawaited(_submitPassword(saved));
+            unawaited(_submitPassword(saved, allowSave: false));
           } else {
             setState(() => _passwordRequired = true);
           }
         case 'connected':
-          if (mounted && !_ended) {
+          if (!_connected) {
+            attempt.timeout?.cancel();
+            attempt.connectedAt = DateTime.now();
             setState(() => _connected = true);
-            final socket = _socket;
+            final socket = attempt.socket;
             if (socket != null &&
                 socket.readyState == WebSocket.open &&
                 socket.protocol == PcApi.remoteDesktopViewerStatusProtocol) {
-              socket.add('viewer-ready');
+              try {
+                socket.add('viewer-ready');
+              } on StateError {
+                _interrupted(
+                  attempt,
+                  'The desktop connection closed during sign-in.',
+                );
+                return;
+              }
             }
             final password = _pendingPassword;
             _pendingPassword = null;
-            if (password != null) unawaited(_savePassword(password));
+            if (password != null && !_hasSavedPassword) {
+              unawaited(_savePassword(password));
+            }
+            if (_resumeAudio) {
+              _resumeAudio = false;
+              unawaited(
+                Future<void>.delayed(const Duration(milliseconds: 250), () {
+                  if (_isCurrent(attempt) &&
+                      widget.audioPermission.value == true) {
+                    _audio.setEnabled(true);
+                  }
+                }),
+              );
+            }
           }
+        case 'audioError':
+          _audio.playbackFailed(call.arguments);
         case 'resolution':
           final resolution = call.arguments;
           if (!_ended && resolution is String) _resolution.value = resolution;
+        case 'stats':
+          if (!_ended && call.arguments is String) {
+            final stats = jsonDecode(call.arguments as String);
+            if (stats is Map<String, dynamic>) _streamStats.value = stats;
+          }
         case 'authenticationFailed':
           _end(
             'UltraVNC rejected the connection. Check its service and password on the PC.',
           );
+        case 'viewerFailure':
+          final reason = switch (call.arguments) {
+            'renderer' => 'Android WebView stopped drawing the desktop.',
+            'decode' => 'The viewer could not decode a desktop update.',
+            'scaleStalled' => 'The desktop stream stalled while changing size.',
+            _ => 'The viewer received an unexpected UltraVNC message.',
+          };
+          _interrupted(attempt, reason);
+        case 'scaleUnconfirmed':
+          _showMessage('Waiting for UltraVNC to confirm the stream size.');
         case 'disconnected':
-          _end(_disconnectMessage);
+          _interrupted(
+            attempt,
+            _passwordSubmitted && !_connected
+                ? 'UltraVNC closed the stream while checking the VNC password.'
+                : 'The UltraVNC viewer disconnected.',
+          );
       }
     });
     try {
       await bridge.invokeMethod<void>('start');
     } on PlatformException catch (error) {
-      _end(error.message ?? 'The desktop viewer could not start.');
+      if (_isCurrent(attempt)) {
+        _end(
+          error.message ?? 'The desktop viewer could not start.',
+          reconnect: true,
+        );
+      }
     }
   }
 
-  Future<void> _submitPassword(String value) async {
-    if (_ended || _passwordSubmitted || value.isEmpty) return;
+  Future<void> _submitPassword(String value, {bool allowSave = true}) async {
+    final attempt = _attempt;
+    if (attempt == null ||
+        !_isCurrent(attempt) ||
+        _passwordSubmitted ||
+        value.isEmpty) {
+      return;
+    }
+    _sessionPassword = value;
     setState(() {
       _passwordSubmitted = true;
       _passwordRequired = false;
-      _pendingPassword = _rememberPassword ? value : null;
+      _pendingPassword = allowSave && _rememberPassword ? value : null;
     });
     _password.clear();
+    _watchHandshake(attempt);
     try {
-      await _bridge?.invokeMethod<void>('password', value);
+      await attempt.bridge?.invokeMethod<void>('password', value);
     } on PlatformException {
-      _end('The viewer could not send the VNC password.');
+      if (_isCurrent(attempt)) {
+        _end('The viewer could not send the VNC password.', reconnect: true);
+      }
     }
   }
 
@@ -207,6 +300,10 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     }
   }
 
+  void _audioPermissionChanged() {
+    if (widget.audioPermission.value != true) _audio.stop();
+  }
+
   void _desktopChanged() {
     if (!_connected || _ended || widget.revision.value == null) return;
     unawaited(_sendViewerCommand('desktopChanged'));
@@ -229,14 +326,43 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _changeQuality(RemoteDesktopQuality quality) async {
-    _quality = quality;
-    unawaited(_sendViewerCommand('quality', quality.id));
+  Future<void> _changeStream(RemoteDesktopStreamSettings stream) async {
+    _stream = stream;
+    unawaited(_sendViewerCommand('quality', stream.encode()));
     try {
-      await widget.preferences.saveQuality(quality);
+      await widget.preferences.save(stream);
     } catch (_) {
-      if (mounted && _quality == quality) {
-        _showMessage('Quality could not be saved.');
+      if (mounted && _stream == stream) {
+        _showMessage('Stream settings could not be saved.');
+      }
+    }
+  }
+
+  Future<void> _changeScreenFit(RemoteDesktopScreenFit fit) async {
+    unawaited(_sendViewerCommand('scale', fit.name));
+    try {
+      await widget.preferences.saveScreenFit(fit);
+    } catch (_) {
+      if (mounted && _screenFit == fit) {
+        _showMessage('Screen scaling could not be saved.');
+      }
+    }
+  }
+
+  void _audioChanged() {
+    final error = _audio.error;
+    if (mounted && !_ended && error != null) _showMessage(error);
+  }
+
+  Future<void> _setWindowFullscreen(bool fullscreen) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await const MethodChannel(
+        'dev.tapmypc/app',
+      ).invokeMethod<void>('viewerFullscreen', fullscreen);
+    } on PlatformException catch (_) {
+      if (mounted && !_ended) {
+        _showMessage('Could not change full screen mode.');
       }
     }
   }
@@ -258,83 +384,186 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     }
   }
 
-  Future<void> _open(MethodChannel bridge) async {
-    if (_started || _ended) return;
-    _started = true;
+  Future<void> _open(_DesktopAttempt attempt, MethodChannel bridge) async {
+    if (!_isCurrent(attempt) || attempt.opening) return;
+    attempt.opening = true;
     try {
       try {
-        _quality = await widget.preferences.loadQuality();
+        final (stream, fit) = await (
+          widget.preferences.load(),
+          widget.preferences.loadScreenFit(),
+        ).wait;
+        if (!_isCurrent(attempt)) return;
+        _stream = stream;
+        _screenFit = fit;
       } catch (_) {
-        if (mounted && !_ended) {
-          _showMessage('Saved quality could not be loaded.');
-        }
+        if (!_isCurrent(attempt)) return;
+        _showMessage('Saved stream settings could not be loaded.');
       }
-      if (_ended) return;
-      final socket = await _api.openRemoteDesktop();
-      if (_ended) {
-        unawaited(socket.close());
+      final api = attempt.api = PcApi(attempt.profile);
+      final socket = await api.openRemoteDesktop();
+      if (!_isCurrent(attempt)) {
+        await api.closeRemoteDesktop(socket);
         return;
       }
-      _socket = socket;
-      await bridge.invokeMethod<void>('open', _quality.id);
+      attempt.socket = socket;
+      _watchHandshake(attempt);
+      await bridge.invokeMethod<void>('scale', _screenFit.name);
+      if (!_isCurrent(attempt)) return;
+      await bridge.invokeMethod<void>('open', _stream.encode());
       await for (final packet in socket) {
-        if (_ended) break;
+        if (!_isCurrent(attempt)) return;
         if (packet is! List<int>) {
-          _end('The PC sent an unexpected desktop message.');
-          break;
+          _interrupted(attempt, 'The PC sent an unexpected desktop message.');
+          return;
         }
         await bridge.invokeMethod<void>(
           'screen',
           packet is Uint8List ? packet : Uint8List.fromList(packet),
         );
       }
-      _end(_disconnectMessage);
+      if (!_isCurrent(attempt)) return;
+      final reason = switch (socket.closeCode) {
+        WebSocketStatus.normalClosure when _passwordSubmitted && !_connected =>
+          'UltraVNC closed the stream while checking the VNC password.',
+        WebSocketStatus.normalClosure => 'The PC closed the desktop stream.',
+        WebSocketStatus.goingAway => 'The desktop stream stopped responding.',
+        _ => 'The desktop connection was interrupted.',
+      };
+      _interrupted(attempt, reason);
     } on WebSocketException catch (error) {
+      if (!_isCurrent(attempt)) return;
+      if (attempt.socket != null) {
+        _interrupted(attempt, 'The desktop connection was interrupted.');
+        return;
+      }
       _end(switch (error.httpStatusCode) {
         401 => 'Pair this phone with the PC again.',
         403 => 'Enable Remote Desktop for this phone in TapMyPC on the PC.',
-        409 => 'Another Remote Desktop session is already open.',
+        409 => 'Another Remote Desktop session is still open.',
         503 =>
-          'On the PC, open Configure → Remote Desktop and select Set up Remote Desktop.',
+          'The PC could not reach UltraVNC. Check Configure → Remote Desktop.',
         _ =>
           'Could not open Remote Desktop. Check the PC connection and try again.',
-      });
+      }, reconnect: error.httpStatusCode != 401 && error.httpStatusCode != 403);
+    } on PlatformException {
+      if (_isCurrent(attempt)) {
+        _interrupted(
+          attempt,
+          'Android WebView stopped receiving the desktop stream.',
+        );
+      }
+    } on HandshakeException {
+      if (_isCurrent(attempt)) {
+        _end(
+          'TapMyPC could not verify the PC’s TLS identity. Check its connection and pairing.',
+        );
+      }
     } on Object {
-      _end(
-        _socket == null
-            ? 'Could not open Remote Desktop. Check the PC connection and try again.'
-            : _disconnectMessage,
-      );
+      if (_isCurrent(attempt)) {
+        _interrupted(attempt, 'The desktop connection was interrupted.');
+      }
     }
+  }
+
+  void _interrupted(_DesktopAttempt attempt, String reason) {
+    if (!_isCurrent(attempt)) return;
+    debugPrint(
+      'Remote Desktop: $reason WebSocket close code ${attempt.socket?.closeCode ?? 'unavailable'}.',
+    );
+    final connectedAt = attempt.connectedAt;
+    final stable =
+        connectedAt != null &&
+        DateTime.now().difference(connectedAt) >= const Duration(seconds: 30);
+    if (connectedAt == null || (_autoRecoveryUsed && !stable)) {
+      _end(reason, reconnect: true);
+      return;
+    }
+
+    _resumeAudio = _audio.enabled;
+    _autoRecoveryUsed = true;
+    setState(_retireAttempt);
+    _retryTimer = Timer(const Duration(milliseconds: 1200), () {
+      _retryTimer = null;
+      if (mounted && !_ended) setState(_beginAttempt);
+    });
+  }
+
+  void _retireAttempt() {
+    final attempt = _attempt;
+    _attempt = null;
+    _connected = false;
+    _passwordRequired = false;
+    _passwordSubmitted = false;
+    _pendingPassword = null;
+    _audio.stop();
+    attempt?.timeout?.cancel();
+    attempt?.bridge?.setMethodCallHandler(null);
+    final api = attempt?.api;
+    if (api != null) unawaited(api.closeRemoteDesktop(attempt?.socket));
   }
 
   void _stop() {
     if (_ended) return;
     _ended = true;
-    _viewerStartup?.cancel();
-    _pendingPassword = null;
-    _bridge?.setMethodCallHandler(null);
-    final socket = _socket;
-    _socket = null;
-    if (socket != null) unawaited(socket.close(WebSocketStatus.normalClosure));
-    if (_started) _api.close();
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _sessionPassword = null;
+    _resumeAudio = false;
+    _retireAttempt();
+    if (_fullscreen) {
+      _fullscreen = false;
+      unawaited(_setWindowFullscreen(false));
+    }
   }
 
-  void _end(String error) {
+  void _end(String error, {bool reconnect = false}) {
     if (_ended) return;
     _stop();
-    if (mounted) setState(() => _error = error);
+    if (mounted) {
+      setState(() {
+        _error = error;
+        _canReconnect = reconnect;
+      });
+    }
+  }
+
+  void _retry() {
+    if (!_canReconnect || !_ended) return;
+    setState(() {
+      _ended = false;
+      _error = null;
+      _canReconnect = false;
+      _autoRecoveryUsed = false;
+      _resolution.value = null;
+      _streamStats.value = {};
+      _beginAttempt();
+    });
+  }
+
+  Future<void> _resetAndRetry() async {
+    if (!_canReconnect) return;
+    try {
+      await widget.preferences.save(const RemoteDesktopStreamSettings());
+      if (mounted) _retry();
+    } catch (_) {
+      if (mounted) _showMessage('Stream settings could not be reset.');
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.revision.removeListener(_desktopChanged);
+    widget.audioPermission.removeListener(_audioPermissionChanged);
+    _audio.removeListener(_audioChanged);
     _stop();
+    _audio.dispose();
     if (_orientationOverridden) {
       unawaited(SystemChrome.setPreferredOrientations([]));
     }
     _resolution.dispose();
+    _streamStats.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -393,6 +622,127 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     ),
   );
 
+  Widget _audioButton() => ListenableBuilder(
+    listenable: Listenable.merge([_audio, widget.audioPermission]),
+    builder: (_, _) {
+      final permission = widget.audioPermission.value;
+      return IconButton(
+        tooltip: _audio.enabled ? 'Stop PC audio' : 'Play PC audio',
+        isSelected: _audio.enabled,
+        icon: _audio.connecting
+            ? const SizedBox.square(
+                dimension: 19,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                _audio.enabled
+                    ? Icons.volume_up_outlined
+                    : Icons.volume_off_outlined,
+              ),
+        onPressed: () {
+          if (permission == true) {
+            _audio.setEnabled(!_audio.enabled);
+          } else {
+            _showMessage(
+              permission == null
+                  ? 'Update TapMyPC on the PC to use audio.'
+                  : 'Allow audio for this phone in Configure → Authorized phones on the PC.',
+            );
+          }
+        },
+      );
+    },
+  );
+
+  List<Widget> _viewerButtons() => [
+    IconButton(
+      onPressed: () => _sendViewerCommand('keyboard'),
+      tooltip: 'Show keyboard',
+      icon: const Icon(Icons.keyboard_outlined),
+    ),
+    IconButton(
+      onPressed: _rotate,
+      tooltip: 'Rotate screen',
+      icon: const Icon(Icons.screen_rotation_outlined),
+    ),
+    _audioButton(),
+  ];
+
+  Widget _landscapeToolbar() => Align(
+    alignment: Alignment.topRight,
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Material(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(12),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_toolbarExpanded) ...[
+              ..._viewerButtons(),
+              IconButton(
+                onPressed: _showOptions,
+                tooltip: 'Remote Desktop options',
+                icon: const Icon(Icons.more_vert),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                tooltip: 'Disconnect',
+                icon: const Icon(Icons.close),
+              ),
+            ],
+            IconButton(
+              onPressed: () =>
+                  setState(() => _toolbarExpanded = !_toolbarExpanded),
+              tooltip: _toolbarExpanded
+                  ? 'Hide viewer controls'
+                  : 'Show viewer controls',
+              icon: Icon(_toolbarExpanded ? Icons.chevron_right : Icons.tune),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _streamDetails() => ListenableBuilder(
+    listenable: Listenable.merge([_resolution, _streamStats, _audio]),
+    builder: (context, _) {
+      final stats = _streamStats.value;
+      final resolution = _resolution.value;
+      final kbps = stats['kbps'];
+      final updates = stats['updates'];
+      final encodings = stats['encodings'];
+      final chroma = stats['jpegChroma'];
+      final text = Theme.of(context).textTheme;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (resolution != null)
+            Text('Stream resolution  $resolution', style: text.titleMedium),
+          if (kbps is int && updates is int)
+            Text(
+              'Screen receive rate  ${kbps >= 1000 ? '${(kbps / 1000).toStringAsFixed(1)} Mbps' : '$kbps kbps'}'
+              ' · $updates updates/s',
+              style: text.bodySmall,
+            ),
+          ExpansionTile(
+            title: const Text('Stream details'),
+            tilePadding: EdgeInsets.zero,
+            expandedCrossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (encodings is List && encodings.isNotEmpty)
+                Text('Observed encodings  ${encodings.join(', ')}'),
+              if (chroma is String) Text('Observed JPEG chroma  $chroma'),
+              if (widget.audioPermission.value == true)
+                const Text('PC audio  Opus stereo · 48 kHz · 96 kbps target'),
+            ],
+          ),
+        ],
+      );
+    },
+  );
+
   Future<void> _showOptions() async {
     final forgetPassword = await showModalBottomSheet<bool>(
       context: context,
@@ -417,53 +767,30 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
                     const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
-                      child: SegmentedButton<_ScreenFit>(
+                      child: SegmentedButton<RemoteDesktopScreenFit>(
                         segments: [
-                          for (final fit in _ScreenFit.values)
+                          for (final fit in RemoteDesktopScreenFit.values)
                             ButtonSegment(value: fit, label: Text(fit.label)),
                         ],
                         selected: {_screenFit},
                         onSelectionChanged: (value) {
                           updateSheet(() => _screenFit = value.single);
-                          unawaited(
-                            _sendViewerCommand('scale', _screenFit.name),
-                          );
+                          unawaited(_changeScreenFit(value.single));
                         },
                       ),
                     ),
                     Text(
-                      _screenFit == _ScreenFit.fit
+                      _screenFit == RemoteDesktopScreenFit.fit
                           ? 'Show the entire desktop at its original aspect ratio.'
-                          : 'Fill the viewer at the original aspect ratio. Edges may be cropped.',
+                          : 'Fill the viewer at the original aspect ratio. Drag a scrollbar to reach cropped edges.',
                       style: text.bodySmall,
                     ),
-                    const SizedBox(height: 16),
-                    Text('Image quality', style: text.titleMedium),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        for (final quality in RemoteDesktopQuality.values)
-                          ChoiceChip(
-                            label: Text(quality.label),
-                            selected: _quality == quality,
-                            onSelected: (selected) {
-                              if (!selected) return;
-                              unawaited(_changeQuality(quality));
-                              updateSheet(() {});
-                            },
-                          ),
-                      ],
-                    ),
-                    ValueListenableBuilder<String?>(
-                      valueListenable: _resolution,
-                      builder: (_, resolution, _) => Text(
-                        resolution == null
-                            ? 'Audio unavailable'
-                            : 'Capture resolution: $resolution · Audio unavailable',
-                        style: text.bodySmall,
-                      ),
+                    const SizedBox(height: 24),
+                    _streamDetails(),
+                    const SizedBox(height: 24),
+                    RemoteDesktopStreamOptions(
+                      settings: _stream,
+                      onChanged: (stream) => unawaited(_changeStream(stream)),
                     ),
                     const Divider(),
                     ListTile(
@@ -506,65 +833,93 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
 
   @override
   Widget build(BuildContext context) {
+    final landscape =
+        _connected &&
+        !_ended &&
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+    if (_fullscreen != landscape) {
+      _fullscreen = landscape;
+      if (!landscape) _toolbarExpanded = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _fullscreen == landscape) {
+          unawaited(_setWindowFullscreen(landscape));
+        }
+      });
+    }
+    final attempt = _attempt;
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        toolbarHeight: 48,
-        titleSpacing: 4,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          tooltip: 'Disconnect',
-          icon: const Icon(Icons.arrow_back),
-        ),
-        title: Text(widget.profile.name, overflow: TextOverflow.ellipsis),
-        actions: [
-          if (_connected && !_ended) ...[
-            IconButton(
-              onPressed: () => _sendViewerCommand('keyboard'),
-              tooltip: 'Show keyboard',
-              icon: const Icon(Icons.keyboard_outlined),
+      appBar: landscape
+          ? null
+          : AppBar(
+              toolbarHeight: 48,
+              titleSpacing: 4,
+              leading: IconButton(
+                onPressed: () => Navigator.pop(context),
+                tooltip: 'Disconnect',
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: Text(widget.profile.name, overflow: TextOverflow.ellipsis),
+              actions: [
+                if (_connected && !_ended) ..._viewerButtons(),
+                if ((_connected && !_ended) || _hasSavedPassword)
+                  IconButton(
+                    onPressed: _showOptions,
+                    tooltip: 'Remote Desktop options',
+                    icon: const Icon(Icons.more_vert),
+                  ),
+              ],
+              bottom: _error == null && !_connected
+                  ? const PreferredSize(
+                      preferredSize: Size.fromHeight(2),
+                      child: LinearProgressIndicator(minHeight: 2),
+                    )
+                  : null,
             ),
-            IconButton(
-              onPressed: _rotate,
-              tooltip: 'Rotate screen',
-              icon: const Icon(Icons.screen_rotation_outlined),
-            ),
-          ],
-          if ((_connected && !_ended) || _hasSavedPassword)
-            IconButton(
-              onPressed: _showOptions,
-              tooltip: 'Remote Desktop options',
-              icon: const Icon(Icons.more_vert),
-            ),
-        ],
-        bottom: _error == null && !_connected
-            ? const PreferredSize(
-                preferredSize: Size.fromHeight(2),
-                child: LinearProgressIndicator(minHeight: 2),
-              )
-            : null,
-      ),
       body: SafeArea(
-        child: _error == null && Platform.isAndroid
+        child: attempt != null && _error == null && Platform.isAndroid
             ? Stack(
                 fit: StackFit.expand,
                 children: [
                   AndroidView(
+                    key: ObjectKey(attempt),
                     viewType: 'dev.tapmypc/remote-desktop-view',
-                    onPlatformViewCreated: _attach,
+                    onPlatformViewCreated: (id) => _attach(attempt, id),
                   ),
                   if (_passwordRequired)
                     const ColoredBox(color: Colors.black54),
                   if (_passwordRequired) _passwordPanel(),
+                  if (landscape) _landscapeToolbar(),
                 ],
               )
             : Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _error ?? 'Remote Desktop is available on Android.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _error ??
+                            (_retryTimer != null
+                                ? 'Reconnecting to ${widget.profile.name}…'
+                                : 'Remote Desktop is available on Android.'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      if (_canReconnect) ...[
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _retry,
+                          child: const Text('Reconnect'),
+                        ),
+                        TextButton(
+                          onPressed: () => unawaited(_resetAndRetry()),
+                          child: const Text(
+                            'Reset stream settings and reconnect',
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),

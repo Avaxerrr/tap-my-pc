@@ -4,10 +4,12 @@ using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using TapMyPC.Api;
+using TapMyPC.Core.Audio;
 using TapMyPC.Core.Devices;
 using TapMyPC.Core.Timers;
 
@@ -16,6 +18,7 @@ namespace TapMyPC.Tests;
 public sealed class RemoteDesktopTests : IAsyncLifetime
 {
     private readonly FakeDevice device = new();
+    private readonly FakeAudio audio = new();
     private readonly TcpListener backend = new(IPAddress.Loopback, 0);
     private readonly PairingService pairing = new(new MemoryStore(), TimeProvider.System);
     private PowerScheduler scheduler = null!;
@@ -140,10 +143,83 @@ public sealed class RemoteDesktopTests : IAsyncLifetime
         await connecting;
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task AudioRequiresSeparatePermissionAndStopsWithItsPermissionOrViewer(bool revokeAudio)
+    {
+        using var timer = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        var phone = Pair("Phone");
+        var other = Pair("Other phone");
+        pairing.SetRemoteDesktopAccess(phone.Id, true);
+        pairing.SetRemoteDesktopAccess(other.Id, true);
+        pairing.SetRemoteDesktopAudioAccess(other.Id, true);
+        Assert.False((await ReadStatusAsync(app, phone.Token, timer.Token)).GetProperty("remoteDesktopAudioEnabled").GetBoolean());
+        await RejectAsync(app, null, HttpStatusCode.Unauthorized, timer.Token, forAudio: true);
+        await RejectAsync(app, phone.Token, HttpStatusCode.Forbidden, timer.Token, forAudio: true);
+
+        pairing.SetRemoteDesktopAudioAccess(phone.Id, true);
+        Assert.True((await ReadStatusAsync(app, phone.Token, timer.Token)).GetProperty("remoteDesktopAudioEnabled").GetBoolean());
+        await RejectAsync(app, phone.Token, HttpStatusCode.Conflict, timer.Token, forAudio: true);
+        await using var bluetooth = await StartHostAsync(RemoteTransport.Bluetooth);
+        await RejectAsync(bluetooth, phone.Token, HttpStatusCode.NotFound, timer.Token, forAudio: true);
+
+        using var viewer = CreateSocket(phone.Token, viewerStatus: true);
+        var connecting = viewer.ConnectAsync(DesktopUri(app), timer.Token);
+        using var vnc = await backend.AcceptTcpClientAsync(timer.Token);
+        var vncStream = vnc.GetStream();
+        await vncStream.WriteAsync("RFB 003.008\n"u8.ToArray(), timer.Token);
+        await connecting;
+        var buffer = new byte[16];
+        await viewer.ReceiveAsync(buffer.AsMemory(), timer.Token);
+        await RejectAsync(app, phone.Token, HttpStatusCode.Conflict, timer.Token, forAudio: true);
+        await viewer.SendAsync("viewer-ready"u8.ToArray(), WebSocketMessageType.Text, true, timer.Token);
+        while (pairing.RemoteDesktopViewer is null)
+            await Task.Delay(10, timer.Token);
+
+        await RejectAsync(app, other.Token, HttpStatusCode.Conflict, timer.Token, forAudio: true);
+        using var listening = CreateSocket(phone.Token, forAudio: true);
+        await listening.ConnectAsync(DesktopUri(app, forAudio: true), timer.Token);
+        var packet = await listening.ReceiveAsync(buffer.AsMemory(), timer.Token);
+        Assert.Equal(WebSocketMessageType.Binary, packet.MessageType);
+        Assert.True(packet.EndOfMessage);
+        Assert.Equal(FakeAudio.Frame, buffer[..packet.Count]);
+        await RejectAsync(app, phone.Token, HttpStatusCode.Conflict, timer.Token, forAudio: true);
+
+        if (revokeAudio) pairing.SetRemoteDesktopAudioAccess(phone.Id, false);
+        else await viewer.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, timer.Token);
+        await audio.Stopped.Task.WaitAsync(timer.Token);
+
+        if (revokeAudio)
+        {
+            await RejectAsync(app, phone.Token, HttpStatusCode.Forbidden, timer.Token, forAudio: true);
+            await vncStream.WriteAsync(new byte[] { 0, 0, 0, 0 }, timer.Token);
+            var screen = await viewer.ReceiveAsync(buffer.AsMemory(), timer.Token);
+            Assert.Equal(WebSocketMessageType.Binary, screen.MessageType);
+            Assert.Equal(4, screen.Count);
+        }
+    }
+
+    private sealed class FakeAudio : IRemoteDesktopAudioSource
+    {
+        public static readonly byte[] Frame = [0xf8, 0xff, 0xfe];
+        public TaskCompletionSource Stopped { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async IAsyncEnumerable<ReadOnlyMemory<byte>> CaptureAsync([EnumeratorCancellation] CancellationToken stop)
+        {
+            try
+            {
+                yield return Frame;
+                await Task.Delay(Timeout.Infinite, stop);
+            }
+            finally { Stopped.TrySetResult(); }
+        }
+    }
+
     private Task<WebApplication> StartHostAsync(RemoteTransport transport) =>
         ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler, transport: transport,
             remoteDesktopPort: ((IPEndPoint)backend.LocalEndpoint).Port,
-            remoteDesktopRevision: () => desktopRevision);
+            remoteDesktopRevision: () => desktopRevision, remoteDesktopAudio: audio);
 
     private (Guid Id, string Token) Pair(string name)
     {
@@ -151,12 +227,13 @@ public sealed class RemoteDesktopTests : IAsyncLifetime
         return (pairing.Clients.Single(client => client.Name == name).Id, token);
     }
 
-    private ClientWebSocket CreateSocket(string? token, bool viewerStatus = false)
+    private ClientWebSocket CreateSocket(string? token, bool viewerStatus = false, bool forAudio = false)
     {
         var socket = new ClientWebSocket();
         socket.Options.RemoteCertificateValidationCallback = (_, cert, _, _) => cert?.GetRawCertData().SequenceEqual(certificate.RawData) == true;
         socket.Options.CollectHttpResponseDetails = true;
         if (viewerStatus) socket.Options.AddSubProtocol("tapmypc.viewer-status.v1");
+        if (forAudio) socket.Options.AddSubProtocol("tapmypc.audio.opus.v1");
         if (token is not null) socket.Options.SetRequestHeader("Authorization", $"Bearer {token}");
         return socket;
     }
@@ -171,13 +248,17 @@ public sealed class RemoteDesktopTests : IAsyncLifetime
         return await client.GetFromJsonAsync<JsonElement>("/api/v1/status", stop);
     }
 
-    private async Task RejectAsync(WebApplication host, string? token, HttpStatusCode expected, CancellationToken stop)
+    private async Task RejectAsync(WebApplication host, string? token, HttpStatusCode expected, CancellationToken stop, bool forAudio = false)
     {
-        using var socket = CreateSocket(token);
-        var error = await Assert.ThrowsAsync<WebSocketException>(() => socket.ConnectAsync(DesktopUri(host), stop));
+        using var socket = CreateSocket(token, forAudio: forAudio);
+        var error = await Assert.ThrowsAsync<WebSocketException>(() => socket.ConnectAsync(DesktopUri(host, forAudio), stop));
         Assert.True(expected == socket.HttpStatusCode, $"Expected {expected}, received {socket.HttpStatusCode}. {error}");
     }
 
-    private static Uri DesktopUri(WebApplication host) =>
-        new UriBuilder(host.Urls.Single()) { Scheme = "wss", Path = "/api/v1/remote-desktop" }.Uri;
+    private static Uri DesktopUri(WebApplication host, bool forAudio = false) =>
+        new UriBuilder(host.Urls.Single())
+        {
+            Scheme = "wss",
+            Path = forAudio ? "/api/v1/remote-desktop/audio" : "/api/v1/remote-desktop"
+        }.Uri;
 }

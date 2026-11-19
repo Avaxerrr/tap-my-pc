@@ -33,7 +33,7 @@ public static class ApiHost
     }
 
     public static async Task<WebApplication> StartAsync(IPAddress address, int port, X509Certificate2 certificate,
-        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null, IMonitoringSource? monitoring = null, int? remoteDesktopPort = null, Func<int>? remoteDesktopRevision = null)
+        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null, IMonitoringSource? monitoring = null, int? remoteDesktopPort = null, Func<int>? remoteDesktopRevision = null, IRemoteDesktopAudioSource? remoteDesktopAudio = null)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(ApiHost).Assembly.FullName });
         builder.Logging.ClearProviders();
@@ -101,6 +101,10 @@ public static class ApiHost
             app.MapGet(RemoteDesktopEndpoint.Path, (HttpContext context) =>
                 RemoteDesktopEndpoint.RunAsync(context, (Guid)context.Items[ClientIdKey]!, pairing,
                     remotePort, scheduler.Activity, app.Lifetime.ApplicationStopping));
+            if (remoteDesktopAudio is not null)
+                app.MapGet(RemoteDesktopAudioEndpoint.Path, (HttpContext context) =>
+                    RemoteDesktopAudioEndpoint.RunAsync(context, (Guid)context.Items[ClientIdKey]!, pairing,
+                        remoteDesktopAudio, scheduler.Activity, app.Lifetime.ApplicationStopping));
         }
         foreach (var (path, file, contentType) in new[] { ("/", "index.html", "text/html"), ("/app.js", "app.js", "text/javascript"), ("/styles.css", "styles.css", "text/css") })
         {
@@ -123,6 +127,8 @@ public static class ApiHost
             var bluetoothState = bluetooth is null ? new BluetoothStatus(false, false, BluetoothRadioState.Unavailable, "Bluetooth control is unavailable.") : await bluetooth.ReadAsync();
             var desktopEnabled = desktopPort.HasValue && pairing.AllowsRemoteDesktop((Guid)context.Items[ClientIdKey]!);
             return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, remoteDesktopEnabled = desktopEnabled,
+                remoteDesktopAudioEnabled = desktopEnabled && remoteDesktopAudio is not null
+                    ? pairing.AllowsRemoteDesktopAudio((Guid)context.Items[ClientIdKey]!) : (bool?)null,
                 remoteDesktopRevision = desktopEnabled ? remoteDesktopRevision?.Invoke() : null, supportsImmediatePower = true, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
         });
         app.MapGet("/api/v1/monitoring", async (CancellationToken cancellation) =>

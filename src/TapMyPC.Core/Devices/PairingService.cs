@@ -3,10 +3,10 @@ using System.Text;
 
 namespace TapMyPC.Core.Devices;
 
-public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt, bool NameCustomized = false, bool RemoteDesktopEnabled = false);
+public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt, bool NameCustomized = false, bool RemoteDesktopEnabled = false, bool RemoteDesktopAudioEnabled = false);
 public enum RemoteTransport { WiFi, Bluetooth, Tailscale }
 public record PairingSession(string Code, string QrSecret, DateTimeOffset ExpiresAt);
-public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt, RemoteTransport? Transport = null, bool RemoteDesktopEnabled = false);
+public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt, RemoteTransport? Transport = null, bool RemoteDesktopEnabled = false, bool RemoteDesktopAudioEnabled = false);
 public interface IDeviceStore
 {
     IReadOnlyList<PairedDevice> Load();
@@ -20,7 +20,15 @@ public sealed class PairingService
     private readonly TimeProvider clock;
     private List<PairedDevice> devices;
     private readonly Dictionary<Guid, (DateTimeOffset SeenAt, RemoteTransport Transport)> lastAuthenticated = new();
-    private (Guid ClientId, CancellationTokenSource Stop, bool Ready)? remoteDesktopSession;
+    private sealed class RemoteDesktopSession(Guid clientId, CancellationTokenSource stop)
+    {
+        public Guid ClientId { get; } = clientId;
+        public CancellationTokenSource Stop { get; } = stop;
+        public bool Ready { get; set; }
+        public CancellationTokenSource? AudioStop { get; set; }
+    }
+
+    private RemoteDesktopSession? remoteDesktopSession;
     public static TimeSpan PresenceTimeout { get; } = TimeSpan.FromSeconds(10);
     private string? code;
     private string? qrSecret;
@@ -106,7 +114,7 @@ public sealed class PairingService
     }
 
     public IReadOnlyList<PairedClient> Clients
-    { get { lock (gate) return devices.Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt, RemoteDesktopEnabled: d.RemoteDesktopEnabled)).ToArray(); } }
+    { get { lock (gate) return devices.Select(d => new PairedClient(d.Id, d.Name, d.CreatedAt, RemoteDesktopEnabled: d.RemoteDesktopEnabled, RemoteDesktopAudioEnabled: d.RemoteDesktopAudioEnabled)).ToArray(); } }
 
     public bool AllowsRemoteDesktop(Guid clientId)
     {
@@ -118,10 +126,53 @@ public sealed class PairingService
         lock (gate)
         {
             if (!devices.Any(d => d.Id == clientId)) throw new InvalidOperationException("Select an existing paired device.");
-            var updated = devices.Select(d => d.Id == clientId ? d with { RemoteDesktopEnabled = enabled } : d).ToList();
+            var updated = devices.Select(d => d.Id == clientId ? d with { RemoteDesktopEnabled = enabled, RemoteDesktopAudioEnabled = enabled && d.RemoteDesktopAudioEnabled } : d).ToList();
             store.Save(updated);
             devices = updated;
             if (!enabled) StopRemoteDesktop(clientId);
+        }
+    }
+
+    public bool AllowsRemoteDesktopAudio(Guid clientId)
+    {
+        lock (gate) return devices.Any(d => d.Id == clientId && d.RemoteDesktopEnabled && d.RemoteDesktopAudioEnabled);
+    }
+
+    public void SetRemoteDesktopAudioAccess(Guid clientId, bool enabled)
+    {
+        lock (gate)
+        {
+            if (!AllowsRemoteDesktop(clientId)) throw new InvalidOperationException("Enable Remote Desktop for this phone first.");
+            var updated = devices.Select(d => d.Id == clientId ? d with { RemoteDesktopAudioEnabled = enabled } : d).ToList();
+            store.Save(updated);
+            devices = updated;
+            if (!enabled && remoteDesktopSession is { } session && session.ClientId == clientId)
+                session.AudioStop?.Cancel();
+        }
+    }
+
+    public async Task RunRemoteDesktopAudioAsync(Guid clientId, Func<CancellationToken, Task> run)
+    {
+        RemoteDesktopSession session;
+        CancellationTokenSource stop;
+        lock (gate)
+        {
+            if (!AllowsRemoteDesktopAudio(clientId))
+                throw new UnauthorizedAccessException("Allow Remote Desktop audio for this phone on the PC.");
+            if (remoteDesktopSession is not { Ready: true } current || current.ClientId != clientId ||
+                current.Stop.IsCancellationRequested)
+                throw new InvalidOperationException("Open the Remote Desktop viewer first.");
+            if (current.AudioStop is not null)
+                throw new InvalidOperationException("Remote Desktop audio is already open.");
+            session = current;
+            stop = CancellationTokenSource.CreateLinkedTokenSource(session.Stop.Token);
+            session.AudioStop = stop;
+        }
+        try { await run(stop.Token); }
+        finally
+        {
+            lock (gate) session.AudioStop = null;
+            stop.Dispose();
         }
     }
 
@@ -132,12 +183,13 @@ public sealed class PairingService
         {
             if (!AllowsRemoteDesktop(clientId)) throw new UnauthorizedAccessException("Enable Remote Desktop for this phone on the PC.");
             if (remoteDesktopSession is not null) throw new InvalidOperationException("A Remote Desktop session is already open.");
-            remoteDesktopSession = (clientId, stop, false);
+            remoteDesktopSession = new(clientId, stop);
         }
         try { await run(stop.Token); }
         finally
         {
-            lock (gate) remoteDesktopSession = null;
+            try { await stop.CancelAsync(); }
+            finally { lock (gate) remoteDesktopSession = null; }
         }
     }
 
@@ -159,7 +211,7 @@ public sealed class PairingService
         {
             if (remoteDesktopSession is not { Ready: false } session || session.ClientId != clientId ||
                 session.Stop.IsCancellationRequested) return false;
-            remoteDesktopSession = (clientId, session.Stop, true);
+            session.Ready = true;
             return true;
         }
     }
