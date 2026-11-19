@@ -403,3 +403,18 @@ November 19, 2026 (Asia/Taipei).
 - Android 0.11.0+24 passed analysis and 73 Flutter tests, with the opt-in certificate fixture skipped. Tests verified the Stats tab, the default and expanded views, polling, and layout on a small screen with large text. The APK is at `artifacts/mobile/TapMyPC-0.11.0-build24.apk`.
 - Android rejected the in-place update because the installed build 23 has a different signing certificate. Build 23 and its saved PCs stayed in place after that attempt.
 - On the approved clean reinstall, the device removed build 23 and canceled the USB installation of build 24. Copied the APK to the phone Downloads folder and verified its SHA-256 hash. The user then completed the installation and confirmed Stats is working. ADB verified version 0.11.0 and build 24.
+
+## Desktop hardware monitoring status 0.11.1
+
+- Windows 0.11.1+18 passed all 87 .NET tests. An isolated WPF check with a loopback metrics fixture verified the card between Remote Access and Appearance, fresh and stale timestamps, unavailable guidance, recovery, and polling suspension when Configure was closed or the window minimized.
+- Staged the 22-file Windows x64 publish tree in `artifacts/publish/TapMyPC-next` and verified desktop executable and API assembly metadata. The existing installation remains on 0.11.0+17.
+
+## Desktop Configure order 0.11.2
+
+- Windows 0.11.2+19 passed all 87 .NET tests. An isolated WPF check verified the order of the six sections, confirmed that Advanced Network & Security opens collapsed, and checked that the Hardware monitoring card scrolls into view in the compact drawer.
+- Verified the Windows x64 desktop and API metadata and 22-file publish tree. Staged the build in `artifacts/publish/TapMyPC-next-0.11.2` because build 18 was running from `TapMyPC-next`.
+
+## Desktop themes 0.12.0
+
+- Windows 0.12.0+20 passed all 87 .NET tests and built with zero warnings. An isolated WPF check exercised all 25 theme and accent combinations, verified live updates across the window, tray menu and feedback banner, and confirmed that accent-only settings load as Dark with the saved accent.
+- Staged the 22-file Windows x64 publish tree in `artifacts/publish/TapMyPC-next` and verified the desktop and API product versions.

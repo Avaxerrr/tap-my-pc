@@ -36,6 +36,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly ShortcutCatalog? shortcuts;
     private readonly IMonitorController? monitors;
     private readonly IMonitoringSource monitoring = new PcStatsTraySource();
+    private CancellationTokenSource? monitoringRead;
+    private bool monitoringVisible;
     private readonly LocalSettings settings;
     private readonly Func<IReadOnlyList<NetworkAddress>> readNetworkAddresses;
     private readonly BluetoothConnectionHost? bluetoothHost;
@@ -168,6 +170,8 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     public AppearanceViewModel Appearance { get; }
     public ShortcutsViewModel? ShortcutSettings { get; }
+    public string MonitoringStatus { get; private set; } = "Checking…";
+    public string MonitoringDetails { get; private set; } = "";
     public ObservableCollection<NetworkAddress> NetworkChoices { get; } = [];
     public ObservableCollection<PairedClient> Devices { get; } = [];
     public ObservableCollection<ActionNotice> Activity { get; } = [];
@@ -565,6 +569,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void Tick()
     {
+        _ = RefreshMonitoringAsync();
         RefreshPresence();
         if (++networkCheck % 10 == 0) _ = CheckNetworkAsync();
         if (!pairing.IsPairingOpen) ClearPairingQr();
@@ -603,6 +608,58 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         Notify(nameof(Pending)); Notify(nameof(HasPending));
         RefreshActivity();
     }
+    public void SetMonitoringVisible(bool visible)
+    {
+        if (monitoringVisible == visible) return;
+        monitoringVisible = visible;
+        if (!visible)
+        {
+            monitoringRead?.Cancel();
+            return;
+        }
+
+        SetMonitoringStatus("Checking…", "");
+        _ = RefreshMonitoringAsync();
+    }
+
+    private async Task RefreshMonitoringAsync()
+    {
+        if (shuttingDown || !monitoringVisible || monitoringRead is not null) return;
+
+        using var read = new CancellationTokenSource();
+        monitoringRead = read;
+        try
+        {
+            var snapshot = await monitoring.ReadAsync(read.Token);
+            if (read.IsCancellationRequested) return;
+
+            if (snapshot is null)
+            {
+                SetMonitoringStatus("Stats unavailable", "Open PC Stats Tray and select Show Stats → Local apps.");
+                return;
+            }
+
+            var status = snapshot.IsStaleAt(DateTimeOffset.UtcNow) ? "Stats out of date" : "Receiving stats";
+            SetMonitoringStatus(status, $"Last updated at {snapshot.GeneratedAtUtc.ToLocalTime():T}");
+        }
+        catch (OperationCanceledException) when (read.IsCancellationRequested) { }
+        finally { monitoringRead = null; }
+    }
+
+    private void SetMonitoringStatus(string status, string details)
+    {
+        if (MonitoringStatus != status)
+        {
+            MonitoringStatus = status;
+            Notify(nameof(MonitoringStatus));
+        }
+        if (MonitoringDetails != details)
+        {
+            MonitoringDetails = details;
+            Notify(nameof(MonitoringDetails));
+        }
+    }
+
     private void ClearPairingQr()
     {
         if (pairingQrImage is null) return;
@@ -614,6 +671,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public async Task ShutdownAsync()
     {
         shuttingDown = true;
+        SetMonitoringVisible(false);
         NetworkChange.NetworkAddressChanged -= OnNetworkChanged;
         if (bluetoothHost is not null) SystemEvents.PowerModeChanged -= OnPowerModeChanged;
         refreshTimer.Stop();

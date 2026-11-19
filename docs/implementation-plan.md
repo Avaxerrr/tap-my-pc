@@ -2,6 +2,12 @@
 
 ## Current state
 
+Windows 0.12.0+20 adds Dark, Light, Midnight, Forest, and Plum desktop themes in **Configure → Appearance**. The chosen theme and accent update the window, tray menu, and notification banners immediately.
+
+Windows 0.11.2+19 moves Authorized phones to the top of Configure and places Quick launch shortcuts before Appearance. Advanced Network & Security stays collapsed at the bottom.
+
+Windows 0.11.1+18 shows PC Stats Tray status and the last sample time in **Configure → Hardware monitoring**, with setup guidance when readings are unavailable. [Hardware monitoring](monitoring-integration.md)
+
 Windows 0.11.0+17 reads cached PC Stats Tray metrics and serves them through the paired API. Android 0.11.0+24 adds Stats with the dashboard's default and expanded views. [Hardware monitoring](monitoring-integration.md)
 
 Windows 0.10.0+16 applies the theme accent to enabled preference switches and adds confirmed zero-delay dispatch for Lock, Sleep, and Hibernate. Android 0.10.0+23 uses the active connection's badge color, supports timers in seconds or minutes, and hides due countdowns while offline. See [verification](verification.md) for delivery status.

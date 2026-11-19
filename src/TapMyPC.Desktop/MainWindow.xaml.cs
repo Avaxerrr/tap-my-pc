@@ -19,9 +19,15 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        AppearanceViewModel.Apply(Resources, null);
         SizeChanged += (_, _) => UpdateDashboardLayout();
         IsVisibleChanged += (_, _) => UpdateConnectionPulse();
-        StateChanged += (_, _) => UpdateConnectionPulse();
+        SettingsPanel.IsVisibleChanged += (_, _) => UpdateMonitoringVisibility();
+        StateChanged += (_, _) =>
+        {
+            UpdateConnectionPulse();
+            UpdateMonitoringVisibility();
+        };
     }
 
     private void UpdateDashboardLayout()
@@ -94,6 +100,7 @@ public partial class MainWindow : Window
     {
         if (e.OldValue is SettingsViewModel previous)
         {
+            previous.SetMonitoringVisible(false);
             previous.PropertyChanged -= SettingsChanged;
             previous.Appearance.PropertyChanged -= AppearanceChanged;
         }
@@ -101,10 +108,17 @@ public partial class MainWindow : Window
         {
             current.PropertyChanged += SettingsChanged;
             current.Appearance.PropertyChanged += AppearanceChanged;
-            AppearanceViewModel.Apply(Resources, current.Appearance.Palette);
+            AppearanceViewModel.Apply(Resources, current.Appearance);
             if (current.HasPairingQr) PairDrawerToggle.IsChecked = true;
         }
         UpdateConnectionPulse();
+        UpdateMonitoringVisibility();
+    }
+
+    private void UpdateMonitoringVisibility()
+    {
+        if (DataContext is SettingsViewModel settings)
+            settings.SetMonitoringVisible(SettingsPanel.IsVisible && WindowState != WindowState.Minimized);
     }
 
     private void UpdateConnectionPulse()
@@ -127,9 +141,9 @@ public partial class MainWindow : Window
 
     private void AppearanceChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(AppearanceViewModel.Palette) && sender is AppearanceViewModel appearance)
-            AppearanceViewModel.Apply(Resources, appearance.Palette);
-        UpdateConnectionPulse();
+        if (e.PropertyName is nameof(AppearanceViewModel.Theme) or nameof(AppearanceViewModel.Accent)
+            && sender is AppearanceViewModel appearance)
+            AppearanceViewModel.Apply(Resources, appearance);
     }
 
     private void SettingsChanged(object? sender, PropertyChangedEventArgs e)

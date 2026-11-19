@@ -83,7 +83,7 @@ The desktop displays recently active remote clients on the main connection card 
 
 ## Desktop personalization
 
-- Dark desktop surfaces with locally saved Blue, Mint, Purple, Teal, or Amber accents. These preferences apply to the desktop dashboard and tray menu, independently of phone clients.
+- Desktop themes include Dark, Light, Midnight, Forest, and Plum, with independently chosen Blue, Mint, Purple, Teal, or Amber accents. The saved choices apply to the desktop dashboard, tray menu, and command feedback banners.
 - Drawer transitions, feedback fades, and the visible connection pulse animate independently of Windows visual effects, without an app animation preference.
 - Compact default size with expanding cards, two columns on wide windows, natural control heights, and scrollable panels/lists on shorter windows. The custom window shadow is removed for smoother dragging.
 

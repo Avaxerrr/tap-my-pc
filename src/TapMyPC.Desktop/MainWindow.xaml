@@ -5,7 +5,7 @@
  xmlns:presentation="clr-namespace:TapMyPC.Desktop.Presentation"
  xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
  Title="TapMyPC" Icon="Assets/TapMyPC.ico" Width="680" Height="640" MinWidth="640" MinHeight="560"
- WindowStyle="None" WindowStartupLocation="CenterScreen" Background="#0B0C0E" Foreground="#F5F5F7"
+ WindowStyle="None" WindowStartupLocation="CenterScreen" Background="{DynamicResource BgPrimary}" Foreground="{DynamicResource TextPrimary}"
  FontFamily="./Assets/Fonts/#Inter 18pt 18pt" FontSize="13"
  TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType" UseLayoutRounding="True"
  PreviewKeyDown="Window_PreviewKeyDown" DataContextChanged="Window_DataContextChanged">
@@ -26,43 +26,19 @@
     </ControlTemplate></Setter.Value></Setter>
   </Style>
 
-  <!-- Apple Dark Mode Inspired Palette (Cupertino Obsidian & System Blue) -->
-  <SolidColorBrush x:Key="BgPrimary" Color="#0B0C0E" />
-  <SolidColorBrush x:Key="SurfaceCard" Color="#16181D" />
-  <SolidColorBrush x:Key="SurfaceElevated" Color="#1C1F26" />
-  <SolidColorBrush x:Key="SurfaceSubtle" Color="#262A34" />
-  <SolidColorBrush x:Key="BorderHairline" Color="#262A34" />
-  <SolidColorBrush x:Key="AccentBlue" Color="#0875DF" />
-  <SolidColorBrush x:Key="AccentSoft" Color="#122338" />
-  <SolidColorBrush x:Key="AccentBorder" Color="#25466A" />
-  <SolidColorBrush x:Key="AccentText" Color="#8EC6FF" />
-  <SolidColorBrush x:Key="AccentForeground" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="AccentBlueHover" Color="#0070E0" />
-  <SolidColorBrush x:Key="TextPrimary" Color="#F5F5F7" />
-  <SolidColorBrush x:Key="TextSecondary" Color="#98989D" />
-  <SolidColorBrush x:Key="TextMuted" Color="#94949B" />
-  <SolidColorBrush x:Key="BluetoothBadgeFill" Color="#14263B" />
-  <SolidColorBrush x:Key="BluetoothBorder" Color="#344F71" />
-  <SolidColorBrush x:Key="BluetoothText" Color="#A1D0FF" />
-  <SolidColorBrush x:Key="WiFiBadgeFill" Color="#182C24" />
-  <SolidColorBrush x:Key="WiFiBorder" Color="#365647" />
-  <SolidColorBrush x:Key="WiFiText" Color="#A4E2BF" />
-  <SolidColorBrush x:Key="TailscaleBadgeFill" Color="#29223A" />
-  <SolidColorBrush x:Key="TailscaleBorder" Color="#53426D" />
-  <SolidColorBrush x:Key="TailscaleText" Color="#D5C1FF" />
 
   <!-- Default TextBlock -->
   <Style TargetType="TextBlock">
     <Setter Property="TextWrapping" Value="Wrap" />
-    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
   </Style>
 
   <Style x:Key="ConnectionBadge" TargetType="ContentControl">
     <Setter Property="HorizontalAlignment" Value="Left" />
     <Setter Property="Focusable" Value="False" />
-    <Setter Property="Background" Value="{StaticResource SurfaceElevated}" />
-    <Setter Property="BorderBrush" Value="{StaticResource BorderHairline}" />
-    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevated}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ContentControl">
@@ -84,21 +60,21 @@
     <Style.Triggers>
       <DataTrigger Binding="{Binding Transport}" Value="{x:Static devices:RemoteTransport.Bluetooth}">
         <Setter Property="Content" Value="Bluetooth" />
-        <Setter Property="Background" Value="{StaticResource BluetoothBadgeFill}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BluetoothBorder}" />
-        <Setter Property="Foreground" Value="{StaticResource BluetoothText}" />
+        <Setter Property="Background" Value="{DynamicResource BluetoothBadgeFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BluetoothBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource BluetoothText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Transport}" Value="{x:Static devices:RemoteTransport.WiFi}">
         <Setter Property="Content" Value="Wi-Fi" />
-        <Setter Property="Background" Value="{StaticResource WiFiBadgeFill}" />
-        <Setter Property="BorderBrush" Value="{StaticResource WiFiBorder}" />
-        <Setter Property="Foreground" Value="{StaticResource WiFiText}" />
+        <Setter Property="Background" Value="{DynamicResource WiFiBadgeFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WiFiBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource WiFiText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Transport}" Value="{x:Static devices:RemoteTransport.Tailscale}">
         <Setter Property="Content" Value="Tailscale" />
-        <Setter Property="Background" Value="{StaticResource TailscaleBadgeFill}" />
-        <Setter Property="BorderBrush" Value="{StaticResource TailscaleBorder}" />
-        <Setter Property="Foreground" Value="{StaticResource TailscaleText}" />
+        <Setter Property="Background" Value="{DynamicResource TailscaleBadgeFill}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource TailscaleBorder}" />
+        <Setter Property="Foreground" Value="{DynamicResource TailscaleText}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
@@ -118,9 +94,9 @@
           <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource ScrollPageButton}" Command="ScrollBar.PageUpCommand"/></Track.DecreaseRepeatButton>
           <Track.Thumb><Thumb MinHeight="28" Cursor="Hand">
             <Thumb.Template><ControlTemplate TargetType="Thumb">
-              <Border x:Name="Grip" Background="#424853" CornerRadius="2" Margin="3,0"/>
+              <Border x:Name="Grip" Background="{DynamicResource ScrollThumb}" CornerRadius="2" Margin="3,0"/>
               <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="#9099A8"/></Trigger>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Grip" Property="Background" Value="{DynamicResource TextMuted}"/></Trigger>
                 <Trigger Property="IsDragging" Value="True"><Setter TargetName="Grip" Property="Background" Value="{DynamicResource AccentBlue}"/></Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate></Thumb.Template>
@@ -134,9 +110,9 @@
   <!-- Secondary Pill/Rounded Button -->
   <Style TargetType="Button">
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocus}" />
-    <Setter Property="Background" Value="{StaticResource SurfaceSubtle}" />
-    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-    <Setter Property="BorderBrush" Value="#343946" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceSubtle}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="FontSize" Value="13" />
@@ -155,7 +131,7 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Surface" Property="Background" Value="#303542" />
+              <Setter TargetName="Surface" Property="Background" Value="{DynamicResource ControlHover}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="Surface" Property="Opacity" Value="0.38" />
@@ -201,7 +177,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="CheckBox">
-          <Border x:Name="Track" Width="42" Height="24" CornerRadius="12" Background="#323642" Padding="2">
+          <Border x:Name="Track" Width="42" Height="24" CornerRadius="12" Background="{DynamicResource SwitchTrack}" Padding="2">
             <Ellipse x:Name="Thumb" Width="20" Height="20" Fill="#FFFFFF" HorizontalAlignment="Left" />
           </Border>
           <ControlTemplate.Triggers>
@@ -222,9 +198,9 @@
   <!-- Top Bar Pill Toggle Button -->
   <Style x:Key="HeaderToolButton" TargetType="ToggleButton">
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocus}" />
-    <Setter Property="Background" Value="{StaticResource SurfaceCard}" />
-    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
-    <Setter Property="BorderBrush" Value="{StaticResource BorderHairline}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceCard}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="12,6" />
     <Setter Property="FontSize" Value="12.5" />
@@ -244,13 +220,13 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Surface" Property="Background" Value="{StaticResource SurfaceSubtle}" />
-              <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+              <Setter TargetName="Surface" Property="Background" Value="{DynamicResource SurfaceSubtle}" />
+              <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
               <Setter TargetName="Surface" Property="Background" Value="{DynamicResource AccentSoft}" />
               <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource AccentBlue}" />
-              <Setter Property="Foreground" Value="#FFFFFF" />
+              <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -261,8 +237,8 @@
   <!-- Action Card Toggle Button (For Main Canvas Quick Actions) -->
   <Style x:Key="ActionCardToggle" TargetType="ToggleButton">
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocus}" />
-    <Setter Property="Background" Value="{StaticResource SurfaceCard}" />
-    <Setter Property="BorderBrush" Value="{StaticResource BorderHairline}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceCard}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="18,14" />
     <Setter Property="Cursor" Value="Hand" />
@@ -279,8 +255,8 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Card" Property="Background" Value="{StaticResource SurfaceElevated}" />
-              <Setter TargetName="Card" Property="BorderBrush" Value="#363C4A" />
+              <Setter TargetName="Card" Property="Background" Value="{DynamicResource SurfaceElevated}" />
+              <Setter TargetName="Card" Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -294,7 +270,7 @@
     <Setter Property="Width" Value="38" />
     <Setter Property="Height" Value="32" />
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource TextSecondary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True" />
     <Setter Property="Template">
@@ -305,8 +281,8 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Bg" Property="Background" Value="{StaticResource SurfaceSubtle}" />
-              <Setter Property="Foreground" Value="#FFFFFF" />
+              <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SurfaceSubtle}" />
+              <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -317,9 +293,9 @@
   <!-- Modern Input TextBox -->
   <Style TargetType="TextBox">
     <Setter Property="Padding" Value="12,9" />
-    <Setter Property="Background" Value="{StaticResource BgPrimary}" />
-    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-    <Setter Property="BorderBrush" Value="{StaticResource BorderHairline}" />
+    <Setter Property="Background" Value="{DynamicResource BgPrimary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Template">
@@ -344,15 +320,15 @@
 
   <!-- Clean Grouped Card Style -->
   <Style x:Key="GroupedCard" TargetType="Border">
-    <Setter Property="Background" Value="{StaticResource SurfaceCard}" />
-    <Setter Property="BorderBrush" Value="{StaticResource BorderHairline}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceCard}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="8" />
   </Style>
 
   <!-- Subtle Section Header Label -->
   <Style x:Key="SectionLabel" TargetType="TextBlock">
-    <Setter Property="Foreground" Value="{StaticResource TextMuted}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Margin" Value="4,0,0,8" />
@@ -360,8 +336,8 @@
 
 
   <Style TargetType="ComboBoxItem">
-    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
-    <Setter Property="Background" Value="{StaticResource SurfaceElevated}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceElevated}" />
     <Setter Property="Padding" Value="10,8" />
     <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
       <Border x:Name="Item" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"><ContentPresenter /></Border>
@@ -372,17 +348,17 @@
     </ControlTemplate></Setter.Value></Setter>
   </Style>
   <Style TargetType="ComboBox">
-    <Setter Property="Foreground" Value="{StaticResource TextPrimary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocus}" />
     <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
       <Grid>
         <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}" ClickMode="Press">
-          <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="#0B0C0E" BorderBrush="#343946" BorderThickness="1" CornerRadius="6" /></ControlTemplate></ToggleButton.Template>
+          <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="{DynamicResource BgPrimary}" BorderBrush="{DynamicResource ControlBorder}" BorderThickness="1" CornerRadius="6" /></ControlTemplate></ToggleButton.Template>
         </ToggleButton>
         <ContentPresenter IsHitTestVisible="False" Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}" Margin="10,9,26,9" VerticalAlignment="Center" />
         <TextBlock Text="⌄" IsHitTestVisible="False" HorizontalAlignment="Right" Margin="0,0,9,0" VerticalAlignment="Center" />
         <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" AllowsTransparency="True" Focusable="False">
-          <Border Background="#1C1F26" BorderBrush="#343946" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="300">
+          <Border Background="{DynamicResource SurfaceElevated}" BorderBrush="{DynamicResource ControlBorder}" BorderThickness="1" MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="300">
             <ScrollViewer CanContentScroll="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" /></ScrollViewer>
           </Border>
         </Popup>
@@ -393,7 +369,7 @@
 
 </Window.Resources>
 
-<Grid x:Name="WindowSurface" Background="{StaticResource BgPrimary}" RenderOptions.ClearTypeHint="Enabled">
+<Grid x:Name="WindowSurface" Background="{DynamicResource BgPrimary}" RenderOptions.ClearTypeHint="Enabled">
   <Grid.RowDefinitions>
     <RowDefinition Height="52" />
     <RowDefinition Height="*" />
@@ -409,13 +385,13 @@
         <Ellipse x:Name="ConnectionHalo" Width="18" Height="18" Fill="{DynamicResource AccentBlue}" Opacity="0" IsHitTestVisible="False"/>
         <Ellipse Width="7" Height="7" HorizontalAlignment="Center" VerticalAlignment="Center">
           <Ellipse.Style><Style TargetType="Ellipse">
-            <Setter Property="Fill" Value="{StaticResource TextMuted}"/>
+            <Setter Property="Fill" Value="{DynamicResource TextMuted}"/>
             <Style.Triggers><DataTrigger Binding="{Binding HasConnectedClients}" Value="True"><Setter Property="Fill" Value="{DynamicResource AccentBlue}"/></DataTrigger></Style.Triggers>
           </Style></Ellipse.Style>
         </Ellipse>
       </Grid>
       <TextBlock Text="{Binding AppHeading}"
-                 Foreground="{StaticResource TextSecondary}"
+                 Foreground="{DynamicResource TextSecondary}"
                  FontSize="12.5"
                  FontWeight="SemiBold"
                  VerticalAlignment="Center" />
@@ -472,23 +448,23 @@
 
       <!-- A. Hero Status & Primary Toggle Card -->
       <Border x:Name="HeroCard" Grid.Row="0"
-              Background="{StaticResource SurfaceCard}"
+              Background="{DynamicResource SurfaceCard}"
               BorderThickness="1"
               CornerRadius="10"
               Padding="26,22"
               Margin="0,0,0,16">
         <Border.Style>
           <Style TargetType="Border">
-            <Setter Property="BorderBrush" Value="{StaticResource BorderHairline}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
             <Style.Triggers>
               <DataTrigger Binding="{Binding SharedConnectionTransport}" Value="{x:Static devices:RemoteTransport.Bluetooth}">
-                <Setter Property="BorderBrush" Value="{StaticResource BluetoothBorder}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource BluetoothBorder}" />
               </DataTrigger>
               <DataTrigger Binding="{Binding SharedConnectionTransport}" Value="{x:Static devices:RemoteTransport.WiFi}">
-                <Setter Property="BorderBrush" Value="{StaticResource WiFiBorder}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource WiFiBorder}" />
               </DataTrigger>
               <DataTrigger Binding="{Binding SharedConnectionTransport}" Value="{x:Static devices:RemoteTransport.Tailscale}">
-                <Setter Property="BorderBrush" Value="{StaticResource TailscaleBorder}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource TailscaleBorder}" />
               </DataTrigger>
             </Style.Triggers>
           </Style>
@@ -526,9 +502,9 @@
 
             <TextBlock Text="{Binding NetworkSummary, Mode=OneWay}"
                        FontSize="13"
-                       Foreground="{StaticResource TextSecondary}" />
-            <TextBlock Text="{Binding TailscaleConnectionSummary}" Margin="0,4,0,0" FontSize="11.5" Foreground="{StaticResource TextSecondary}" />
-            <TextBlock Text="{Binding BluetoothConnectionSummary}" Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondary}" />
+                       Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{Binding TailscaleConnectionSummary}" Margin="0,4,0,0" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{Binding BluetoothConnectionSummary}" Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" />
             <TextBlock x:Name="CommandFeedback" Text="{Binding Message, Mode=OneWay}"
                        Margin="0,5,0,0" FontSize="11.5" TextWrapping="Wrap"
                        Foreground="{DynamicResource AccentText}" />
@@ -561,7 +537,7 @@
           </Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="SCHEDULED ACTION" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentText}" Margin="0,0,0,2" />
-            <TextBlock Text="{Binding Pending}" FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" />
+            <TextBlock Text="{Binding Pending}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" />
           </StackPanel>
           <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelTimer}" VerticalAlignment="Center" Padding="14,7" />
         </Grid>
@@ -590,9 +566,9 @@
             </Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Text="Pair a Phone" FontSize="13.5" FontWeight="SemiBold" />
-              <TextBlock Text="Scan QR or enter code" FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
+              <TextBlock Text="Scan QR or enter code" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
             </StackPanel>
-            <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
           </Grid>
         </ToggleButton>
 
@@ -606,14 +582,14 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border Width="36" Height="36" CornerRadius="6" Background="#222631" Margin="0,0,12,0">
-              <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{StaticResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Border Width="36" Height="36" CornerRadius="6" Background="{DynamicResource SurfaceSubtle}" Margin="0,0,12,0">
+              <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Text="App Shortcuts" FontSize="13.5" FontWeight="SemiBold" />
-              <TextBlock Text="Apps, URLs &amp; devices" FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
+              <TextBlock Text="Apps, URLs &amp; devices" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
             </StackPanel>
-            <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
           </Grid>
         </ToggleButton>
       </Grid>
@@ -632,12 +608,12 @@
               </Grid.ColumnDefinitions>
               <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
                 <TextBlock Text="Start automatically at sign-in" FontSize="13.5" FontWeight="Medium" />
-                <TextBlock Text="Launch in the tray; keep stopped connections paused" FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
+                <TextBlock Text="Launch in the tray; keep stopped connections paused" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
               </StackPanel>
               <CheckBox Grid.Column="1" Style="{StaticResource AppleToggleSwitch}" AutomationProperties.Name="Start automatically at sign-in" IsChecked="{Binding StartupEnabled}" VerticalAlignment="Center" />
             </Grid>
 
-            <Border Height="1" Background="{StaticResource BorderHairline}" Margin="18,0" />
+            <Border Height="1" Background="{DynamicResource BorderHairline}" Margin="18,0" />
 
             <!-- Row 2: Desktop Notifications -->
             <Grid Margin="18,14">
@@ -647,7 +623,7 @@
               </Grid.ColumnDefinitions>
               <StackPanel VerticalAlignment="Center" Margin="0,0,14,0">
                 <TextBlock Text="Show command notifications" FontSize="13.5" FontWeight="Medium" />
-                <TextBlock Text="Display a subtle banner when your phone triggers an action" FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
+                <TextBlock Text="Display a subtle banner when your phone triggers an action" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
               </StackPanel>
               <CheckBox Grid.Column="1" Style="{StaticResource AppleToggleSwitch}" AutomationProperties.Name="Show command notifications" IsChecked="{Binding ShowNotifications}" VerticalAlignment="Center" />
             </Grid>
@@ -658,7 +634,7 @@
       <!-- E. Subtle Tray Hint Footer -->
       <TextBlock x:Name="TrayHint" Grid.Row="4" Grid.ColumnSpan="3"
                  Text="Closing this window keeps your remote quietly running in the system tray."
-                 Foreground="{StaticResource TextMuted}"
+                 Foreground="{DynamicResource TextMuted}"
                  FontSize="11.5"
                  HorizontalAlignment="Center"
                  Margin="0,22,0,0" />
@@ -669,12 +645,12 @@
   <!-- OVERLAY SHEET 1: PAIR A PHONE (Clean Modal Card)                      -->
   <!-- ===================================================================== -->
   <Grid x:Name="PairPanel" Focusable="True" KeyboardNavigation.TabNavigation="Cycle" Grid.Row="1" Visibility="Collapsed" presentation:DrawerTransition.IsOpen="{Binding IsChecked, ElementName=PairDrawerToggle}">
-    <Border Background="#B3050608" MouseLeftButtonDown="Backdrop_Click" />
+    <Border Background="{DynamicResource DrawerBackdrop}" MouseLeftButtonDown="Backdrop_Click" />
 
     <Border Width="390"
             HorizontalAlignment="Right"
-            Background="{StaticResource SurfaceCard}"
-            BorderBrush="{StaticResource BorderHairline}"
+            Background="{DynamicResource SurfaceCard}"
+            BorderBrush="{DynamicResource BorderHairline}"
             BorderThickness="1,0,0,0"
             CornerRadius="16,0,0,16"
             Padding="28">
@@ -693,7 +669,7 @@
                           Style="{StaticResource HeaderToolButton}" />
           </Grid>
 
-          <TextBlock Text="{Binding PairingHint}" Foreground="{StaticResource TextSecondary}" FontSize="13" LineHeight="19" Margin="0,0,0,20" />
+          <TextBlock Text="{Binding PairingHint}" Foreground="{DynamicResource TextSecondary}" FontSize="13" LineHeight="19" Margin="0,0,0,20" />
 
           <!-- Crisp QR Container -->
           <Border Background="White"
@@ -710,7 +686,7 @@
           </Border>
 
           <TextBlock Text="{Binding PairingExpiry}"
-                     Foreground="{StaticResource TextSecondary}"
+                     Foreground="{DynamicResource TextSecondary}"
                      FontSize="12"
                      HorizontalAlignment="Center"
                      Margin="0,0,0,18" />
@@ -724,7 +700,7 @@
 
           <TextBlock Text="{Binding Message}" Foreground="{DynamicResource AccentText}" FontSize="12" Margin="0,0,0,16" />
           <!-- Manual Code Fallback Hidden Inside Expander -->
-          <Expander Header="Manual browser link &amp; code" Foreground="{StaticResource TextSecondary}" FontSize="12.5">
+          <Expander Header="Manual browser link &amp; code" Foreground="{DynamicResource TextSecondary}" FontSize="12.5">
             <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,10,0,0">
               <StackPanel>
                 <TextBlock Text="PAIRING CODE" Style="{StaticResource SectionLabel}" Margin="0,0,0,4" />
@@ -756,12 +732,12 @@
   <!-- OVERLAY SHEET 2: ACTIVITY LOGS (Hidden by default, on-demand only)    -->
   <!-- ===================================================================== -->
   <Grid x:Name="ActivityPanel" Focusable="True" KeyboardNavigation.TabNavigation="Cycle" Grid.Row="1" Visibility="Collapsed" presentation:DrawerTransition.IsOpen="{Binding IsChecked, ElementName=ActivityDrawerToggle}">
-    <Border Background="#B3050608" MouseLeftButtonDown="Backdrop_Click" />
+    <Border Background="{DynamicResource DrawerBackdrop}" MouseLeftButtonDown="Backdrop_Click" />
 
     <Border Width="400"
             HorizontalAlignment="Right"
-            Background="{StaticResource SurfaceCard}"
-            BorderBrush="{StaticResource BorderHairline}"
+            Background="{DynamicResource SurfaceCard}"
+            BorderBrush="{DynamicResource BorderHairline}"
             BorderThickness="1,0,0,0"
             CornerRadius="16,0,0,16"
             Padding="26">
@@ -774,7 +750,7 @@
         <Grid Grid.Row="0" Margin="0,0,0,20">
           <StackPanel>
             <TextBlock Text="Activity Log" FontSize="19" FontWeight="SemiBold" />
-            <TextBlock Text="Real-time history of remote commands" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0" />
+            <TextBlock Text="Real-time history of remote commands" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
           </StackPanel>
           <ToggleButton IsChecked="{Binding IsChecked, ElementName=ActivityDrawerToggle, Mode=TwoWay}"
                         AutomationProperties.Name="Close panel" Content="&#xE8BB;"
@@ -800,9 +776,9 @@
               </Style.Triggers>
             </Style>
           </StackPanel.Style>
-          <TextBlock Text="&#xE81C;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" Margin="0,0,0,10" />
-          <TextBlock Text="No recent commands" FontSize="14" FontWeight="Medium" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" />
-          <TextBlock Text="Commands triggered from your phone will be logged here." FontSize="12" Foreground="{StaticResource TextMuted}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+          <TextBlock Text="&#xE81C;" FontFamily="Segoe MDL2 Assets" FontSize="28" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" Margin="0,0,0,10" />
+          <TextBlock Text="No recent commands" FontSize="14" FontWeight="Medium" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" />
+          <TextBlock Text="Commands triggered from your phone will be logged here." FontSize="12" Foreground="{DynamicResource TextMuted}" HorizontalAlignment="Center" Margin="0,4,0,0" />
         </StackPanel>
 
         <!-- Log Items -->
@@ -810,8 +786,8 @@
           <ItemsControl ItemsSource="{Binding Activity}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Border Background="{StaticResource SurfaceElevated}"
-                        BorderBrush="{StaticResource BorderHairline}"
+                <Border Background="{DynamicResource SurfaceElevated}"
+                        BorderBrush="{DynamicResource BorderHairline}"
                         BorderThickness="1"
                         CornerRadius="6"
                         Padding="14,11"
@@ -822,8 +798,8 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding Message}" FontSize="13" FontWeight="Medium" VerticalAlignment="Center" />
-                    <Border Grid.Column="1" Background="{StaticResource SurfaceSubtle}" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" Margin="8,0,0,0">
-                      <TextBlock Text="{Binding Phase}" FontSize="10.5" Foreground="{StaticResource TextSecondary}" />
+                    <Border Grid.Column="1" Background="{DynamicResource SurfaceSubtle}" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" Margin="8,0,0,0">
+                      <TextBlock Text="{Binding Phase}" FontSize="10.5" Foreground="{DynamicResource TextSecondary}" />
                     </Border>
                   </Grid>
                 </Border>
@@ -839,12 +815,12 @@
   <!-- OVERLAY SHEET 3: SHORTCUTS, DEVICES & ADVANCED NETWORK                -->
   <!-- ===================================================================== -->
   <Grid x:Name="SettingsPanel" Focusable="True" KeyboardNavigation.TabNavigation="Cycle" Grid.Row="1" Visibility="Collapsed" presentation:DrawerTransition.IsOpen="{Binding IsChecked, ElementName=SettingsDrawerToggle}">
-    <Border Background="#B3050608" MouseLeftButtonDown="Backdrop_Click" />
+    <Border Background="{DynamicResource DrawerBackdrop}" MouseLeftButtonDown="Backdrop_Click" />
 
     <Border Width="450"
             HorizontalAlignment="Right"
-            Background="{StaticResource SurfaceCard}"
-            BorderBrush="{StaticResource BorderHairline}"
+            Background="{DynamicResource SurfaceCard}"
+            BorderBrush="{DynamicResource BorderHairline}"
             BorderThickness="1,0,0,0"
             CornerRadius="16,0,0,16"
             Padding="28">
@@ -865,6 +841,25 @@
           </Grid>
 
           <TextBlock Text="{Binding Message}" Foreground="{DynamicResource AccentText}" FontSize="12" Margin="0,0,0,16" />
+          <!-- Paired Devices -->
+          <TextBlock Text="AUTHORIZED PHONES" Style="{StaticResource SectionLabel}" />
+          <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22">
+            <StackPanel>
+              <ListBox ItemsSource="{Binding Devices}"
+                       SelectedItem="{Binding SelectedDevice}"
+                       DisplayMemberPath="Name"
+                       Background="{DynamicResource BgPrimary}"
+                       Foreground="{DynamicResource TextPrimary}"
+                       BorderBrush="{DynamicResource BorderHairline}"
+                       MinHeight="56"
+                       MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ListViewportHeight}}" />
+              <TextBlock Text="Phone name" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,12,0,6" />
+              <TextBox Text="{Binding DeviceName, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" AutomationProperties.Name="Paired phone name" />
+              <Button Content="Save phone name" Command="{Binding RenameDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,8,0,0" />
+              <Button Content="Revoke selected access" Command="{Binding RevokeDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,10,0,0" />
+            </StackPanel>
+          </Border>
+
           <TextBlock Text="REMOTE ACCESS" Style="{StaticResource SectionLabel}" />
           <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22">
             <StackPanel>
@@ -877,32 +872,49 @@
                           AutomationProperties.Name="Allow access through Tailscale" />
               </Grid>
               <TextBlock Text="Local network access stays available. Install and connect Tailscale on both devices. Your phone learns this address after connecting."
-                         FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,8" />
+                         FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,10,0,8" />
               <TextBlock Text="{Binding TailscaleConnectionSummary}" FontSize="11.5" Foreground="{DynamicResource AccentText}" />
               <TextBox Text="{Binding TailscaleUrl, Mode=OneWay}" IsReadOnly="True" FontSize="11.5"
                        AutomationProperties.Name="Tailscale address" Margin="0,8,0,0" Visibility="{Binding HasTailscaleAddress, Converter={StaticResource BoolVisibility}}" />
             </StackPanel>
           </Border>
 
-          <StackPanel DataContext="{Binding Appearance}" Margin="0,0,0,22">
-            <TextBlock Text="APPEARANCE" Style="{StaticResource SectionLabel}"/>
-            <Border Style="{StaticResource GroupedCard}" Padding="16">
-              <StackPanel>
-                <TextBlock Text="Accent color" FontSize="12" Margin="0,0,0,6"/>
-                <ComboBox ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding Accent}" AutomationProperties.Name="Accent color"/>
-                <TextBlock Text="{Binding Status}" FontSize="11.5" Margin="0,8,0,0" Foreground="{DynamicResource AccentText}"/>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-          <!-- SECTION 1: App & Website Shortcuts -->
+          <TextBlock Text="HARDWARE MONITORING" Style="{StaticResource SectionLabel}" />
+          <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22">
+            <StackPanel>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="PC Stats Tray" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,12,0" />
+                <TextBlock Grid.Column="1" Text="{Binding MonitoringStatus}" FontSize="12"
+                           Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              </Grid>
+              <TextBlock Text="{Binding MonitoringDetails}" FontSize="11.5"
+                         Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,8,0,0">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                      <Trigger Property="Text" Value="">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                      </Trigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </StackPanel>
+          </Border>
+
+          <!-- App & Website Shortcuts -->
           <TextBlock Text="QUICK LAUNCH SHORTCUTS" Style="{StaticResource SectionLabel}" />
           <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22" DataContext="{Binding ShortcutSettings}">
             <StackPanel>
-              <TextBlock Text="Approve apps or websites your phone is allowed to open." Foreground="{StaticResource TextSecondary}" FontSize="12" Margin="0,0,0,12" />
+              <TextBlock Text="Approve apps or websites your phone is allowed to open." Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,12" />
 
-              <TextBlock Text="Shortcut name" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,6" />
+              <TextBlock Text="Shortcut name" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6" />
               <TextBox AutomationProperties.Name="Shortcut name" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" ToolTip="Shortcut label (e.g. Spotify)" Margin="0,0,0,8" />
-              <TextBlock Text="Website address (http:// or https://)" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,6" />
+              <TextBlock Text="Website address (http:// or https://)" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6" />
               <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="*" />
@@ -916,9 +928,9 @@
 
               <ListBox ItemsSource="{Binding Items}"
                        SelectedItem="{Binding Selected}"
-                       Background="{StaticResource BgPrimary}"
-                       Foreground="{StaticResource TextPrimary}"
-                       BorderBrush="{StaticResource BorderHairline}"
+                       Background="{DynamicResource BgPrimary}"
+                       Foreground="{DynamicResource TextPrimary}"
+                       BorderBrush="{DynamicResource BorderHairline}"
                        MinHeight="64"
                        MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ListViewportHeight}}"
                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -926,7 +938,7 @@
                   <DataTemplate>
                     <StackPanel Margin="4">
                       <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12.5" />
-                      <TextBlock Text="{Binding Target}" Foreground="{StaticResource TextSecondary}" FontSize="11" />
+                      <TextBlock Text="{Binding Target}" Foreground="{DynamicResource TextSecondary}" FontSize="11" />
                     </StackPanel>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -934,35 +946,39 @@
 
               <StackPanel Margin="0,10,0,0">
                 <Button Content="Remove selected" Command="{Binding Remove}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" />
-                <TextBlock Text="{Binding Status}" Foreground="{StaticResource TextSecondary}" FontSize="11.5" Margin="0,10,0,0" />
+                <TextBlock Text="{Binding Status}" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" Margin="0,10,0,0" />
               </StackPanel>
             </StackPanel>
           </Border>
 
-          <!-- SECTION 2: Paired Devices -->
-          <TextBlock Text="AUTHORIZED PHONES" Style="{StaticResource SectionLabel}" />
-          <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22">
-            <StackPanel>
-              <ListBox ItemsSource="{Binding Devices}"
-                       SelectedItem="{Binding SelectedDevice}"
-                       DisplayMemberPath="Name"
-                       Background="{StaticResource BgPrimary}"
-                       Foreground="{StaticResource TextPrimary}"
-                       BorderBrush="{StaticResource BorderHairline}"
-                       MinHeight="56"
-                       MaxHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource ListViewportHeight}}" />
-              <TextBlock Text="Phone name" FontSize="12" Foreground="{StaticResource TextSecondary}" Margin="0,12,0,6" />
-              <TextBox Text="{Binding DeviceName, UpdateSourceTrigger=PropertyChanged}" MaxLength="60" AutomationProperties.Name="Paired phone name" />
-              <Button Content="Save phone name" Command="{Binding RenameDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,8,0,0" />
-              <Button Content="Revoke selected access" Command="{Binding RevokeDevice}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,10,0,0" />
-            </StackPanel>
-          </Border>
-
-          <!-- SECTION 3: Rare Network & Security Settings (Tucked inside Expander) -->
-          <Expander Header="Advanced Network &amp; Security" Foreground="{StaticResource TextSecondary}" FontSize="12.5">
+          <StackPanel DataContext="{Binding Appearance}" Margin="0,0,0,22">
+            <TextBlock Text="APPEARANCE" Style="{StaticResource SectionLabel}"/>
+            <Border Style="{StaticResource GroupedCard}" Padding="16">
+              <StackPanel>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel>
+                    <TextBlock Text="Theme" FontSize="12" Margin="0,0,0,6" />
+                    <ComboBox ItemsSource="{Binding ThemeChoices}" SelectedItem="{Binding Theme}" AutomationProperties.Name="Theme" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2">
+                    <TextBlock Text="Accent color" FontSize="12" Margin="0,0,0,6" />
+                    <ComboBox ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding Accent}" AutomationProperties.Name="Accent color" />
+                  </StackPanel>
+                </Grid>
+                <TextBlock Text="{Binding Status}" FontSize="11.5" Margin="0,8,0,0" Foreground="{DynamicResource AccentText}"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+          <!-- Advanced network and security -->
+          <Expander Header="Advanced Network &amp; Security" Foreground="{DynamicResource TextSecondary}" FontSize="12.5">
             <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,10,0,0">
               <StackPanel>
-                <TextBlock Text="Local network adapter and shared TapMyPC port. Keep Automatic for normal use. Tailscale is enabled separately above; stop connections before changing these advanced settings." Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="0,0,0,12" />
+                <TextBlock Text="Local network adapter and shared TapMyPC port. Keep Automatic for normal use. Tailscale is enabled separately above; stop connections before changing these advanced settings." Foreground="{DynamicResource TextMuted}" FontSize="11.5" Margin="0,0,0,12" />
                 <Grid Margin="0,0,0,16">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -981,11 +997,11 @@
 
                 <TextBlock Text="CERTIFICATE FINGERPRINT (SHA-256)" Style="{StaticResource SectionLabel}" Margin="0,0,0,6" />
                 <TextBox Text="{Binding Fingerprint, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" AutomationProperties.Name="Certificate fingerprint" FontFamily="Consolas" FontSize="11" Margin="0,0,0,10" />
-                <TextBlock Text="{Binding CertificateSummary}" TextWrapping="Wrap" FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,10" />
+                <TextBlock Text="{Binding CertificateSummary}" TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,10" />
                 <Button Content="Export public certificate" Command="{Binding ExportCertificate}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" />
                 <Button Content="Reset connection identity…" Command="{Binding RequestIdentityReset}" IsEnabled="{Binding CanResetIdentity}" HorizontalAlignment="Left" Padding="12,6" FontSize="12" Margin="0,12,0,0" />
                 <StackPanel Visibility="{Binding IdentityResetRequested, Converter={StaticResource BoolVisibility}}" Margin="0,12,0,0">
-                  <TextBlock Text="Reset this PC’s connection identity? All phones will lose access and must pair again with a new QR. Pending timers continue." TextWrapping="Wrap" Foreground="{StaticResource TextSecondary}" FontSize="12" />
+                  <TextBlock Text="Reset this PC’s connection identity? All phones will lose access and must pair again with a new QR. Pending timers continue." TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}" FontSize="12" />
                   <WrapPanel Margin="0,10,0,0">
                     <Button Content="Reset and revoke all phones" Command="{Binding ConfirmIdentityReset}" IsEnabled="{Binding CanResetIdentity}" Padding="10,6" Margin="0,0,8,8" />
                     <Button Content="Keep current identity" Command="{Binding CancelIdentityReset}" Padding="10,6" Margin="0,0,0,8" />
@@ -996,7 +1012,7 @@
           </Expander>
 
           <TextBlock Text="No firewall or system certificate-trust settings are modified automatically."
-                     Foreground="{StaticResource TextMuted}"
+                     Foreground="{DynamicResource TextMuted}"
                      FontSize="11"
                      Margin="4,18,0,0" />
         </StackPanel>

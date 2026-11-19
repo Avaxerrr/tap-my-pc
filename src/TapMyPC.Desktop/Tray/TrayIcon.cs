@@ -21,8 +21,6 @@ public sealed class TrayIcon : IDisposable
         using (var stream = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/TapMyPC;component/Assets/TapMyPC.ico")).Stream)
         using (var loaded = new Icon(stream)) brandIcon = (Icon)loaded.Clone();
         menu.ShowImageMargin = false;
-        menu.BackColor = Color.FromArgb(22, 24, 29);
-        menu.ForeColor = Color.FromArgb(245, 245, 247);
         menu.Font = menuFont.Font;
         menu.Padding = new Forms.Padding(4);
         menu.AutoSize = false;
@@ -75,11 +73,14 @@ public sealed class TrayIcon : IDisposable
     }
     private void AppearanceChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(AppearanceViewModel.Palette)) UpdateTheme();
+        if (e.PropertyName is nameof(AppearanceViewModel.Theme) or nameof(AppearanceViewModel.Accent)) UpdateTheme();
     }
     private void UpdateTheme()
     {
-        menu.Renderer = new TrayMenuRenderer(appearance.Palette);
+        var theme = appearance.ThemeColors;
+        menu.BackColor = ColorTranslator.FromHtml(theme.Card);
+        menu.ForeColor = ColorTranslator.FromHtml(theme.Text);
+        menu.Renderer = new TrayMenuRenderer(theme, appearance.AccentColors);
         menu.Invalidate();
     }
     public void Dispose()
@@ -114,8 +115,14 @@ public sealed class TrayIcon : IDisposable
                 (int)Math.Ceiling(Font.GetHeight(graphics)) + (Enabled ? 10 : 6) * dpi / 96);
         }
     }
-    private sealed class TrayMenuRenderer(AccentPalette palette) : Forms.ToolStripProfessionalRenderer
+    private sealed class TrayMenuRenderer(DesktopTheme theme, AccentPalette palette) : Forms.ToolStripProfessionalRenderer
     {
+        protected override void OnRenderToolStripBackground(Forms.ToolStripRenderEventArgs e)
+        {
+            using var brush = new SolidBrush(e.ToolStrip.BackColor);
+            e.Graphics.FillRectangle(brush, e.AffectedBounds);
+        }
+
         protected override void OnRenderMenuItemBackground(Forms.ToolStripItemRenderEventArgs e)
         {
             if (!e.Item.Selected || !e.Item.Enabled) return;
@@ -132,7 +139,7 @@ public sealed class TrayIcon : IDisposable
             var state = e.Graphics.Save();
             e.Graphics.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
             var inset = 10 * (e.ToolStrip?.DeviceDpi ?? 96) / 96f;
-            using var brush = new SolidBrush(ColorTranslator.FromHtml(!e.Item.Enabled ? "#98989D" : e.Item.Selected ? palette.Text : "#F5F5F7"));
+            using var brush = new SolidBrush(ColorTranslator.FromHtml(!e.Item.Enabled ? theme.Secondary : e.Item.Selected ? palette.Text : theme.Text));
             using var format = new StringFormat {
                 Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center,
                 FormatFlags = StringFormatFlags.NoWrap, Trimming = StringTrimming.EllipsisCharacter
@@ -145,13 +152,13 @@ public sealed class TrayIcon : IDisposable
             var state = e.Graphics.Save();
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             using var shape = Rounded(new RectangleF(0.5f, 0.5f, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1), 8 * e.ToolStrip.DeviceDpi / 96f);
-            using var pen = new Pen(Color.FromArgb(52, 57, 70));
+            using var pen = new Pen(ColorTranslator.FromHtml(theme.ControlBorder));
             e.Graphics.DrawPath(pen, shape);
             e.Graphics.Restore(state);
         }
         protected override void OnRenderSeparator(Forms.ToolStripSeparatorRenderEventArgs e)
         {
-            using var pen = new Pen(Color.FromArgb(52, 57, 70));
+            using var pen = new Pen(ColorTranslator.FromHtml(theme.ControlBorder));
             e.Graphics.DrawLine(pen, 8, e.Item.Height / 2, e.Item.Width - 8, e.Item.Height / 2);
         }
     }

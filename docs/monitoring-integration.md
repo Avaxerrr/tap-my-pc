@@ -2,6 +2,8 @@
 
 TapMyPC Android shows the selected PC's hardware readings in the **Stats** tab. On Windows, run PC Stats Tray 0.7.1 or newer and choose **Show Stats → Local apps**. The network option, **Show Stats → Apps + Dashboard** in PC Stats Tray 0.7.2, also works and makes the standalone dashboard available on the network.
 
+On TapMyPC Desktop, open **Configure → Hardware monitoring** below **Remote access**. The card shows **Receiving stats** or **Stats out of date** with the last sample time. **Stats unavailable** includes a reminder to enable **Show Stats → Local apps** in PC Stats Tray. TapMyPC checks the local source while the Configure drawer is visible.
+
 ## Data flow
 
 PC Stats Tray refreshes the sensors at its configured 1-, 2-, or 5-second interval. Its dashboard and TapMyPC share the cached `/api/metrics` snapshot. TapMyPC reads that endpoint at `http://127.0.0.1:4587/api/metrics` using PC Stats Tray's default port. TapMyPC Desktop serves the data at its authenticated `/api/v1/monitoring` route over the same pinned HTTPS connection as the remote controls.

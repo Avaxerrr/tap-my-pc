@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.11.0 (build 17)** and Android **0.11.0 (build 24)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.12.0 (build 20)** and Android **0.11.0 (build 24)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -143,7 +143,7 @@ Startup is off by default. The checkbox writes a per-user Run entry that launche
 
 Host preferences and paired-client hashes live in `%LOCALAPPDATA%\TapMyPC\host.json` and `devices.json`. The same directory contains `identity.json` with the public certificate thumbprint reference. Certificate keys are stored separately in the Windows user certificate/key stores. Do not edit these files while the app is running. Corrupt or inaccessible configuration is reported rather than silently discarded.
 
-The dashboard opens at 680 × 640 with bundled Inter typography, a frameless title bar, and minimize, maximize/restore, and hide-to-tray buttons. Sign-in startup and command notifications are on the main screen. Pair a Phone opens QR/manual setup; Activity opens command history; Configure contains shortcuts, paired devices, and Advanced Network & Security. Only one panel opens at a time; Escape, its close button, or the dimmed backdrop dismisses it. Newly generated QR invitations open the pairing panel automatically. The latest feedback appears on a smaller, wrapping line beneath the network address; pending-action cancellation remains on the main screen.
+The dashboard opens at 680 × 640 with bundled Inter typography, a frameless title bar, and minimize, maximize/restore, and hide-to-tray buttons. Sign-in startup and command notifications are on the main screen. Pair a Phone opens QR/manual setup; Activity opens command history; Configure shows Authorized phones, Remote access, Hardware monitoring, Quick launch shortcuts, Appearance, and the collapsed Advanced Network & Security section, in that order. Only one panel opens at a time; Escape, its close button, or the dimmed backdrop dismisses it. Newly generated QR invitations open the pairing panel automatically. The latest feedback appears on a smaller, wrapping line beneath the network address; pending-action cancellation remains on the main screen.
 
 ### Phone activity and PC notifications
 
@@ -151,15 +151,15 @@ The connection card shows a gray **No phone connected** badge while idle. When a
 
 Windows preference toggles use the selected theme accent when on. Android uses the same Bluetooth, Wi-Fi, and Tailscale badge colors on its selected-PC card, with a gray Offline badge.
 
-The PC notification banner follows your desktop accent, Inter font, and corner styling, with a brief fade on appearance. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
+The PC notification banner follows your desktop theme, accent, Inter font, and corner styling, with a brief fade on appearance. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
 
 ### Appearance and resizing
 
-Configure > Appearance offers Blue, Mint, Purple, Teal, and Amber accents. Changes preview immediately and are saved in `%LOCALAPPDATA%\TapMyPC\appearance.json`; network preferences and paired devices are independent. Drawer transitions, feedback fades, and the connection pulse animate independently of Windows visual effects. There is no separate animation setting, and legacy motion values are ignored. No Windows visual settings are changed.
+Configure > Appearance offers Dark, Light, Midnight, Forest, and Plum themes. Pick Blue, Mint, Purple, Teal, or Amber independently as the accent. The main window, tray menu, and PC notification banners update immediately. These choices are saved in `%LOCALAPPDATA%\TapMyPC\appearance.json`; network preferences and paired devices are independent. Drawer transitions, feedback fades, and the connection pulse animate independently of Windows visual effects. There is no separate animation setting, and legacy motion values are ignored. No Windows visual settings are changed.
 
 Cards expand horizontally, up to a 1100-DIP dashboard width. At a window width of 1120 DIPs, essential preferences move beside the connection/pairing cards. Taller windows give panels and lists more usable space, while controls retain their natural height. Widgets have sharper corners; the outer frame remains rounded. The custom companion shadow is removed after the shadow-free version proved smoother to drag. This does not change Windows visual-effects settings.
 
-The application uses explicit ClearType/Ideal text formatting and per-monitor DPI awareness. The system font configuration is not changed; assess the live rendering on your monitor at its normal scaling. The tray and executable use the bundled multi-resolution TapMyPC icon, and the tray menu uses dark surfaces with the selected accent, modestly rounded edges, and vertically centered Inter text. The font is loaded privately without installing it in Windows.
+The application uses explicit ClearType/Ideal text formatting and per-monitor DPI awareness. The system font configuration is not changed; assess the live rendering on your monitor at its normal scaling. The tray and executable use the bundled multi-resolution TapMyPC icon, and the tray menu uses the selected theme and accent, modestly rounded edges, and vertically centered Inter text. The font is loaded privately without installing it in Windows.
 
 ### Upgrade from PC Remote
 

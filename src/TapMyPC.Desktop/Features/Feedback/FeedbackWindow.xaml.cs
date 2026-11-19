@@ -16,7 +16,7 @@ public partial class FeedbackWindow : Window
     {
         this.appearance = appearance;
         InitializeComponent();
-        AppearanceViewModel.Apply(Resources, appearance?.Palette ?? AppearanceViewModel.Palettes[0]);
+        AppearanceViewModel.Apply(Resources, appearance);
         if (appearance is not null) appearance.PropertyChanged += AppearanceChanged;
         Closed += (_, _) => { if (appearance is not null) appearance.PropertyChanged -= AppearanceChanged; };
         SourceInitialized += (_, _) => HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(PreventActivation);
@@ -32,8 +32,8 @@ public partial class FeedbackWindow : Window
 
     private void AppearanceChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (appearance is null) return;
-        if (e.PropertyName == nameof(AppearanceViewModel.Palette)) AppearanceViewModel.Apply(Resources, appearance.Palette);
+        if (e.PropertyName is nameof(AppearanceViewModel.Theme) or nameof(AppearanceViewModel.Accent))
+            AppearanceViewModel.Apply(Resources, appearance);
     }
 
     private static IntPtr PreventActivation(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
