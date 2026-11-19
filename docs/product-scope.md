@@ -96,4 +96,4 @@ The desktop displays recently active remote clients on the main connection card 
 
 ## Boundaries
 
-The initial release is for a trusted local network, with authenticated clients. Public internet access, arbitrary remote shell execution, full remote desktop streaming, and a custom Windows driver are outside the initial scope.
+The initial release is for a trusted local network, with authenticated clients. Direct private remote access through an optional Tailscale listener alongside LAN is supported, with separate saved mobile endpoints and explicit/automatic route choices; see [Tailscale setup](tailscale.md). Public internet hosting, arbitrary remote shell execution, full remote desktop streaming, and a custom Windows driver are outside the initial scope.

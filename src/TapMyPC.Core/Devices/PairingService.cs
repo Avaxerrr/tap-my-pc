@@ -4,7 +4,7 @@ using System.Text;
 namespace TapMyPC.Core.Devices;
 
 public record PairedDevice(Guid Id, string Name, string TokenHash, DateTimeOffset CreatedAt, bool NameCustomized = false);
-public enum RemoteTransport { WiFi, Bluetooth }
+public enum RemoteTransport { WiFi, Bluetooth, Tailscale }
 public record PairingSession(string Code, string QrSecret, DateTimeOffset ExpiresAt);
 public record PairedClient(Guid Id, string Name, DateTimeOffset CreatedAt, RemoteTransport? Transport = null);
 public interface IDeviceStore
@@ -118,6 +118,12 @@ public sealed class PairingService
         }
     }
     public void ClearPresence() { lock (gate) lastAuthenticated.Clear(); }
+    public void ClearPresence(RemoteTransport transport)
+    {
+        lock (gate)
+            foreach (var id in lastAuthenticated.Where(p => p.Value.Transport == transport).Select(p => p.Key).ToArray())
+                lastAuthenticated.Remove(id);
+    }
 
     public void Rename(Guid id, string name)
     {

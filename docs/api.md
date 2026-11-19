@@ -175,4 +175,14 @@ Monitoring is planned after Bluetooth. This contract does not promise a metrics 
 
 Flutter implements native presentation/client code and stores credentials using mobile secure storage. It verifies the host certificate identity through QR/manual pairing and exact certificate pinning on every connection. Do not copy the simulator's validation exception into production.
 
-Bluetooth will require its own connection and authorization protocol; it should call the same core services rather than depend on HTTP endpoints. Bluetooth framing, platform roles, and libraries have not been selected.
+Bluetooth carries the same pinned HTTPS API over encrypted Classic RFCOMM with the existing pairing identity and bearer credential. Windows and Android byte adapters forward TLS without introducing a second command or authorization protocol. See [Bluetooth](bluetooth.md).
+
+## Tailscale addressing
+
+The existing numeric HTTPS origin may use the separately enabled Tailscale IPv4 listener alongside LAN. API routes, authentication, certificate identity and Host/Origin restrictions are unchanged. Desktop classifies requests on this listener as Tailscale for local presence; clients cannot choose that classification through headers. See [Tailscale setup](tailscale.md).
+
+## Independent network hints (0.8.0)
+
+Authenticated status includes optional networkConnection: { localAddress: string|null, tailscaleAddress: string|null }. Values describe currently listening numeric HTTPS endpoints, including the shared configured port. Disabled/unavailable listeners report null. Bluetooth status also includes these network hints. They are location hints only: clients must verify the saved PC identity before sending credentials to an address. Old clients can ignore the additive field; no API route version change is needed.
+
+Listener composition classifies WiFi, Tailscale or Bluetooth presence on the PC. Headers cannot choose the transport. LAN/Tailscale/Bluetooth share pairing, identity and feature handlers. See tailscale.md for the four mobile connection modes and migration rules.

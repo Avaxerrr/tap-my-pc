@@ -2,6 +2,8 @@
 
 ## Current state
 
+Unpacked desktop 0.8.0+12 and installed Android 0.8.0+14 add simultaneous local/Tailscale listeners, separate saved endpoints, authenticated address learning, four connection choices and IP-only manual setup with the port under Advanced. Pairing, pinned HTTPS and no-command-replay behavior are preserved. See [Tailscale setup](tailscale.md) and verification.md for checks and package status.
+
 Certificate lifecycle and Bluetooth secondary connectivity are implemented. Hardware monitoring in the app is next. The laptop Wi-Fi wake investigation is closed for the current configuration; remote wake sending remains unimplemented and can later target the user's separately confirmed working desktop. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
 
 Previous installed desktop/server development build: **0.3.4 (build 7)**, removing the custom companion shadow for smoother dragging and showing a muted No phone connected badge until a remote is active, keeping app animations enabled independently of Windows effects, and removing the animation setting, alongside dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android is **0.4.3 (build 7)** with a desktop-matched UI, Remote/Devices/Power navigation, persistent timer/feedback presentation, saved accent themes, and installed version visibility. The Android polish patches keep selected navigation icons white in every accent theme, follow Android reduced motion automatically, and isolate optional device-list failures from verified PC connectivity. The desktop updater now preserves nested runtime dependencies; its earlier flat copy omitted the Windows monitoring library and caused monitor-list errors. QR pairing, pinned discovery/address recovery, and multi-PC selection are preserved. See [setup](setup.md) and [versioning](versioning.md).
@@ -82,7 +84,7 @@ Laptop investigation closed November 18, 2026: treat Wi-Fi wake as unavailable o
 
 - Installer approach; the initial output is a framework-dependent folder publish.
 - QR/discovery and existing certificate migration are implemented. Automatic same-key certificate renewal and explicit local identity reset are implemented; seamless migration requires an updated phone to connect before its first renewal. Manual address/code pairing remains available.
-- USB networking and authenticated routed/relayed access are exploratory; no public-network or AP-isolation fallback is implemented.
+- Direct Tailscale HTTPS is implemented through independent opt-in listening and separate saved endpoints; see [Tailscale setup](tailscale.md). USB networking and other routed/relayed access remain exploratory. No public listener or general AP-isolation fallback is implemented.
 - Media targeting when several applications are playing.
 - Bluetooth uses Windows Classic RFCOMM server and Android secure RFCOMM client roles. Wider adapter/background behavior needs further testing.
 

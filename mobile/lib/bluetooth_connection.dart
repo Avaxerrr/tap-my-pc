@@ -27,7 +27,7 @@ class BluetoothPcApi extends PcApi {
     if (_inner != null) return _inner!;
     if (profile.bluetoothAddress == null) {
       throw const FormatException(
-        'Connect to this PC over Wi-Fi once to enable Bluetooth.',
+        'Connect to this PC over a network once to enable Bluetooth.',
       );
     }
     final open = _opening ??= PhoneBluetooth.channel

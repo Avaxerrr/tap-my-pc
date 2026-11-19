@@ -1,5 +1,6 @@
 using System.IO;
 using System.Net;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Windows;
@@ -37,6 +38,7 @@ internal static class Program
     }
     private static async Task Run()
     {
+        await RunDualNetworkScenario();
         var directory = Path.Combine(Path.GetTempPath(), "TapMyPC-cert-ui-" + Guid.NewGuid().ToString("N"));
         var settings = new LocalSettings(directory);
         using var initial = HostCertificate.CreateNew(IPAddress.Loopback);
@@ -56,6 +58,15 @@ internal static class Program
             window.Show();
             await vm.InitializeAsync();
             Check(vm.IsHosting, "Initial test listener");
+            ((System.Windows.Controls.Primitives.ToggleButton)window.FindName("SettingsDrawerToggle")).IsChecked = true;
+            await Task.Delay(350); window.UpdateLayout();
+            Directory.CreateDirectory("artifacts/certificate-ui-check");
+            var remoteBitmap = new RenderTargetBitmap((int)window.ActualWidth, (int)window.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+            remoteBitmap.Render(window);
+            var remoteEncoder = new PngBitmapEncoder(); remoteEncoder.Frames.Add(BitmapFrame.Create(remoteBitmap));
+            using (var output = File.Create("artifacts/certificate-ui-check/remote-access.png")) remoteEncoder.Save(output);
+            ((System.Windows.Controls.Primitives.ToggleButton)window.FindName("SettingsDrawerToggle")).IsChecked = false;
+            await Task.Delay(350);
             pairing.Authorize(oldToken, RemoteTransport.Bluetooth, "POCO test phone");
             await Task.Delay(1100);
             Check(vm.ConnectionSummary == "POCO test phone · Bluetooth", "Active phone name and actual Bluetooth transport");
@@ -117,6 +128,78 @@ internal static class Program
             if (Directory.Exists(directory)) Directory.Delete(directory, true);
         }
     }
+    private static async Task RunDualNetworkScenario()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "TapMyPC-dual-network-" + Guid.NewGuid().ToString("N"));
+        var settings = new LocalSettings(directory);
+        using var identity = HostCertificate.CreateNew(IPAddress.Loopback);
+        settings.SaveIdentity(new(identity.Thumbprint));
+        var probe = new TcpListener(IPAddress.Loopback, 0); probe.Start();
+        var port = ((IPEndPoint)probe.LocalEndpoint).Port; probe.Stop();
+        settings.SaveHost(new("127.0.0.3", port, TailscaleEnabled: true));
+        var pairing = new PairingService(settings, TimeProvider.System);
+        var token = pairing.Pair(pairing.OpenPairing().Code, "Dual route test");
+        using var scheduler = new PowerScheduler(new SimulatedDevice(), TimeProvider.System);
+        var localAvailable = true;
+        // Synthetic adapter hints bind only loopback; no real Tailscale or Windows controls.
+        var vm = new SettingsViewModel(new SimulatedDevice(), settings, pairing, scheduler,
+            enableBluetoothTransport: false, readNetworkAddresses: () => {
+                var addresses = new List<TapMyPC.Core.Networking.NetworkAddress> {
+                    new("127.0.0.2", "Synthetic Tailscale", false, false, true)
+                };
+                if (localAvailable) addresses.Add(new("127.0.0.3", "Synthetic LAN", true, true));
+                return addresses;
+            });
+        using var client = new HttpClient(new HttpClientHandler {
+            ServerCertificateCustomValidationCallback = (_, cert, _, _) => cert?.Thumbprint == identity.Thumbprint
+        });
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        async Task<System.Text.Json.JsonElement> Status(string ip)
+        {
+            using var response = await client.GetAsync($"https://{ip}:{port}/api/v1/status");
+            response.EnsureSuccessStatusCode();
+            return System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
+        }
+        try
+        {
+            await vm.InitializeAsync();
+            var local = await Status("127.0.0.3");
+            Check(local.GetProperty("networkConnection").GetProperty("tailscaleAddress").GetString() == $"https://127.0.0.2:{port}", "Local status learns independent Tailscale endpoint");
+            await Status("127.0.0.2");
+            Check(pairing.ActiveClients.Single().Transport == RemoteTransport.Tailscale, "Listener classifies Tailscale presence");
+            vm.ToggleTailscale.Execute(null);
+            for (var i = 0; i < 100 && !vm.ToggleTailscale.CanExecute(null); i++) await Task.Delay(50);
+            var disabled = await Status("127.0.0.3");
+            Check(disabled.GetProperty("networkConnection").GetProperty("tailscaleAddress").ValueKind == System.Text.Json.JsonValueKind.Null,
+                "Disabling Tailscale preserves LAN and stops advertising its endpoint");
+            Check(!settings.ReadHost().TailscaleEnabled, "Tailscale opt-in persists");
+            vm.ToggleTailscale.Execute(null);
+            for (var i = 0; i < 100 && !vm.ToggleTailscale.CanExecute(null); i++) await Task.Delay(50);
+            await Status("127.0.0.2");
+            localAvailable = false;
+            await vm.InitializeAsync();
+            var remote = await Status("127.0.0.2");
+            Check(remote.GetProperty("networkConnection").GetProperty("localAddress").ValueKind == System.Text.Json.JsonValueKind.Null,
+                "Losing LAN leaves Tailscale available");
+            localAvailable = true;
+            await vm.InitializeAsync();
+            await Status("127.0.0.3"); await Status("127.0.0.2");
+            Check(vm.Fingerprint == identity.GetCertHashString(System.Security.Cryptography.HashAlgorithmName.SHA256),
+                "Both routes retain the same PC identity");
+            vm.ToggleHost.Execute(null);
+            for (var i = 0; i < 100 && !vm.ToggleHost.CanExecute(null); i++) await Task.Delay(50);
+            Check(!vm.IsHosting && !settings.ReadHost().ConnectionsEnabled, "Global stop closes both network listeners");
+            Console.WriteLine("PASS: independent LAN/Tailscale listeners, shared identity, authenticated hints, opt-in persistence, LAN loss/recovery and global stop.");
+        }
+        finally
+        {
+            await vm.ShutdownAsync();
+            using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser); store.Open(OpenFlags.ReadWrite);
+            store.Remove(identity);
+            if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        }
+    }
+
     private sealed class SimulatedDevice : IDeviceController
     {
         public DeviceCapabilities Capabilities => new(true, true, true, true, true);

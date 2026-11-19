@@ -7,6 +7,7 @@
 | [Implementation plan](implementation-plan.md) | Delivery phases, verification, and unresolved implementation choices |
 | [Setup](setup.md) | Build, launch, phone connection, certificate/firewall setup, simulator, and limitations |
 | [API contract](api.md) | Versioned routes, authentication, payloads, errors, and Flutter integration |
+| [Tailscale remote access](tailscale.md) | Explicit PC adapter selection, Android address editing, setup and firewall limits |
 | [Bluetooth](bluetooth.md) | Secondary RFCOMM connection, transport selection, authentication, and hardware tests |
 | [Mobile connections](mobile-connections.md) | Implemented QR pairing, discovery, persistent trust, certificate renewal/recovery, multi-PC profiles, and network limits |
 | [Remote wake investigation](wake-investigation.md) | Closed laptop Wi-Fi investigation, packet/sleep/Wolow evidence, and limits for future wake work |

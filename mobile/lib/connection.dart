@@ -8,9 +8,46 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 String normalizePin(String value) =>
     value.replaceAll(RegExp(r'[:\s-]'), '').toLowerCase();
 
+/// Direct IP endpoints match the desktop listener's strict Host validation.
+String networkAddress(String value) {
+  final uri = Uri.tryParse(value.trim());
+  if (uri == null ||
+      uri.scheme != 'https' ||
+      InternetAddress.tryParse(uri.host)?.type != InternetAddressType.IPv4 ||
+      uri.userInfo.isNotEmpty ||
+      (uri.path.isNotEmpty && uri.path != '/') ||
+      uri.hasQuery ||
+      uri.hasFragment ||
+      uri.port < 1024 ||
+      uri.port > 65535) {
+    throw const FormatException(
+      'Copy the full HTTPS IPv4 address and port shown on the PC, for example https://100.80.90.100:45831.',
+    );
+  }
+  return uri.origin;
+}
+
+bool isTailscaleAddress(String address) {
+  final ip = InternetAddress.tryParse(Uri.tryParse(address)?.host ?? '');
+  final bytes = ip?.rawAddress;
+  return bytes != null &&
+      bytes.length == 4 &&
+      bytes[0] == 100 &&
+      bytes[1] >= 64 &&
+      bytes[1] <= 127;
+}
+
+String connectionModeLabel(String mode) => switch (mode) {
+  'local' || 'wifi' => 'Local network only',
+  'tailscale' => 'Tailscale only',
+  'bluetooth' => 'Bluetooth only',
+  _ => 'Automatic',
+};
+
+/// Keep the active endpoint separate from the saved addresses for each route.
 class PcProfile {
   final String name, address, pin, token;
-  final String? keyPin, bluetoothAddress;
+  final String? keyPin, bluetoothAddress, localAddress, tailscaleAddress;
   final String connectionMode;
   const PcProfile(
     this.name,
@@ -19,53 +56,72 @@ class PcProfile {
     this.token, {
     this.keyPin,
     this.bluetoothAddress,
+    this.localAddress,
+    this.tailscaleAddress,
     this.connectionMode = 'auto',
   });
-  PcProfile atAddress(String next) => PcProfile(
+  String? get localEndpoint =>
+      localAddress ?? (isTailscaleAddress(address) ? null : address);
+  String? get tailscaleEndpoint =>
+      tailscaleAddress ?? (isTailscaleAddress(address) ? address : null);
+
+  PcProfile copy({
+    String? address,
+    String? token,
+    String? keyPin,
+    String? bluetoothAddress,
+    String? localAddress,
+    String? tailscaleAddress,
+    String? connectionMode,
+  }) => PcProfile(
     name,
-    next,
+    address ?? this.address,
     pin,
-    token,
-    keyPin: keyPin,
-    bluetoothAddress: bluetoothAddress,
-    connectionMode: connectionMode,
+    token ?? this.token,
+    keyPin: keyPin ?? this.keyPin,
+    bluetoothAddress: bluetoothAddress ?? this.bluetoothAddress,
+    localAddress: localAddress ?? localEndpoint,
+    tailscaleAddress: tailscaleAddress ?? tailscaleEndpoint,
+    connectionMode: connectionMode ?? this.connectionMode,
   );
-  PcProfile withKeyPin(String key) => PcProfile(
-    name,
-    address,
-    pin,
-    token,
-    keyPin: key,
-    bluetoothAddress: bluetoothAddress,
-    connectionMode: connectionMode,
+  PcProfile atAddress(String next) => copy(
+    address: next,
+    localAddress: isTailscaleAddress(next) ? null : next,
+    tailscaleAddress: isTailscaleAddress(next) ? next : null,
   );
-  PcProfile withToken(String credential) => PcProfile(
-    name,
-    address,
-    pin,
-    credential,
-    keyPin: keyPin,
-    bluetoothAddress: bluetoothAddress,
-    connectionMode: connectionMode,
-  );
-  PcProfile withConnectionMode(String mode) => PcProfile(
-    name,
-    address,
-    pin,
-    token,
-    keyPin: keyPin,
-    bluetoothAddress: bluetoothAddress,
-    connectionMode: mode,
-  );
-  PcProfile withBluetoothAddress(String address) => PcProfile(
-    name,
-    this.address,
-    pin,
-    token,
-    keyPin: keyPin,
-    bluetoothAddress: address,
-    connectionMode: connectionMode,
-  );
+  PcProfile withKeyPin(String key) => copy(keyPin: key);
+  PcProfile withToken(String credential) => copy(token: credential);
+  PcProfile withConnectionMode(String mode) => copy(connectionMode: mode);
+  PcProfile withBluetoothAddress(String address) =>
+      copy(bluetoothAddress: address);
+
+  PcProfile withNetworkHints(dynamic value) {
+    if (value is! Map) return this;
+    var updated = this;
+    for (final key in ['localAddress', 'tailscaleAddress']) {
+      final raw = value[key];
+      if (raw is! String) continue;
+      try {
+        final endpoint = networkAddress(raw);
+        final ip = InternetAddress(endpointHost(endpoint));
+        final bytes = ip.rawAddress;
+        final local =
+            ip.isLoopback ||
+            bytes[0] == 10 ||
+            (bytes[0] == 192 && bytes[1] == 168) ||
+            (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31);
+        if (key == 'tailscaleAddress' && isTailscaleAddress(endpoint)) {
+          updated = updated.copy(tailscaleAddress: endpoint);
+        } else if (key == 'localAddress' && local) {
+          updated = updated.copy(localAddress: endpoint);
+        }
+      } on FormatException {
+        /* Invalid optional hints never invalidate control. */
+      }
+    }
+    return updated;
+  }
+
   Map<String, dynamic> toJson() => {
     'name': name,
     'address': address,
@@ -73,17 +129,59 @@ class PcProfile {
     'token': token,
     if (keyPin != null) 'keyPin': keyPin,
     if (bluetoothAddress != null) 'bluetoothAddress': bluetoothAddress,
+    if (localEndpoint != null) 'localAddress': localEndpoint,
+    if (tailscaleEndpoint != null) 'tailscaleAddress': tailscaleEndpoint,
     if (connectionMode != 'auto') 'connectionMode': connectionMode,
   };
-  factory PcProfile.fromJson(Map<String, dynamic> j) => PcProfile(
-    j['name'],
-    j['address'],
-    j['pin'],
-    j['token'],
-    keyPin: j['keyPin'],
-    bluetoothAddress: j['bluetoothAddress'],
-    connectionMode: j['connectionMode'] ?? 'auto',
+  factory PcProfile.fromJson(Map<String, dynamic> j) {
+    var mode = j['connectionMode'] ?? 'auto';
+    if (mode == 'wifi') {
+      mode = isTailscaleAddress(j['address']) ? 'tailscale' : 'local';
+    }
+    return PcProfile(
+      j['name'],
+      j['address'],
+      j['pin'],
+      j['token'],
+      keyPin: j['keyPin'],
+      bluetoothAddress: j['bluetoothAddress'],
+      localAddress: j['localAddress'],
+      tailscaleAddress: j['tailscaleAddress'],
+      connectionMode: mode,
+    );
+  }
+}
+
+String endpointHost(String address) => Uri.parse(address).host;
+
+/// IP entry uses the PC's already known port; full links are accepted for convenience.
+String configuredNetworkAddress(
+  String input,
+  PcProfile profile, {
+  required bool tailscale,
+  String? port,
+}) {
+  final raw = input.trim();
+  final saved = tailscale ? profile.tailscaleEndpoint : profile.localEndpoint;
+  final number = port == null
+      ? Uri.parse(saved ?? profile.address).port
+      : int.tryParse(port);
+  if (number == null || number < 1024 || number > 65535) {
+    throw const FormatException(
+      'Use the same TapMyPC port as the PC (1024–65535).',
+    );
+  }
+  final endpoint = networkAddress(
+    raw.contains('://') ? raw : 'https://$raw:$number',
   );
+  if (isTailscaleAddress(endpoint) != tailscale) {
+    throw FormatException(
+      tailscale
+          ? 'Enter the PC Tailscale IPv4 address (100.64–100.127.x.x).'
+          : 'Use the local network address here; Tailscale has a separate address.',
+    );
+  }
+  return endpoint;
 }
 
 /// Re-enrollment replaces only the deliberately selected profile and duplicate trusted identity.
@@ -129,7 +227,8 @@ class PcApi {
   late final HttpClient _client;
   late final String _requestAddress;
   Duration _timeout = const Duration(seconds: 8);
-  String get transportLabel => 'Wi-Fi';
+  String get transportLabel =>
+      isTailscaleAddress(profile.address) ? 'Tailscale' : 'Local network';
   bool get isBluetooth => false;
   String? _verifiedKeyPin;
   PcProfile get verifiedProfile =>
@@ -142,11 +241,11 @@ class PcApi {
       throw const FormatException('Invalid Bluetooth tunnel port.');
     }
     _timeout = const Duration(seconds: 25);
-    _initialize('https://127.0.0.1:$port');
+    _initialize('https://127.0.0.1:$port', tunnel: true);
     // A peer/channel carries one RFCOMM stream; queue optional HTTP requests on it.
     _client.maxConnectionsPerHost = 1;
   }
-  void _initialize(String address) {
+  void _initialize(String address, {bool tunnel = false}) {
     _requestAddress = address;
     final base = Uri.parse(address);
     if (base.scheme != 'https' ||
@@ -170,8 +269,11 @@ class PcApi {
         'The saved PC identity key is invalid. Pair again.',
       );
     }
+    final connectTimeout = tunnel || isTailscaleAddress(address)
+        ? _timeout
+        : const Duration(seconds: 3);
     _client = HttpClient(context: SecurityContext(withTrustedRoots: false))
-      ..connectionTimeout = _timeout;
+      ..connectionTimeout = connectTimeout;
     // Verify enrolled leaf or previously verified identity key before HTTP sees the socket.
     // No pairing code, bearer credential, or HTTP request is sent beforehand.
     _client.connectionFactory = (uri, proxyHost, proxyPort) async {
@@ -188,7 +290,7 @@ class PcApi {
               normalizePin(profile.pin),
               profile.keyPin,
             ),
-            timeout: _timeout,
+            timeout: connectTimeout,
           ).then<Socket>((socket) {
             final cert = socket.peerCertificate;
             if (cert == null ||

@@ -80,3 +80,11 @@ Do not bypass managed-network policy, disable firewall protections, or expose/fo
 - [Apple Keychain](https://developer.apple.com/documentation/security/adding-a-password-to-the-keychain)
 - [OWASP mobile network security](https://mas.owasp.org/MASVS/08-MASVS-NETWORK/)
 - [Cisco Meraki isolation](https://documentation.meraki.com/Wireless/Operate_and_Maintain/How_Tos/Firewall_and_Traffic_Shaping/Wireless_Client_Isolation)
+
+## Separate routes and Tailscale
+
+Saved profiles have independent localAddress and tailscaleAddress slots alongside the active address and Bluetooth metadata. Automatic tries local candidates, Tailscale, then Bluetooth; the three Only modes never cross routes. Authenticated status supplies optional networkConnection hints, which are validated as local/Tailscale numeric HTTPS addresses before saving. Each candidate still requires pinned TLS identity before credentials. On a preferred-route recovery probe, an active Bluetooth stream is reused rather than opening a second RFCOMM session. Commands never replay.
+
+Settings > Connection shows the active route, all four preferences and separate Local network address / Tailscale address entries. The editor accepts a bare IP and preserves the known port; Advanced exposes port editing. Exact-endpoint verification precedes saving and preserves the selected preference and other endpoint. Choosing Tailscale only without an address opens setup and selects that preference after successful verification. Bluetooth stays available independently of Wi-Fi/Tailscale and only requires permission when actually used.
+
+Legacy wifi profiles migrate to local or tailscale based on the saved IP; identity and credentials are retained. Missing slots can be learned on the next verified connection. See [Tailscale setup](tailscale.md) for listener behavior, compatibility and firewall scope.

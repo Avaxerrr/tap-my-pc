@@ -59,7 +59,7 @@ public sealed class ApiTests : IAsyncLifetime
         btClient.DefaultRequestHeaders.Authorization = client.DefaultRequestHeaders.Authorization;
         var blocked = await btClient.PutAsJsonAsync("/api/v1/bluetooth", new { enabled = false });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, blocked.StatusCode);
-        Assert.Contains("Switch to Wi-Fi", await blocked.Content.ReadAsStringAsync());
+        Assert.Contains("Switch to local network or Tailscale", await blocked.Content.ReadAsStringAsync());
         Assert.Empty(bluetooth.Changes);
         Assert.Equal(RemoteTransport.Bluetooth, Assert.Single(pairing.ActiveClients).Transport);
         client.DefaultRequestHeaders.Remove("X-TapMyPC-Device-Name");

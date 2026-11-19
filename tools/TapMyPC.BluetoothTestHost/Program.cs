@@ -14,7 +14,10 @@ using TapMyPC.Desktop.Connections;
 using TapMyPC.Tests;
 using TapMyPC.Windows.Settings;
 
-if (args.Length != 1) throw new ArgumentException("Pass a fixture JSON path.");
+if (args.Length < 1) throw new ArgumentException("Pass a fixture JSON path.");
+var networkTest = args.Contains("--network");
+WebApplication? tailscale = null;
+string? tailscaleAddress = null;
 var directory = Path.Combine(Path.GetTempPath(), "TapMyPC-bluetooth-test-" + Guid.NewGuid().ToString("N"));
 var settings = new LocalSettings(directory);
 using var certificate = HostCertificate.CreateNew(IPAddress.Loopback);
@@ -38,6 +41,9 @@ control.MapPost("/test/{action}", async (HttpContext context, string action) => 
         case "wifiOff":
             if (wifi is not null) { await wifi.StopAsync(); await wifi.DisposeAsync(); wifi = null; }
             return Results.Ok(new { wifiStopped = true });
+        case "tailscaleOff":
+            if (tailscale is not null) { await tailscale.StopAsync(); await tailscale.DisposeAsync(); tailscale = null; }
+            return Results.Ok(new { tailscaleStopped = true });
         case "restartBluetooth":
             await bluetooth.StopAsync(); await bluetooth.EnsureAsync(); return Results.Ok(bluetooth.Info);
         case "revoke":
@@ -52,10 +58,21 @@ control.MapPost("/test/{action}", async (HttpContext context, string action) => 
 });
 try
 {
-    await bluetooth.EnsureAsync();
-    if (!bluetooth.Info.Available) throw new InvalidOperationException(bluetooth.Info.Message);
+    if (!networkTest) {
+        await bluetooth.EnsureAsync();
+        if (!bluetooth.Info.Available) throw new InvalidOperationException(bluetooth.Info.Message);
+    }
     wifi = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler,
-        bluetooth: radio, bluetoothConnection: () => bluetooth.Info);
+        bluetooth: radio, bluetoothConnection: () => bluetooth.Info,
+        networkConnection: () => new(wifi?.Urls.Single(), tailscale is null ? null : tailscaleAddress));
+    if (networkTest) {
+        var tailIp = NetworkAddresses.Read().First(n => n.IsTailscale).Address;
+        var port = new Uri(wifi.Urls.Single()).Port;
+        tailscale = await ApiHost.StartAsync(IPAddress.Parse(tailIp), port, certificate, device, pairing, scheduler,
+            bluetooth: radio, transport: RemoteTransport.Tailscale,
+            networkConnection: () => new(wifi?.Urls.Single(), tailscale is null ? null : tailscaleAddress));
+        tailscaleAddress = tailscale.Urls.Single();
+    }
     await control.StartAsync();
     var address = wifi.Urls.Single();
     var session = pairing.OpenPairingSession();
@@ -63,7 +80,7 @@ try
         controlUrl = control.Urls.Single(), controlKey = key, wifiAddress = address,
         invitation = PairingInvitation.CreateJson("Bluetooth test PC", address,
             certificate.GetCertHashString(HashAlgorithmName.SHA256), session),
-        bluetooth = bluetooth.Info
+        bluetooth = bluetooth.Info, tailscaleAddress
     };
     File.WriteAllText(args[0], JsonSerializer.Serialize(fixture, new JsonSerializerOptions(JsonSerializerDefaults.Web)));
     Console.WriteLine("Bluetooth hardware fixture ready; commands use simulated PC controls.");
@@ -72,6 +89,7 @@ try
 finally
 {
     await bluetooth.StopAsync();
+    if (tailscale is not null) { await tailscale.StopAsync(); await tailscale.DisposeAsync(); }
     if (wifi is not null) { await wifi.StopAsync(); await wifi.DisposeAsync(); }
     await control.StopAsync();
     using var store = new X509Store(StoreName.My, StoreLocation.CurrentUser); store.Open(OpenFlags.ReadWrite);

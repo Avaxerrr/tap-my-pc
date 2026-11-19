@@ -357,8 +357,8 @@ class DeviceControls extends StatelessWidget {
             children: [
               Text(
                 usingBluetooth
-                    ? 'Switch to Wi-Fi to change the PC’s Bluetooth.'
-                    : 'Control the PC’s Bluetooth radio over Wi-Fi.',
+                    ? 'Switch to local network or Tailscale to change the PC’s Bluetooth.'
+                    : 'Control the PC’s Bluetooth radio over local network or Tailscale.',
                 style: TextStyle(color: AppColors.secondary),
               ),
               const SizedBox(height: 14),

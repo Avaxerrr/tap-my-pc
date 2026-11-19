@@ -16,8 +16,9 @@ public static class NetworkAddresses
             foreach (var entry in properties.UnicastAddresses.Where(a => a.Address.AddressFamily == AddressFamily.InterNetwork))
             {
                 var bytes = entry.Address.GetAddressBytes();
-                if (bytes[0] == 10 || bytes[0] == 192 && bytes[1] == 168 || bytes[0] == 172 && bytes[1] is >= 16 and <= 31)
-                    result.Add(new(entry.Address.ToString(), nic.Name, nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211, gateway));
+                var tailscale = TailscaleNetwork.IsAdapter(entry.Address.ToString(), nic.Name, nic.Description);
+                if (tailscale || bytes[0] == 10 || bytes[0] == 192 && bytes[1] == 168 || bytes[0] == 172 && bytes[1] is >= 16 and <= 31)
+                    result.Add(new(entry.Address.ToString(), nic.Name, nic.NetworkInterfaceType == NetworkInterfaceType.Wireless80211, gateway, tailscale));
             }
         }
         return result.DistinctBy(a => a.Address).ToArray();

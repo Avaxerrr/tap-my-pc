@@ -16,7 +16,7 @@ namespace TapMyPC.Desktop.Connections;
 /// <summary>Composes the existing command API and a Bluetooth byte transport. No Windows command behavior.</summary>
 public sealed class BluetoothConnectionHost(LocalSettings settings, PairingService pairing, PowerScheduler scheduler,
     IDeviceController device, IBluetoothController? bluetooth, IAudioOutputController? outputs,
-    ShortcutCatalog? shortcuts, IMonitorController? monitors)
+    ShortcutCatalog? shortcuts, IMonitorController? monitors, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null)
 {
     private WebApplication? api;
     private WindowsRfcommServer? transport;
@@ -38,7 +38,7 @@ public sealed class BluetoothConnectionHost(LocalSettings settings, PairingServi
             await StopAsync();
             certificate = new CertificateIdentity(settings, pairing).Load(IPAddress.Loopback);
             api = await ApiHost.StartAsync(IPAddress.Loopback, 0, certificate, device, pairing, scheduler,
-                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors, bluetoothConnection: () => Info, transport: RemoteTransport.Bluetooth);
+                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors, bluetoothConnection: () => Info, transport: RemoteTransport.Bluetooth, networkConnection: networkConnection);
             var uri = new Uri(api.Urls.Single());
             transport = await WindowsRfcommServer.StartAsync(new IPEndPoint(IPAddress.Loopback, uri.Port));
             Info = transport.Info;

@@ -7,7 +7,7 @@ namespace TapMyPC.Windows.Settings;
 public record AppearanceSettings(string Accent = "Blue");
 
 public record HostIdentity(string CertificateThumbprint);
-public record HostSettings(string Address = "auto", int Port = 45831, bool ShowNotifications = true, int Version = 3, bool ConnectionsEnabled = true);
+public record HostSettings(string Address = "auto", int Port = 45831, bool ShowNotifications = true, int Version = 3, bool ConnectionsEnabled = true, bool TailscaleEnabled = false);
 
 public sealed class LocalSettings(string? directoryPath = null, string? legacyDirectoryPath = null) : IDeviceStore, IShortcutStore
 {
@@ -22,7 +22,10 @@ public sealed class LocalSettings(string? directoryPath = null, string? legacyDi
         using var document = JsonDocument.Parse(json);
         var settings = JsonSerializer.Deserialize<HostSettings>(json) ?? new();
         // The original UI persisted an address without a mode. Migrate it to automatic selection once.
-        return document.RootElement.TryGetProperty("Version", out _) ? settings : settings with { Address = "auto" };
+        if (!document.RootElement.TryGetProperty("Version", out _)) return settings with { Address = "auto" };
+        // Migrate the previous single Tailscale listener to opt-in alongside Automatic LAN.
+        return TapMyPC.Core.Networking.TailscaleNetwork.IsAddress(settings.Address)
+            ? settings with { Address = "auto", TailscaleEnabled = true } : settings;
     }
     public AppearanceSettings ReadAppearance() => Read<AppearanceSettings>("appearance.json") ?? new();
     public void SaveAppearance(AppearanceSettings appearance) => Write("appearance.json", appearance);

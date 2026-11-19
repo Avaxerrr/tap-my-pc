@@ -60,7 +60,7 @@ void main() {
       final sent = <bool>[];
       await render(tester, 'On', sent, bluetooth: true);
       expect(
-        find.text('Switch to Wi-Fi to change the PC’s Bluetooth.'),
+        find.text('Switch to local network or Tailscale to change the PC’s Bluetooth.'),
         findsOneWidget,
       );
       expect(

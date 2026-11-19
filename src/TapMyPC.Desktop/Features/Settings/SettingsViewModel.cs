@@ -33,6 +33,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly ShortcutCatalog? shortcuts;
     private readonly IMonitorController? monitors;
     private readonly LocalSettings settings;
+    private readonly Func<IReadOnlyList<NetworkAddress>> readNetworkAddresses;
     private readonly BluetoothConnectionHost? bluetoothHost;
     private readonly PairingService pairing;
     private readonly PowerScheduler scheduler;
@@ -41,6 +42,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private readonly SemaphoreSlim hostGate = new(1, 1);
     private ConnectionAdvertisement? advertisement;
     private IPAddress? listeningAddress;
+    private IPAddress? listeningTailscaleAddress;
+    private WebApplication? tailscaleServer;
+    private bool tailscaleEnabled;
     private bool connectionsEnabled;
     private bool shuttingDown;
     private int networkCheck;
@@ -67,27 +71,30 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private string deviceName = "";
     private IReadOnlyList<PairedClient> connectedClients = Array.Empty<PairedClient>();
 
-    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, bool enableBluetoothTransport = true)
+    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, bool enableBluetoothTransport = true, Func<IReadOnlyList<NetworkAddress>>? readNetworkAddresses = null)
     {
         this.device = device;
         this.bluetooth = bluetooth;
         this.outputs = outputs; this.shortcuts = shortcuts; this.monitors = monitors;
         ShortcutSettings = shortcuts is null ? null : new ShortcutsViewModel(shortcuts);
         this.settings = settings;
+        this.readNetworkAddresses = readNetworkAddresses ?? NetworkAddresses.Read;
         Appearance = new AppearanceViewModel(settings);
         this.pairing = pairing;
         this.scheduler = scheduler;
-        if (enableBluetoothTransport) bluetoothHost = new(settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors);
+        if (enableBluetoothTransport) bluetoothHost = new(settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors, () => NetworkConnection);
         var saved = settings.ReadHost();
         address = saved.Address;
+        tailscaleEnabled = saved.TailscaleEnabled;
         port = saved.Port.ToString();
         showNotifications = saved.ShowNotifications;
         connectionsEnabled = saved.ConnectionsEnabled;
         startupEnabled = StartupRegistration.Enabled;
         ToggleHost = new AsyncCommand(ToggleHostAsync);
+        ToggleTailscale = new AsyncCommand(ToggleTailscaleAsync);
         OpenPairing = new RelayCommand(() =>
         {
-            if (server is null || certificate is null) { Message = bluetoothHost?.Info.Available == true ? "Connect this PC to a trusted Wi-Fi network for first-time pairing. Paired phones can use Bluetooth." : "Select Start connections before adding a phone."; return; }
+            if ((server is null && tailscaleServer is null) || certificate is null) { Message = bluetoothHost?.Info.Available == true ? "Connect this PC to a trusted Wi-Fi network for first-time pairing. Paired phones can use Bluetooth." : "Select Start connections before adding a phone."; return; }
             var window = pairing.OpenPairingSession();
             try
             {
@@ -111,9 +118,9 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         {
             try
             {
-                if (server is null) { Message = "Start the host first to copy its phone link."; return; }
+                if (server is null && tailscaleServer is null) { Message = "Start the host first to copy its phone link."; return; }
                 Clipboard.SetText(RemoteUrl);
-                Message = "Phone link copied. Open it on a device connected to the same Wi-Fi.";
+                Message = "Phone link copied. Open it on a device connected to the selected network or tailnet.";
             }
             catch (Exception ex) { Message = ex.Message; }
         });
@@ -175,7 +182,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string PairingButtonText => HasPairingQr ? "Refresh pairing QR" : pairing.Clients.Count > 0 ? "Add another phone" : "Show pairing QR";
     public string PairingHint => !IsHosting
         ? "Connections are stopped. Start connections to pair or reconnect a phone."
-        : server is null ? "Paired phones can use Bluetooth. Connect to a trusted Wi-Fi network for first-time pairing."
+        : server is null && tailscaleServer is null ? "Paired phones can use Bluetooth. Connect to a trusted Wi-Fi network for first-time pairing."
         : HasPairingQr
             ? "On Android: Add PC → Scan PC QR. The QR hides automatically after successful pairing."
             : pairing.Clients.Count > 0
@@ -195,14 +202,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public string Pending => pending;
     public bool HasPending => scheduler.State.Pending is not null;
     public bool HasConnectedClients => connectedClients.Count > 0;
-    public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => $"{c.Name} · {(c.Transport == RemoteTransport.Bluetooth ? "Bluetooth" : "Wi-Fi")}"));
+    public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => $"{c.Name} · {(c.Transport switch { RemoteTransport.Bluetooth => "Bluetooth", RemoteTransport.Tailscale => "Tailscale", _ => "Wi-Fi" })}"));
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
         : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
-    public string HostStatus => isChangingHost ? "Updating host…" : (server is null && bluetoothHost?.Info.Available != true) ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "No phone connected";
+    public string HostStatus => isChangingHost ? "Updating host…" : (server is null && tailscaleServer is null && bluetoothHost?.Info.Available != true) ? connectionsEnabled ? "Waiting for trusted network" : "Connections stopped" : HasConnectedClients ? connectedClients.Count == 1 ? "Remote connected" : $"{connectedClients.Count} remotes connected" : "No phone connected";
     public string HostButtonText => isChangingHost ? "Please wait…" : connectionsEnabled ? "Stop connections" : "Start connections";
-    public bool CanEditConnection => server is null && !isChangingHost;
-    public bool IsHosting => (server is not null || bluetoothHost?.Info.Available == true) && !isChangingHost;
+    public bool CanEditConnection => server is null && tailscaleServer is null && !isChangingHost;
+    public bool IsHosting => (server is not null || tailscaleServer is not null || bluetoothHost?.Info.Available == true) && !isChangingHost;
     public string BluetoothConnectionSummary => bluetoothHost?.Info.Available == true ? "Bluetooth ready · secondary connection" : bluetoothHost?.Info.Message ?? "Bluetooth transport disabled.";
     public bool StartupEnabled
     {
@@ -225,6 +232,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             Notify();
         }
     }
+    public bool TailscaleEnabled => tailscaleEnabled;
+    public AsyncCommand ToggleTailscale { get; }
+    public bool HasTailscaleAddress => tailscaleServer is not null;
+    public string TailscaleUrl => listeningTailscaleAddress is null ? "" : $"https://{listeningTailscaleAddress}:{Port}";
+    public string TailscaleConnectionSummary => !tailscaleEnabled ? "Tailscale off · local access stays available"
+        : tailscaleServer is not null ? $"Tailscale ready · {TailscaleUrl}"
+        : connectionsEnabled ? "Tailscale waiting · connect Tailscale on this PC"
+        : "Tailscale enabled · connections stopped";
+    private NetworkConnectionInfo NetworkConnection => new(
+        server is null ? null : $"https://{listeningAddress}:{Port}",
+        tailscaleServer is null ? null : TailscaleUrl);
     public AsyncCommand ToggleHost { get; }
     public RelayCommand OpenPairing { get; }
     public RelayCommand CopyUrl { get; }
@@ -237,12 +255,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     {
         try
         {
-            var available = NetworkAddresses.Read();
+            var available = readNetworkAddresses();
             // Reassign after rebuilding the list, because ComboBox selection can transiently become null.
             var previous = address;
             NetworkChoices.Clear();
             NetworkChoices.Add(new(AddressSelection.Automatic, "Automatic", false, false));
-            foreach (var item in available) NetworkChoices.Add(item);
+            foreach (var item in available.Where(n => !n.IsTailscale)) NetworkChoices.Add(item);
             NetworkChoices.Add(new("127.0.0.1", "Localhost", false, false));
             Address = previous == "127.0.0.1" || previous == AddressSelection.Automatic || available.Any(n => n.Address == previous)
                 ? previous : AddressSelection.Automatic;
@@ -290,39 +308,119 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         finally { isChangingHost = false; hostGate.Release(); NotifyHost(); }
     }
 
+    private async Task ToggleTailscaleAsync()
+    {
+        await hostGate.WaitAsync();
+        isChangingHost = true; NotifyHost();
+        var previous = tailscaleEnabled;
+        try
+        {
+            tailscaleEnabled = !tailscaleEnabled;
+            try { SavePreferences(); }
+            catch { tailscaleEnabled = previous; throw; }
+            if (connectionsEnabled) await StartListenerAsync();
+        }
+        catch (Exception ex) { Message = ex.Message; }
+        finally { isChangingHost = false; hostGate.Release(); NotifyHost(); }
+    }
+
     private async Task StartListenerAsync()
     {
         if (shuttingDown || !connectionsEnabled) return;
         if (bluetoothHost is not null) await bluetoothHost.EnsureAsync();
         Notify(nameof(BluetoothConnectionSummary));
-        if (server is not null) return;
-        DetectNetwork();
-        var ip = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read()));
-        if (!NetworkTrust.IsTrusted(ip))
-            throw new InvalidOperationException("Connections are waiting: Windows must mark this network Private or Domain. Use a trusted network; public networks are not enabled automatically.");
         if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535)
             throw new ArgumentException("Port must be between 1024 and 65535.");
-        var nextCertificate = new CertificateIdentity(settings, pairing).Load(ip);
+        DetectNetwork();
+        var available = readNetworkAddresses();
+        var previousFingerprint = fingerprint;
+        IPAddress? localIp = null;
         try
         {
-            var nextServer = await ApiHost.StartAsync(ip, number, nextCertificate, device, pairing, scheduler,
-                bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors, bluetoothConnection: () => bluetoothHost?.Info);
-            certificate = nextCertificate; server = nextServer; listeningAddress = ip;
+            var candidate = IPAddress.Parse(AddressSelection.Resolve(Address, available.Where(n => !n.IsTailscale)));
+            if (NetworkTrust.IsTrusted(candidate)) localIp = candidate;
         }
-        catch { nextCertificate.Dispose(); throw; }
-        remoteUrl = $"https://{ip}:{number}";
-        fingerprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
-        certificateSummary = $"Valid until {certificate.NotAfter:d}. Renews automatically with the same PC identity key.";
-        Notify(nameof(CertificateSummary));
-        discoverySummary = "";
-        if (!IPAddress.IsLoopback(ip))
+        catch (InvalidOperationException) { }
+        var tail = tailscaleEnabled ? available.FirstOrDefault(n => n.IsTailscale) : null;
+        var tailIp = tail is null ? null : IPAddress.Parse(tail.Address);
+        if (tailIp is not null && !NetworkTrust.IsTrusted(tailIp, allowTailscale: true)) tailIp = null;
+        var errors = new List<string>();
+        if (certificate is not null && HostCertificate.NeedsRenewal(certificate))
+            await StopNetworkListenersAsync();
+        // Reconcile independently: losing a local adapter must not interrupt Tailscale, or vice versa.
+        if (server is not null && !Equals(localIp, listeningAddress))
         {
-            try { advertisement = new ConnectionAdvertisement(ip, number, fingerprint, HostCertificate.KeyFingerprint(certificate)); }
-            catch { discoverySummary = " Discovery is unavailable; saved addresses and QR pairing still work."; }
+            advertisement?.Dispose(); advertisement = null;
+            await server.StopAsync(); await server.DisposeAsync(); server = null; listeningAddress = null;
+            pairing.ClearPresence(RemoteTransport.WiFi);
         }
-        Message = "Ready for paired phones. Open the Android app to reconnect." + discoverySummary;
+        if (tailscaleServer is not null && !Equals(tailIp, listeningTailscaleAddress))
+        {
+            await tailscaleServer.StopAsync(); await tailscaleServer.DisposeAsync(); tailscaleServer = null; listeningTailscaleAddress = null;
+            pairing.ClearPresence(RemoteTransport.Tailscale);
+        }
+        if (certificate is null && (localIp ?? tailIp) is { } identityIp)
+            certificate = new CertificateIdentity(settings, pairing).Load(identityIp);
+        if (certificate is not null)
+        {
+            if (server is null && localIp is not null)
+            {
+                try
+                {
+                    server = await StartNetworkApiAsync(localIp, number, RemoteTransport.WiFi);
+                    listeningAddress = localIp;
+                    if (!IPAddress.IsLoopback(localIp))
+                    {
+                        try { advertisement = new(localIp, number, certificate.GetCertHashString(HashAlgorithmName.SHA256), HostCertificate.KeyFingerprint(certificate)); }
+                        catch { discoverySummary = " Local discovery is unavailable; saved addresses still work."; }
+                    }
+                }
+                catch (Exception ex) { errors.Add("Local network: " + ex.Message); }
+            }
+            if (tailscaleServer is null && tailIp is not null)
+            {
+                try
+                {
+                    tailscaleServer = await StartNetworkApiAsync(tailIp, number, RemoteTransport.Tailscale);
+                    listeningTailscaleAddress = tailIp;
+                }
+                catch (Exception ex) { errors.Add("Tailscale: " + ex.Message); }
+            }
+            fingerprint = certificate.GetCertHashString(HashAlgorithmName.SHA256);
+            certificateSummary = $"Valid until {certificate.NotAfter:d}. Renews automatically with the same PC identity key.";
+            Notify(nameof(CertificateSummary));
+        }
+        var previousUrl = remoteUrl;
+        remoteUrl = NetworkConnection.LocalAddress ?? NetworkConnection.TailscaleAddress ?? "Network address available when connections are ready";
+        if ((previousUrl != remoteUrl || previousFingerprint != fingerprint) && HasPairingQr)
+        {
+            pairing.ClosePairing(); ClearPairingQr(); pairingExpires = null; pairingCode = "— — — — — —";
+            Notify(nameof(PairingCode)); Notify(nameof(PairingExpiry));
+        }
+        networkSummary = server is null ? "Local network waiting · use a trusted Private/Domain network"
+            : $"Local network ready · {NetworkConnection.LocalAddress}";
+        if (errors.Count > 0) Message = string.Join(" ", errors);
+        else if (server is not null || tailscaleServer is not null)
+            Message = "Ready. Automatic on your phone tries local network, Tailscale, then Bluetooth." + discoverySummary;
+        else Message = "Network connections are waiting. Paired phones can still use Bluetooth when available.";
         NotifyHost();
-        if (pairing.Clients.Count == 0) OpenPairing.Execute(null);
+        if (pairing.Clients.Count == 0 && (server is not null || tailscaleServer is not null) && !pairing.IsPairingOpen)
+            OpenPairing.Execute(null);
+    }
+
+    private Task<WebApplication> StartNetworkApiAsync(IPAddress ip, int number, RemoteTransport transport) =>
+        ApiHost.StartAsync(ip, number, certificate!, device, pairing, scheduler,
+            bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors,
+            bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection);
+
+    private async Task StopNetworkListenersAsync()
+    {
+        advertisement?.Dispose(); advertisement = null;
+        if (server is not null) { await server.StopAsync(); await server.DisposeAsync(); server = null; }
+        if (tailscaleServer is not null) { await tailscaleServer.StopAsync(); await tailscaleServer.DisposeAsync(); tailscaleServer = null; }
+        listeningAddress = null; listeningTailscaleAddress = null;
+        certificate?.Dispose(); certificate = null;
+        pairing.ClearPresence(RemoteTransport.WiFi); pairing.ClearPresence(RemoteTransport.Tailscale);
     }
 
     private async Task StopListenerAsync(bool stopBluetooth = true)
@@ -332,13 +430,12 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         pairing.ClosePairing(); ClearPairingQr();
         pairingCode = "— — — — — —"; pairingExpires = null;
         pairingExpiry = "Pairings are remembered. Start connections to reconnect.";
-        advertisement?.Dispose(); advertisement = null;
-        if (server is not null) { await server.StopAsync(); await server.DisposeAsync(); server = null; }
+        await StopNetworkListenersAsync();
         pairing.ClearPresence();
         RefreshPresence();
-        listeningAddress = null; certificate?.Dispose(); certificate = null;
         remoteUrl = "Browser address available when connections are running";
-        Notify(nameof(PairingCode)); Notify(nameof(PairingExpiry));
+        networkSummary = "Local network stopped";
+        Notify(nameof(PairingCode)); Notify(nameof(PairingExpiry)); NotifyHost();
     }
 
     private void OnNetworkChanged(object? sender, EventArgs e) =>
@@ -347,23 +444,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private async Task CheckNetworkAsync()
     {
         if (shuttingDown || !connectionsEnabled || !await hostGate.WaitAsync(0)) return;
-        try
-        {
-            if (bluetoothHost is not null) await bluetoothHost.EnsureAsync();
-            Notify(nameof(BluetoothConnectionSummary));
-            IPAddress? current = null;
-            try { current = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read())); } catch { }
-            if (current is null || !NetworkTrust.IsTrusted(current))
-            {
-                if (server is not null) await StopListenerAsync(stopBluetooth: false);
-                Message = "Waiting for a trusted Private/Domain network. Your saved pairings are unchanged.";
-            }
-            else if (server is null || !current.Equals(listeningAddress) || (certificate is not null && HostCertificate.NeedsRenewal(certificate)))
-            {
-                await StopListenerAsync(stopBluetooth: false);
-                await StartListenerAsync();
-            }
-        }
+        try { await StartListenerAsync(); }
         catch (Exception ex) { Message = ex.Message; }
         finally { hostGate.Release(); NotifyHost(); }
     }
@@ -378,7 +459,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
             await StopListenerAsync();
             // Recovery remains available offline or with a broken saved identity.
             IPAddress ip;
-            try { ip = IPAddress.Parse(AddressSelection.Resolve(Address, NetworkAddresses.Read())); }
+            try { ip = IPAddress.Parse(AddressSelection.Resolve(Address, readNetworkAddresses())); }
             catch { ip = IPAddress.Loopback; }
             using var replacement = new CertificateIdentity(settings, pairing).Reset(ip);
             fingerprint = replacement.GetCertHashString(HashAlgorithmName.SHA256);
@@ -400,14 +481,14 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void NotifyHost()
     {
-        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText), nameof(CanResetIdentity) }) Notify(name);
+        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText), nameof(CanResetIdentity), nameof(NetworkSummary), nameof(TailscaleEnabled), nameof(TailscaleUrl), nameof(HasTailscaleAddress), nameof(TailscaleConnectionSummary) }) Notify(name);
         RefreshPresence();
     }
 
     private void SavePreferences()
     {
         if (!int.TryParse(Port, out var number) || number is < 1024 or > 65535) throw new ArgumentException("Port must be between 1024 and 65535.");
-        settings.SaveHost(new(Address, number, ShowNotifications, ConnectionsEnabled: connectionsEnabled));
+        settings.SaveHost(new(Address, number, ShowNotifications, ConnectionsEnabled: connectionsEnabled, TailscaleEnabled: tailscaleEnabled));
     }
 
     private void ExportPublicCertificate()
@@ -441,7 +522,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void RefreshPresence()
     {
-        var active = (server is null && bluetoothHost?.Info.Available != true) || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
+        var active = (server is null && tailscaleServer is null && bluetoothHost?.Info.Available != true) || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
         if (connectedClients.SequenceEqual(active)) return;
         connectedClients = active;
         foreach (var name in new[] { nameof(HasConnectedClients), nameof(ConnectionSummary), nameof(ConnectionHint), nameof(HostStatus) }) Notify(name);

@@ -483,6 +483,7 @@
             <TextBlock Text="{Binding NetworkSummary, Mode=OneWay}"
                        Margin="0,6,0,0" FontSize="13"
                        Foreground="{StaticResource TextSecondary}" />
+            <TextBlock Text="{Binding TailscaleConnectionSummary}" Margin="0,4,0,0" FontSize="11.5" Foreground="{StaticResource TextSecondary}" />
             <TextBlock Text="{Binding BluetoothConnectionSummary}" Margin="0,4,0,0" FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondary}" />
             <TextBlock x:Name="CommandFeedback" Text="{Binding Message, Mode=OneWay}"
                        Margin="0,5,0,0" FontSize="11.5" TextWrapping="Wrap"
@@ -820,6 +821,25 @@
           </Grid>
 
           <TextBlock Text="{Binding Message}" Foreground="{DynamicResource AccentText}" FontSize="12" Margin="0,0,0,16" />
+          <TextBlock Text="REMOTE ACCESS" Style="{StaticResource SectionLabel}" />
+          <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,0,0,22">
+            <StackPanel>
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock Text="Allow access through Tailscale" FontSize="12.5" VerticalAlignment="Center" Margin="0,0,12,0" />
+                <CheckBox Grid.Column="1" Style="{StaticResource AppleToggleSwitch}"
+                          IsChecked="{Binding TailscaleEnabled, Mode=OneWay}"
+                          Command="{Binding ToggleTailscale}" IsEnabled="{Binding CanResetIdentity}"
+                          AutomationProperties.Name="Allow access through Tailscale" />
+              </Grid>
+              <TextBlock Text="Local network access stays available. Install and connect Tailscale on both devices. Your phone learns this address after connecting."
+                         FontSize="11.5" Foreground="{StaticResource TextSecondary}" Margin="0,10,0,8" />
+              <TextBlock Text="{Binding TailscaleConnectionSummary}" FontSize="11.5" Foreground="{DynamicResource AccentText}" />
+              <TextBox Text="{Binding TailscaleUrl, Mode=OneWay}" IsReadOnly="True" FontSize="11.5"
+                       AutomationProperties.Name="Tailscale address" Margin="0,8,0,0" Visibility="{Binding HasTailscaleAddress, Converter={StaticResource BoolVisibility}}" />
+            </StackPanel>
+          </Border>
+
           <StackPanel DataContext="{Binding Appearance}" Margin="0,0,0,22">
             <TextBlock Text="APPEARANCE" Style="{StaticResource SectionLabel}"/>
             <Border Style="{StaticResource GroupedCard}" Padding="16">
@@ -898,7 +918,7 @@
           <Expander Header="Advanced Network &amp; Security" Foreground="{StaticResource TextSecondary}" FontSize="12.5">
             <Border Style="{StaticResource GroupedCard}" Padding="16" Margin="0,10,0,0">
               <StackPanel>
-                <TextBlock Text="Override automatic network adapter and port only when troubleshooting." Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="0,0,0,12" />
+                <TextBlock Text="Local network adapter and shared TapMyPC port. Keep Automatic for normal use. Tailscale is enabled separately above; stop connections before changing these advanced settings." Foreground="{StaticResource TextMuted}" FontSize="11.5" Margin="0,0,0,12" />
                 <Grid Margin="0,0,0,16">
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

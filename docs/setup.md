@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
+Built versions: desktop/server **0.8.0, build 12** is unpacked at artifacts/publish/TapMyPC; Android **0.8.0, build 14** is installed on the connected phone. Both add independent LAN/Tailscale access and four phone connection choices. See [Tailscale setup](tailscale.md) and verification.md for delivery status. Previous versions: desktop/server **0.7.0, build 11** is applied at artifacts/publish/TapMyPC, and Android **0.7.0, build 13** is installed on the connected phone. These add optional [Tailscale remote access](tailscale.md). Build/staging status is recorded in verification.md. Previously installed development versions: desktop/server **0.6.0, build 10** (status reports `serverVersion: 0.6.0+10`) and Android **0.6.2, build 12**. Installation results are recorded in verification.md. Its connected-dashboard header and Settings > About read installed package metadata; the first-connection header omits the version for a cleaner layout; its version is independent of the PC version.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -14,11 +14,11 @@ The desktop's active remote line shows the phone name and actual connection, for
 
 To customize a name, open Configure > Authorized phones, select the phone, edit Phone name, and select Save phone name. The override remains local to this PC and is not overwritten by the phone.
 
-The mobile Devices tab shows PC Bluetooth: On/Off. Wi-Fi offers Turn off when on and Turn on when off. Bluetooth connections disable these changes with a switch-to-Wi-Fi message; unknown/unavailable/mixed states also prevent changes.
+The mobile Devices tab shows PC Bluetooth: On/Off. Local network and Tailscale offer Turn off when on and Turn on when off. Bluetooth connections disable these changes with a switch-to-network message; unknown/unavailable/mixed states also prevent changes.
 
 ## Bluetooth secondary connection
 
-Start connections on the PC with Bluetooth on. Connect Android over Wi-Fi once to save the verified PC's Bluetooth metadata. In Android Settings > Connection choose Automatic, Wi-Fi only, or Bluetooth only; allow Nearby devices and complete OS pairing if prompted. Saved phones can then control without a reachable LAN. Start/Stop connections controls both transports; Public LAN restrictions do not disable Bluetooth. See [Bluetooth setup and limitations](bluetooth.md).
+Start connections on the PC with Bluetooth on. Connect Android over Wi-Fi once to save the verified PC's Bluetooth metadata. In Android Settings > Connection choose Automatic, Local network only, Tailscale only, or Bluetooth only; allow Nearby devices and complete OS pairing if prompted. Saved phones can then control without a reachable LAN. Start/Stop connections controls both transports; Public LAN restrictions do not disable Bluetooth. See [Bluetooth setup and limitations](bluetooth.md).
 
 ## Certificate renewal and recovery
 
@@ -44,7 +44,7 @@ Normal launch resumes the remembered connection preference (enabled by default).
 
 1. Use the same trusted home network on the phone and PC. Internet access is unnecessary. Guest networks or router client isolation may prevent connection.
 2. The dashboard automatically detects an active private IPv4 address, preferring a gateway-capable adapter and then Wi-Fi. Use Advanced settings only to override it. `127.0.0.1` is available there for debugging and works only on the PC itself. If no network address exists, the app explains the problem instead of silently falling back to localhost.
-3. Connections start automatically on trusted Windows Private/Domain networks, unless previously paused. Select Start connections to resume. The initial port is 45831 and the listener binds only to the selected address.
+3. Connections start automatically on trusted Windows Private/Domain networks, unless previously paused. Select Start connections to resume. The initial port is 45831 and the local listener binds only to the selected LAN address; the separate Tailscale opt-in adds its adapter on the same port.
 4. Complete the HTTPS identity check below and any required local firewall setup.
 5. Open the displayed HTTPS URL on the phone, generate a pairing code on the PC, and enter it with a device name on the phone. Commands show sending/result notifications; pending power actions have a visible countdown and cancellation on both devices.
 

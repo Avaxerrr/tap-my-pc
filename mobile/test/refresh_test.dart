@@ -113,7 +113,7 @@ void main() {
       expect(api.calls.length, before);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
-      expect(find.text('Connected to Test desktop'), findsOneWidget);
+      expect(find.text('Connected to Test desktop · Local network'), findsOneWidget);
       expect(api.calls.length, greaterThan(before));
       final saved = await const ProfileStore().load();
       expect(saved.single.token, profile.token);
@@ -133,7 +133,7 @@ void main() {
             'Windows could not complete this command.',
           );
         await render(tester, api);
-        expect(find.text('Connected to Test desktop'), findsOneWidget);
+        expect(find.text('Connected to Test desktop · Local network'), findsOneWidget);
         expect(find.text('Offline'), findsNothing);
         expect(
           tester
@@ -221,7 +221,7 @@ void main() {
       api.failures.clear();
       await tester.pump(const Duration(seconds: 10));
       await tester.pumpAndSettle();
-      expect(find.text('Connected to Test desktop'), findsOneWidget);
+      expect(find.text('Connected to Test desktop · Local network'), findsOneWidget);
       expect(find.text('Test monitor'), findsOneWidget);
       expect(find.textContaining('could not be loaded'), findsNothing);
       expect(api.calls.where((c) => !c.startsWith('GET ')), isEmpty);

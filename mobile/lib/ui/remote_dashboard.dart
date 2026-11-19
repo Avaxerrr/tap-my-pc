@@ -188,11 +188,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                 leading: const Icon(Icons.settings_input_antenna),
                 title: const Text('Connection'),
                 subtitle: Text(
-                  widget.selected!.connectionMode == 'auto'
-                      ? 'Automatic · Wi-Fi first'
-                      : widget.selected!.connectionMode == 'bluetooth'
-                      ? 'Bluetooth only'
-                      : 'Wi-Fi only',
+                  connectionModeLabel(widget.selected!.connectionMode),
                 ),
                 onTap: widget.busy
                     ? null

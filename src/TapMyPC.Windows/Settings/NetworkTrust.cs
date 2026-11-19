@@ -2,17 +2,20 @@ using System.Collections;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using TapMyPC.Core.Networking;
 
 namespace TapMyPC.Windows.Settings;
 
 public static class NetworkTrust
 {
-    public static bool IsTrusted(IPAddress address)
+    public static bool IsTrusted(IPAddress address, bool allowTailscale = false)
     {
         if (IPAddress.IsLoopback(address)) return true;
         var adapter = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n =>
             n.GetIPProperties().UnicastAddresses.Any(a => a.Address.Equals(address)));
-        if (adapter is null || !Guid.TryParse(adapter.Id, out var adapterId)) return false;
+        if (adapter is null || adapter.OperationalStatus != OperationalStatus.Up) return false;
+        if (TailscaleNetwork.IsAdapter(address.ToString(), adapter.Name, adapter.Description)) return allowTailscale;
+        if (!Guid.TryParse(adapter.Id, out var adapterId)) return false;
         object? manager = null, networks = null;
         try
         {

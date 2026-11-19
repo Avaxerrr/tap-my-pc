@@ -7,30 +7,61 @@ Future<VerifiedPcConnection> connectSelectedPc(
   Iterable<String> addresses, {
   PcApi Function(PcProfile) wifi = PcApi.new,
   PcApi Function(PcProfile) bluetooth = BluetoothPcApi.new,
+  PcApi? activeApi,
+  Set<String> excludedAddresses = const {},
 }) async {
-  Object? wifiFailure;
-  if (profile.connectionMode != 'bluetooth') {
+  final mode = profile.connectionMode;
+  final local = {
+    if (profile.localEndpoint != null) profile.localEndpoint!,
+    ...addresses.where((a) => !isTailscaleAddress(a)),
+  }.where((a) => !excludedAddresses.contains(a)).take(3);
+  final tail = [
+    if (profile.tailscaleEndpoint != null) profile.tailscaleEndpoint!,
+  ].where((a) => !excludedAddresses.contains(a));
+  final network = switch (mode) {
+    'local' || 'wifi' => local,
+    'tailscale' => tail,
+    'bluetooth' => <String>[],
+    _ => [...local, ...tail],
+  };
+  Object? failure;
+  if (mode != 'bluetooth') {
     try {
-      return await reconnectPc(profile, addresses, createApi: wifi);
+      return await reconnectPc(profile, network, createApi: wifi);
     } catch (error) {
       if (error is PcApiException && error.statusCode == 401) rethrow;
-      if (profile.connectionMode == 'wifi' ||
-          profile.bluetoothAddress == null) {
+      failure = error;
+      if (mode != 'auto') {
+        if (network.isEmpty) {
+          throw FormatException(
+            mode == 'tailscale'
+                ? 'Set up the Tailscale address in Connection settings.'
+                : 'Set up a local address or connect to the PC local network.',
+          );
+        }
         rethrow;
       }
-      wifiFailure = error;
     }
   }
-  final client = bluetooth(profile);
+  if (profile.bluetoothAddress == null) {
+    if (failure != null) throw failure;
+    throw const FormatException(
+      'Connect over a network once to learn this PC’s Bluetooth connection.',
+    );
+  }
+  // Reuse a healthy active RFCOMM stream when only probing for a better network route.
+  final client = activeApi?.isBluetooth == true
+      ? activeApi!
+      : bluetooth(profile);
   try {
     final status = Map<String, dynamic>.from(await client.request('/status'));
     return VerifiedPcConnection(client.verifiedProfile, client, status);
   } catch (error) {
     client.close();
     if (error is PcApiException && error.statusCode == 401) rethrow;
-    if (wifiFailure != null) {
+    if (failure != null) {
       throw const SocketException(
-        'Wi-Fi and Bluetooth are unavailable. Check the PC, Bluetooth power, Nearby devices permission, and pairing in Connection settings.',
+        'Local network, Tailscale and Bluetooth are unavailable. Check the PC and Connection settings.',
       );
     }
     rethrow;

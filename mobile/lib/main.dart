@@ -10,6 +10,7 @@ import 'pairing_page.dart';
 import 'discovery.dart';
 import 'ui/app_theme.dart';
 import 'ui/remote_dashboard.dart';
+import 'ui/network_address_editor.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -163,9 +164,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   void select(PcProfile profile) {
     epoch++;
     api?.close();
-    api = profile.connectionMode == 'bluetooth'
-        ? BluetoothPcApi(profile)
-        : widget.createApi(profile);
+    api = null;
     setState(() {
       selected = profile;
       status = null;
@@ -186,7 +185,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   Future<void> refresh({bool devices = false}) async {
     final client = api;
     final generation = epoch;
-    if (client == null ||
+    if (selected == null ||
         editingConnection ||
         busy ||
         refreshing ||
@@ -197,41 +196,57 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     refreshing = true;
     try {
       Map<String, dynamic> next;
-      try {
-        next = Map<String, dynamic>.from(await client.request('/status'));
-      } catch (initialError) {
-        if (!mounted || generation != epoch) return;
-        if (initialError is PcApiException && initialError.statusCode == 401) {
-          rethrow;
-        }
-        final current = selected!;
-        final alternatives = (candidates[normalizePin(current.pin)] ?? [])
-            .where((a) => a != current.address);
-        if (alternatives.isEmpty &&
-            current.bluetoothAddress == null &&
-            !client.isBluetooth) {
-          rethrow;
-        }
-        final recovered = await connectSelectedPc(
+      final current = selected!;
+      final hints = candidates[normalizePin(current.pin)] ?? [];
+      final preferNetwork =
+          current.connectionMode == 'auto' &&
+          ticks % 5 == 0 &&
+          client != null &&
+          client.transportLabel != 'Local network';
+      VerifiedPcConnection? recovered;
+      if (client == null || preferNetwork) {
+        recovered = await connectSelectedPc(
           current,
-          client.isBluetooth
-              ? [current.address, ...alternatives]
-              : alternatives,
+          hints,
           wifi: widget.createApi,
+          activeApi: client,
         );
+        next = recovered.status;
+      } else {
+        try {
+          next = Map<String, dynamic>.from(await client.request('/status'));
+        } catch (error) {
+          if (!mounted || generation != epoch) return;
+          if (error is PcApiException && error.statusCode == 401) rethrow;
+          setState(() {
+            status = null;
+            message = 'Reconnecting to ${current.name}…';
+          });
+          recovered = await connectSelectedPc(
+            current,
+            hints,
+            wifi: widget.createApi,
+            excludedAddresses: client.isBluetooth
+                ? {}
+                : {client.profile.address},
+          );
+          next = recovered.status;
+        }
+      }
+      if (recovered != null) {
         if (!mounted || generation != epoch || busy) {
-          recovered.api.close();
+          if (!identical(recovered.api, api)) recovered.api.close();
           return;
         }
-        api?.close();
+        if (!identical(api, recovered.api)) api?.close();
         api = recovered.api;
-        final updated = recovered.profile;
-        await rememberVerifiedProfile(updated, generation);
-        next = recovered.status;
+        await rememberVerifiedProfile(recovered.profile, generation);
       }
       if (!mounted || generation != epoch) return;
       final activeClient = api!;
-      var verified = activeClient.verifiedProfile;
+      var verified = selected!
+          .copy(keyPin: activeClient.verifiedProfile.keyPin)
+          .withNetworkHints(next['networkConnection']);
       final bluetoothInfo = next['bluetoothConnection'];
       if (bluetoothInfo is Map &&
           bluetoothInfo['address'] is String &&
@@ -258,7 +273,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         lastServerTime = next['serverTime'];
         verifiedAt[normalizePin(selected!.pin)] = DateTime.now();
         message =
-            'Connected to ${selected!.name}${activeClient.isBluetooth ? ' · Bluetooth' : ''}${unsavedProfiles.contains(selected!.pin) ? '. Identity storage failed; retrying automatically.' : ''}';
+            'Connected to ${selected!.name} · ${activeClient.transportLabel}${unsavedProfiles.contains(selected!.pin) ? '. Identity storage failed; retrying automatically.' : ''}';
       });
       if (loadDevices) {
         final errors = <String, String>{};
@@ -350,7 +365,10 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
 
   Future<void> setBluetooth(bool enabled) async {
     if (api?.isBluetooth == true) {
-      setState(() => message = 'Switch to Wi-Fi to change the PC’s Bluetooth.');
+      setState(
+        () => message =
+            'Switch to local network or Tailscale to change the PC’s Bluetooth.',
+      );
       return;
     }
     if (busy || selected == null || status == null) return;
@@ -425,6 +443,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         original.token != updated.token ||
         (original.keyPin == updated.keyPin &&
             original.address == updated.address &&
+            original.localEndpoint == updated.localEndpoint &&
+            original.tailscaleEndpoint == updated.tailscaleEndpoint &&
             original.bluetoothAddress == updated.bluetoothAddress &&
             original.connectionMode == updated.connectionMode &&
             !unsavedProfiles.contains(updated.pin))) {
@@ -468,15 +488,26 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Current: ${api?.transportLabel ?? 'Disconnected'}'),
+                  Text(
+                    'Current: ${status == null ? 'Disconnected' : api?.transportLabel ?? 'Disconnected'}',
+                  ),
                   const SizedBox(height: 12),
                   for (final choice in const [
                     (
                       'auto',
                       'Automatic',
-                      'Wi-Fi first; Bluetooth when Wi-Fi cannot connect.',
+                      'Local network → Tailscale → Bluetooth. No commands are resent.',
                     ),
-                    ('wifi', 'Wi-Fi only', 'Use the local network.'),
+                    (
+                      'local',
+                      'Local network only',
+                      'Stay on your home or office network.',
+                    ),
+                    (
+                      'tailscale',
+                      'Tailscale only',
+                      'Stay on Tailscale; no local or Bluetooth fallback.',
+                    ),
                     (
                       'bluetooth',
                       'Bluetooth only',
@@ -492,9 +523,31 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                           : null,
                       onTap: () => Navigator.pop(dialog, choice.$1),
                     ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Local network address'),
+                    subtitle: Text(
+                      target.localEndpoint == null
+                          ? 'Discovered automatically when nearby'
+                          : endpointHost(target.localEndpoint!),
+                    ),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => Navigator.pop(dialog, 'local-address'),
+                  ),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Tailscale address'),
+                    subtitle: Text(
+                      target.tailscaleEndpoint == null
+                          ? 'Set up remote access'
+                          : endpointHost(target.tailscaleEndpoint!),
+                    ),
+                    trailing: const Icon(Icons.edit_outlined),
+                    onTap: () => Navigator.pop(dialog, 'tailscale-address'),
+                  ),
                   if (target.bluetoothAddress == null)
                     const Text(
-                      'Connect over Wi-Fi once to save this PC’s Bluetooth connection.',
+                      'Connect over a network once to save this PC’s Bluetooth connection.',
                     ),
                   TextButton(
                     onPressed: () async {
@@ -523,15 +576,30 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       if (!mounted || mode == null || selected?.pin != target.pin || busy) {
         return;
       }
+      if (mode == 'local-address' || mode == 'tailscale-address') {
+        await changeNetworkAddress(
+          target,
+          tailscale: mode == 'tailscale-address',
+        );
+        return;
+      }
+      if (mode == 'tailscale' && target.tailscaleEndpoint == null) {
+        await changeNetworkAddress(
+          target,
+          tailscale: true,
+          modeAfterSave: 'tailscale',
+        );
+        return;
+      }
       if (mode == 'bluetooth' && target.bluetoothAddress == null) {
         setState(
           () => message =
-              'Connect to this PC over Wi-Fi once before selecting Bluetooth.',
+              'Connect to this PC over a network once before selecting Bluetooth.',
         );
         return;
       }
       try {
-        if (mode != 'wifi' &&
+        if (mode == 'bluetooth' &&
             target.bluetoothAddress != null &&
             !await PhoneBluetooth.requestAccess()) {
           if (mounted) {
@@ -557,6 +625,53 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     } finally {
       editingConnection = false;
       if (mounted) refresh(devices: true);
+    }
+  }
+
+  Future<void> changeNetworkAddress(
+    PcProfile target, {
+    required bool tailscale,
+    String? modeAfterSave,
+  }) async {
+    final endpoint = await showDialog<String>(
+      context: context,
+      builder: (_) =>
+          NetworkAddressEditor(profile: target, tailscale: tailscale),
+    );
+    if (!mounted || endpoint == null || selected?.pin != target.pin) return;
+    final generation = epoch;
+    VerifiedPcConnection? verified;
+    setState(() {
+      busy = true;
+      message = 'Verifying ${target.name} at the new address…';
+    });
+    try {
+      // Verify exactly the edited route; no fallback can validate a different address.
+      verified = await reconnectPc(target.atAddress(endpoint), [
+        endpoint,
+      ], createApi: widget.createApi);
+      if (!mounted || generation != epoch) return;
+      final updated = verified.profile
+          .withNetworkHints(verified.status['networkConnection'])
+          .withConnectionMode(modeAfterSave ?? target.connectionMode);
+      final saved = profiles
+          .map((p) => p.pin == target.pin ? updated : p)
+          .toList();
+      await store.save(saved);
+      if (!mounted || generation != epoch) return;
+      setState(() => profiles = saved);
+      select(updated);
+    } catch (error) {
+      if (mounted && generation == epoch) {
+        setState(() {
+          message = 'Address was not saved. ${friendly(error)}';
+          feedback = message;
+          feedbackError = true;
+        });
+      }
+    } finally {
+      verified?.api.close();
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -765,7 +880,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
           'Normal use: open both apps. This phone looks for your saved PCs, verifies their certificates, and reconnects without another code. Each PC has its own pairing.\n\n'
           'Stop connections on the PC pauses access and stays stopped after restart. Start connections to resume.\n\n'
           'Use the PC selector to switch. Commands always target the named PC. Discovery never grants access.\n\n'
-          'First pairing needs reachable Wi-Fi. After one verified connection, Settings > Connection offers Automatic, Wi-Fi only, or Bluetooth only. Allow Nearby devices and complete system Bluetooth pairing if prompted. Both radios must be on. Bluetooth works independently of LAN reachability; internet remote access is not included.',
+          'First pairing needs a reachable network address. In Connection settings, Automatic tries local network, then Tailscale, then Bluetooth. The three Only modes stay on the chosen route. Commands are never resent across connections.\n\nFor remote access, connect Tailscale on both devices and enable Allow access through Tailscale on the PC. Your phone learns the address when it connects. You can also enter just the Tailscale IP; the existing port is reused. Local and Tailscale addresses are saved separately.\n\nBluetooth can work nearby even without the same Wi-Fi. Allow Nearby devices and complete system Bluetooth pairing if prompted. The PC must be awake and running TapMyPC',
         ),
       ),
       actions: [

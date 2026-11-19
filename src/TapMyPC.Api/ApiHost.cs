@@ -30,7 +30,7 @@ public static class ApiHost
     }
 
     public static async Task<WebApplication> StartAsync(IPAddress address, int port, X509Certificate2 certificate,
-        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi)
+        IDeviceController device, PairingService pairing, PowerScheduler scheduler, CancellationToken cancellationToken = default, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, Func<BluetoothConnectionInfo?>? bluetoothConnection = null, RemoteTransport transport = RemoteTransport.WiFi, Func<TapMyPC.Core.Networking.NetworkConnectionInfo?>? networkConnection = null)
     {
         var builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions { Args = [], ApplicationName = typeof(ApiHost).Assembly.FullName });
         builder.Logging.ClearProviders();
@@ -108,7 +108,7 @@ public static class ApiHost
             AudioState? audio = null;
             try { if (capabilities.Audio) audio = device.ReadAudio(); } catch { capabilities = capabilities with { Audio = false }; }
             var bluetoothState = bluetooth is null ? new BluetoothStatus(false, false, BluetoothRadioState.Unavailable, "Bluetooth control is unavailable.") : await bluetooth.ReadAsync();
-            return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), pcName = Environment.MachineName, capabilities, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
+            return Results.Ok(new { serverVersion = typeof(ApiHost).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion, bluetooth = bluetoothState, bluetoothConnection = bluetoothConnection?.Invoke(), networkConnection = networkConnection?.Invoke(), pcName = Environment.MachineName, capabilities, audio, scheduler = scheduler.State, activity = scheduler.Activity.Recent, serverTime = DateTimeOffset.UtcNow });
         });
         app.MapPut("/api/v1/audio/volume", (VolumeRequest request) =>
         {
@@ -123,7 +123,7 @@ public static class ApiHost
         app.MapPost("/api/v1/display/off", () => Results.Ok(new { accepted = true, feedback = commands.DisplaysOff() }));
         app.MapPut("/api/v1/bluetooth", async (BluetoothRequest request) =>
         {
-            if (transport == RemoteTransport.Bluetooth) throw new NotSupportedException("Switch to Wi-Fi to change the PC's Bluetooth radio.");
+            if (transport == RemoteTransport.Bluetooth) throw new NotSupportedException("Switch to local network or Tailscale to change the PC's Bluetooth radio.");
             if (bluetooth is null) throw new NotSupportedException("Bluetooth control is unavailable.");
             return Results.Ok(new { accepted = true, feedback = await new BluetoothCommands(bluetooth, scheduler.Activity).SetEnabledAsync(request.Enabled) });
         });
