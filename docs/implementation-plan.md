@@ -127,12 +127,12 @@ Validate monitor selection and lower stream resolution with the Android viewer, 
 
 The Android viewer can stay mostly black after Windows unlocks. Touching the screen or moving content reveals individual patches. The user confirmed that **Refresh screen** restores the entire image. They observed it at 5 FPS and saw it clear at 25 and 60 FPS in initial checks. Repeat the comparison before attributing the issue to the capture limit.
 
-The current test baseline is TapMyPC Windows 0.15.2+26 and Android 0.14.1+29 with UltraVNC 1.8.3.2. These versions were present on the target devices at handoff. Start with an open viewer and lock and unlock Windows while keeping the viewer connected. Leave the phone untouched after sign-in, then note whether **Refresh screen** restores any remaining black areas.
+The original device baseline was TapMyPC Windows 0.15.2+26 and Android 0.14.1+29 with UltraVNC 1.8.3.2. The viewer could also open to an all-black image that **Refresh screen** restored. Android 0.15.0+30 adds a one-second follow-up full-frame request after VNC sign-in and after the PC reports a Windows desktop switch. The same release adds the compact toolbar, rotation, Fit and Fill, capture-resolution reporting, and a saved image quality preset.
 
-Windows already updates `remoteDesktopRevision` on lock and unlock. The Android status poll passes it to the viewer, which calls the same full-frame request as **Refresh screen**. Start tracing at [OnDesktopSessionSwitch](../src/TapMyPC.Desktop/Features/Settings/SettingsViewModel.cs#L474) and the [Android refresh handler](../mobile/lib/ui/remote_desktop_page.dart#L162), then check the [viewer request](../mobile/android/app/src/main/assets/remote-desktop/viewer.js#L36). The timing of the request relative to the first good desktop capture is still unverified.
+Windows updates `remoteDesktopRevision` on lock and unlock. The Android status poll passes it to the viewer, which uses the same non-incremental RFB request as **Refresh screen**. The exact capture timing on the target PC is still unverified.
 
 - [ ] Compare repeated unlocks at 5, 25, and 60 FPS with the same viewer quality and no phone input after sign-in. Check whether Android receives the unlock revision and requests a full frame. Compare the request time with the first usable desktop image.
-- [ ] If the request arrives during the desktop switch, test one delayed follow-up using the same full-frame request as **Refresh screen**.
+- [ ] Repeat cold viewer opens and lock/unlock transitions with Android 0.15.0+30. Leave the phone untouched and observe whether the delayed refresh restores the entire screen.
 - [ ] If the follow-up fails, compare TapMyPC and the native UltraVNC viewer in separate sessions against the same server to narrow down the cause.
 - [ ] Verify that the whole desktop appears automatically after repeated lock and unlock cycles over both Wi-Fi and Tailscale, without touching the screen or pressing **Refresh screen**.
 

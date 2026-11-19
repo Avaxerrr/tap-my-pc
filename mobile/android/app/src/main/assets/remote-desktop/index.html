@@ -9,21 +9,7 @@
   <script type="module" src="viewer.js"></script>
 </head>
 <body>
-  <main id="screen" aria-label="Remote Windows screen"></main>
-
-  <footer id="controls" hidden>
-    <button id="keyboard-button" type="button">Keyboard</button>
-    <button id="secure-attention" type="button">Ctrl+Alt+Del</button>
-    <button id="refresh-screen" type="button">Refresh screen</button>
-    <label class="quality-picker">
-      Quality
-      <select id="quality">
-        <option value="save-data">Save data</option>
-        <option value="balanced" selected>Balanced</option>
-        <option value="sharper">Sharper</option>
-      </select>
-    </label>
-  </footer>
+  <main id="viewport" aria-label="Remote Windows screen"><div id="screen"></div></main>
   <input id="remote-keyboard" type="password" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Remote keyboard">
 </body>
 </html>

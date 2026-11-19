@@ -466,3 +466,11 @@ November 19, 2026 (Asia/Taipei).
 - Published the portable release to `artifacts/publish/TapMyPC-next-remote-desktop-0.15.2` while the previous release remained open. Confirmed the executable and API assembly version. All 91 .NET tests passed.
 - WPF smoke checks covered the persistent card with missing, unconfigured, stopped, ready, and connected service states and the setup shortcut. The same check verified revealing and hiding the same password, inline generation without submitting, validation, and the separate setup and reset confirmation labels. The read-only status check recognized the existing configured UltraVNC service.
 - Handoff check confirmed that the target PC was running Windows 0.15.2+26 from the staged folder, the connected phone had Android 0.14.1+29 installed, and the UltraVNC 1.8.3.2 service was running. The next physical check is the [unlock refresh comparison](implementation-plan.md#deferred-black-patches-after-windows-unlock).
+
+
+## Remote Desktop viewer polish — Android 0.15.0+30
+
+- Flutter analysis passed. Flutter tests passed 76 cases, including the new saved-quality regression test. The opt-in certificate fixture was skipped.
+- A simulated RFB session recovered from a black opening frame and from a desktop switch where the first refresh arrived too early. It also verified manual refresh, VNC authentication failure, keyboard forwarding, Fit and Fill with touch coordinates, landscape viewport resizing, and preset negotiation.
+- Built and staged the development APK at `artifacts/mobile/TapMyPC-0.15.0-build30.apk`. Verified Android version name 0.15.0, version code 30, signing, the ARM64 runtime libraries, and the packaged viewer assets. Installed the APK over the existing app using ADB. Verified the phone reports version 0.15.0 with version code 30 and that the app launches.
+- Physical verification is pending for repeated viewer opens and Windows lock/unlock, Android keyboard display, and the rotation button. See the [black-screen verification checklist](implementation-plan.md#deferred-black-patches-after-windows-unlock).

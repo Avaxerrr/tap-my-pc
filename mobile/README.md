@@ -1,6 +1,6 @@
 # TapMyPC Android client
 
-Android **0.10.0 (build 23)** colors its status badge by active connection and adds a seconds or minutes timer editor. With desktop 0.10.0 or newer, direct Lock, Sleep, and Hibernate run immediately after confirmation. See [verification](../docs/verification.md) for package and installation status.
+Android **0.15.0 (build 30)** adds a compact Remote Desktop toolbar, rotation, Fit and Fill, saved image quality, and automatic full-screen refresh at startup and after Windows desktop switches. See [verification](../docs/verification.md) for package and installation status.
 
 Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 

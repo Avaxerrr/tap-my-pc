@@ -7,7 +7,7 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 | Component | Current development version |
 | --- | --- |
 | Windows desktop and API | **0.15.2 (build 26)** |
-| Android | **0.14.1 (build 29)** |
+| Android | **0.15.0 (build 30)** |
 
 ## Get started
 
@@ -30,7 +30,7 @@ Android shows the same connection colors and lets you set power timers in second
 
 On Android, open **Stats** to see hardware readings. On the PC, run PC Stats Tray 0.7.1 or newer and select **Show Stats → Local apps**. Check the collector status in TapMyPC Desktop under **Configure → Hardware monitoring**. [Hardware monitoring](docs/monitoring-integration.md)
 
-The experimental Android **Power → Remote Desktop** viewer shows and controls the Windows console over Wi-Fi or Tailscale. TapMyPC for Windows downloads the latest stable UltraVNC installer when needed, shows progress during setup, and manages the local capture service and viewer password. The dashboard offers Remote Desktop setup and identifies the connected viewer once the service is configured and the phone reports successful VNC sign-in. Android offers three quality presets, a saved VNC password for each paired PC, and a full-screen refresh after Windows changes desktops. [Remote Desktop setup](docs/setup.md#remote-desktop-preview)
+The experimental Android **Power → Remote Desktop** viewer shows and controls the Windows console over Wi-Fi or Tailscale. TapMyPC for Windows downloads the latest stable UltraVNC installer when needed, shows progress during setup, and manages the local capture service and viewer password. The dashboard offers Remote Desktop setup and identifies the connected viewer once the service is configured and the phone reports successful VNC sign-in. Android adds a compact viewer toolbar, portrait and landscape rotation, Fit and Fill, saved image quality, and the current capture resolution. The viewer automatically requests a full frame after connection and when Windows changes desktops. [Remote Desktop setup](docs/setup.md#remote-desktop-preview)
 
 ## Development
 

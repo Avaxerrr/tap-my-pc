@@ -75,6 +75,7 @@ class RemotePage extends StatefulWidget {
 
 class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   final store = const ProfileStore();
+  final desktopPreferences = RemoteDesktopPreferences();
   List<PcProfile> profiles = [];
   PcProfile? selected;
   PcApi? api;
@@ -1083,6 +1084,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
               target.desktopPassword,
             ),
             revision: revision,
+            preferences: desktopPreferences,
             savePassword: (password) =>
                 saveRemoteDesktopPassword(target, password),
           ),

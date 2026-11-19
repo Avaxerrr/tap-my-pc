@@ -2,10 +2,8 @@ import RFB from './novnc.js';
 
 const bridge = window.tapMyPcRemoteDesktop;
 const screen = document.getElementById('screen');
-const controls = document.getElementById('controls');
-
 const keyboard = document.getElementById('remote-keyboard');
-const quality = document.getElementById('quality');
+const captureSettleMs = 1000;
 const qualityPresets = new Map([
   ['save-data', { qualityLevel: 2, compressionLevel: 6 }],
   ['balanced', { qualityLevel: 6, compressionLevel: 2 }],
@@ -14,6 +12,9 @@ const qualityPresets = new Map([
 let viewer;
 let connected = false;
 let awaitingPassword = false;
+let refreshTimer;
+let canvas;
+const framebufferObserver = new MutationObserver(reportFramebufferSize);
 
 const channel = {
   readyState: 'connecting',
@@ -35,7 +36,6 @@ const channel = {
 
 function refreshScreen() {
   if (!connected || channel.readyState !== 'open') return;
-  const canvas = screen.querySelector('canvas');
   if (!canvas?.width || !canvas.height) return;
   // RFB FramebufferUpdateRequest, non-incremental, covering the full desktop.
   const request = new DataView(new ArrayBuffer(10));
@@ -45,23 +45,42 @@ function refreshScreen() {
   bridge.postMessage(request.buffer);
 }
 
+function refreshAfterCaptureSettles() {
+  // The first update can arrive while UltraVNC is preparing the Windows desktop.
+  // A late full frame replaces stale pixels without relying on input or motion.
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(refreshScreen, captureSettleMs);
+}
+
+function reportFramebufferSize() {
+  if (!connected || !canvas?.width || !canvas.height) return;
+  screen.style.setProperty('--frame-aspect', canvas.width / canvas.height);
+  bridge.postMessage(`resolution:${canvas.width} × ${canvas.height}`);
+}
+
 bridge.onmessage = ({ data }) => {
   if (data instanceof ArrayBuffer && channel.readyState === 'open') {
     channel.onmessage?.({ data });
-  } else if (data === 'open' && channel.readyState === 'connecting') {
+  } else if (typeof data === 'string' && data.startsWith('open:') && channel.readyState === 'connecting') {
     viewer = new RFB(screen, channel);
     viewer.scaleViewport = true;
-    viewer.background = '#000000';
-    applyQualityPreset();
+    viewer.background = '#0b0c0e';
+    applyQualityPreset(data.slice('open:'.length));
     viewer.addEventListener('connect', () => {
       connected = true;
-      controls.hidden = false;
+      canvas = screen.querySelector('canvas');
+      if (canvas) {
+        framebufferObserver.observe(canvas, { attributeFilter: ['width', 'height'] });
+        reportFramebufferSize();
+      }
       bridge.postMessage('connected');
+      refreshAfterCaptureSettles();
     });
     viewer.addEventListener('disconnect', () => {
       connected = false;
       awaitingPassword = false;
-      controls.hidden = true;
+      clearTimeout(refreshTimer);
+      framebufferObserver.disconnect();
       keyboard.value = '';
       keyboard.blur();
       bridge.postMessage('disconnected');
@@ -81,30 +100,29 @@ bridge.onmessage = ({ data }) => {
     channel.onopen();
   } else if (data === 'refresh') {
     refreshScreen();
+  } else if (data === 'desktopChanged' && connected) {
+    refreshScreen();
+    refreshAfterCaptureSettles();
+  } else if (data === 'keyboard' && connected) {
+    keyboard.focus({ preventScroll: true });
+    if (document.activeElement === keyboard) bridge.postMessage('keyboardFocused');
+  } else if (data === 'secureAttention' && connected) {
+    viewer.sendCtrlAltDel();
+  } else if (data === 'scale:fill' || data === 'scale:fit') {
+    screen.classList.toggle('fill', data === 'scale:fill');
+  } else if (connected && typeof data === 'string' && data.startsWith('quality:')) {
+    applyQualityPreset(data.slice('quality:'.length));
   } else if (awaitingPassword && typeof data === 'string' && data.startsWith('password:')) {
     awaitingPassword = false;
     viewer.sendCredentials({ password: data.slice('password:'.length) });
   }
 };
 
-document.getElementById('keyboard-button').addEventListener('click', () => {
-  if (document.activeElement === keyboard) {
-    keyboard.blur();
-    viewer?.focus();
-  } else {
-    keyboard.focus();
-  }
-});
-document.getElementById('secure-attention').addEventListener('click', () => viewer?.sendCtrlAltDel());
-document.getElementById('refresh-screen').addEventListener('click', refreshScreen);
-function applyQualityPreset() {
-  if (!viewer) return;
-  const preset = qualityPresets.get(quality.value) ?? qualityPresets.get('balanced');
+function applyQualityPreset(value) {
+  const preset = qualityPresets.get(value) ?? qualityPresets.get('balanced');
   viewer.qualityLevel = preset.qualityLevel;
   viewer.compressionLevel = preset.compressionLevel;
 }
-
-quality.addEventListener('change', applyQualityPreset);
 
 const specialKeys = new Map([
   ['Backspace', 0xff08], ['Tab', 0xff09], ['Enter', 0xff0d], ['Escape', 0xff1b],

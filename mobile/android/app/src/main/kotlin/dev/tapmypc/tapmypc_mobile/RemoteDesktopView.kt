@@ -3,6 +3,7 @@ package dev.tapmypc.tapmypc_mobile
 import android.content.Context
 import android.os.Build
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -39,7 +40,7 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
         val assets = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))
             .build()
-        webView.setBackgroundColor(android.graphics.Color.BLACK)
+        webView.setBackgroundColor(0xff0b0c0e.toInt())
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             webView.importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
         }
@@ -73,6 +74,15 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
                             }
                             "connected", "disconnected", "passwordRequired", "authenticationFailed" ->
                                 channel.invokeMethod(event, null)
+                            "keyboardFocused" -> {
+                                val keyboard = context.getSystemService(InputMethodManager::class.java)
+                                keyboard?.showSoftInput(webView, InputMethodManager.SHOW_IMPLICIT)
+                            }
+                            else -> {
+                                if (event?.startsWith("resolution:") == true) {
+                                    channel.invokeMethod("resolution", event.removePrefix("resolution:"))
+                                }
+                            }
                         }
                         WebMessageCompat.TYPE_ARRAY_BUFFER ->
                             message.arrayBuffer?.takeIf { it.isNotEmpty() && it.size <= MAX_CHUNK }?.let {
@@ -90,16 +100,22 @@ private class RemoteDesktopView(context: Context, private val channel: MethodCha
                         result.success(null)
                     } else result.error("webview", "Update Android System WebView to use Remote Desktop.", null)
                 }
-                "open", "refresh" -> {
+                "keyboard" -> {
+                    webView.requestFocus()
+                    reply?.postMessage("keyboard")
+                    result.success(null)
+                }
+                "refresh", "desktopChanged", "secureAttention" -> {
                     reply?.postMessage(call.method)
                     result.success(null)
                 }
-                "password" -> {
-                    val password = call.arguments as? String
-                    if (password == null || reply == null) {
+                "open", "password", "quality", "scale" -> {
+                    val value = call.arguments as? String
+                    val page = reply
+                    if (value == null || page == null) {
                         result.error("viewer", "Remote Desktop viewer is unavailable.", null)
                     } else {
-                        reply?.postMessage("password:$password")
+                        page.postMessage("${call.method}:$value")
                         result.success(null)
                     }
                 }

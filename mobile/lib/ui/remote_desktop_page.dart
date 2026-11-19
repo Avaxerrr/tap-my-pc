@@ -4,19 +4,60 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../connection.dart';
+
+enum RemoteDesktopQuality {
+  saveData('save-data', 'Save data'),
+  balanced('balanced', 'Balanced'),
+  sharper('sharper', 'Sharper');
+
+  const RemoteDesktopQuality(this.id, this.label);
+  final String id, label;
+}
+
+class RemoteDesktopPreferences {
+  RemoteDesktopPreferences([this.storage = const FlutterSecureStorage()]);
+
+  static const _qualityKey = 'tapmypc.remoteDesktop.quality.v1';
+  final FlutterSecureStorage storage;
+  Future<void> _writes = Future.value();
+
+  Future<RemoteDesktopQuality> loadQuality() async {
+    await _writes.catchError((Object _) {});
+    final saved = await storage.read(key: _qualityKey);
+    return RemoteDesktopQuality.values
+            .where((q) => q.id == saved)
+            .firstOrNull ??
+        RemoteDesktopQuality.balanced;
+  }
+
+  Future<void> saveQuality(RemoteDesktopQuality value) => _writes = _writes
+      .catchError((Object _) {})
+      .then((_) => storage.write(key: _qualityKey, value: value.id));
+}
+
+enum _ScreenFit {
+  fit('Fit'),
+  fill('Fill');
+
+  const _ScreenFit(this.label);
+  final String label;
+}
 
 class RemoteDesktopPage extends StatefulWidget {
   const RemoteDesktopPage({
     super.key,
     required this.profile,
     required this.revision,
+    required this.preferences,
     required this.savePassword,
   });
 
   final PcProfile profile;
   final ValueListenable<int?> revision;
+  final RemoteDesktopPreferences preferences;
   final Future<void> Function(String?) savePassword;
 
   @override
@@ -41,6 +82,10 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
   bool _connected = false;
   bool _passwordSubmitted = false;
   String? _error;
+  RemoteDesktopQuality _quality = RemoteDesktopQuality.balanced;
+  _ScreenFit _screenFit = _ScreenFit.fit;
+  final _resolution = ValueNotifier<String?>(null);
+  bool _orientationOverridden = false;
 
   String get _disconnectMessage => _passwordSubmitted && !_connected
       ? 'UltraVNC closed the connection while checking the VNC password. Check the password and restart UltraVNC after changing it.'
@@ -50,7 +95,7 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    widget.revision.addListener(_refreshScreen);
+    widget.revision.addListener(_desktopChanged);
     _viewerStartup = Timer(const Duration(seconds: 10), () {
       _end(
         'The desktop viewer could not start. Update Android System WebView and try again.',
@@ -101,6 +146,9 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
             _pendingPassword = null;
             if (password != null) unawaited(_savePassword(password));
           }
+        case 'resolution':
+          final resolution = call.arguments;
+          if (!_ended && resolution is String) _resolution.value = resolution;
         case 'authenticationFailed':
           _end(
             'UltraVNC rejected the connection. Check its service and password on the PC.',
@@ -159,24 +207,76 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     }
   }
 
-  void _refreshScreen() {
+  void _desktopChanged() {
     if (!_connected || _ended || widget.revision.value == null) return;
-    final bridge = _bridge;
-    if (bridge == null) return;
-    unawaited(bridge.invokeMethod<void>('refresh').catchError((Object _) {}));
+    unawaited(_sendViewerCommand('desktopChanged'));
+  }
+
+  Future<void> _sendViewerCommand(String method, [String? value]) async {
+    if (!_connected || _ended) return;
+    try {
+      await _bridge?.invokeMethod<void>(method, value);
+    } on PlatformException {
+      if (mounted && !_ended) {
+        _showMessage('The viewer could not apply this action.');
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _changeQuality(RemoteDesktopQuality quality) async {
+    _quality = quality;
+    unawaited(_sendViewerCommand('quality', quality.id));
+    try {
+      await widget.preferences.saveQuality(quality);
+    } catch (_) {
+      if (mounted && _quality == quality) {
+        _showMessage('Quality could not be saved.');
+      }
+    }
+  }
+
+  Future<void> _rotate() async {
+    final portrait = MediaQuery.orientationOf(context) == Orientation.portrait;
+    _orientationOverridden = true;
+    try {
+      await SystemChrome.setPreferredOrientations(
+        portrait
+            ? [
+                DeviceOrientation.landscapeLeft,
+                DeviceOrientation.landscapeRight,
+              ]
+            : [DeviceOrientation.portraitUp],
+      );
+    } on PlatformException {
+      if (mounted) _showMessage('This device could not rotate the viewer.');
+    }
   }
 
   Future<void> _open(MethodChannel bridge) async {
     if (_started || _ended) return;
     _started = true;
     try {
+      try {
+        _quality = await widget.preferences.loadQuality();
+      } catch (_) {
+        if (mounted && !_ended) {
+          _showMessage('Saved quality could not be loaded.');
+        }
+      }
+      if (_ended) return;
       final socket = await _api.openRemoteDesktop();
       if (_ended) {
         unawaited(socket.close());
         return;
       }
       _socket = socket;
-      await bridge.invokeMethod<void>('open');
+      await bridge.invokeMethod<void>('open', _quality.id);
       await for (final packet in socket) {
         if (_ended) break;
         if (packet is! List<int>) {
@@ -229,8 +329,12 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    widget.revision.removeListener(_refreshScreen);
+    widget.revision.removeListener(_desktopChanged);
     _stop();
+    if (_orientationOverridden) {
+      unawaited(SystemChrome.setPreferredOrientations([]));
+    }
+    _resolution.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -289,30 +393,149 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     ),
   );
 
+  Future<void> _showOptions() async {
+    final forgetPassword = await showModalBottomSheet<bool>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      constraints: const BoxConstraints(maxWidth: 520),
+      builder: (context) => StatefulBuilder(
+        builder: (context, updateSheet) {
+          final text = Theme.of(context).textTheme;
+          return SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Remote Desktop options', style: text.titleLarge),
+                  if (_connected && !_ended) ...[
+                    const SizedBox(height: 16),
+                    Text('Screen scaling', style: text.titleMedium),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: SegmentedButton<_ScreenFit>(
+                        segments: [
+                          for (final fit in _ScreenFit.values)
+                            ButtonSegment(value: fit, label: Text(fit.label)),
+                        ],
+                        selected: {_screenFit},
+                        onSelectionChanged: (value) {
+                          updateSheet(() => _screenFit = value.single);
+                          unawaited(
+                            _sendViewerCommand('scale', _screenFit.name),
+                          );
+                        },
+                      ),
+                    ),
+                    Text(
+                      _screenFit == _ScreenFit.fit
+                          ? 'Show the entire desktop at its original aspect ratio.'
+                          : 'Fill the viewer at the original aspect ratio. Edges may be cropped.',
+                      style: text.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Image quality', style: text.titleMedium),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final quality in RemoteDesktopQuality.values)
+                          ChoiceChip(
+                            label: Text(quality.label),
+                            selected: _quality == quality,
+                            onSelected: (selected) {
+                              if (!selected) return;
+                              unawaited(_changeQuality(quality));
+                              updateSheet(() {});
+                            },
+                          ),
+                      ],
+                    ),
+                    ValueListenableBuilder<String?>(
+                      valueListenable: _resolution,
+                      builder: (_, resolution, _) => Text(
+                        resolution == null
+                            ? 'Audio unavailable'
+                            : 'Capture resolution: $resolution · Audio unavailable',
+                        style: text.bodySmall,
+                      ),
+                    ),
+                    const Divider(),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.refresh),
+                      title: const Text('Refresh screen'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        unawaited(_sendViewerCommand('refresh'));
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.keyboard_command_key),
+                      title: const Text('Send Ctrl+Alt+Del'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        unawaited(_sendViewerCommand('secureAttention'));
+                      },
+                    ),
+                  ],
+                  if (_hasSavedPassword)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.key_off_outlined),
+                      title: const Text('Forget saved VNC password'),
+                      onTap: _savingPassword
+                          ? null
+                          : () => Navigator.pop(context, true),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (forgetPassword == true && mounted) await _savePassword(null);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text(widget.profile.name),
+        toolbarHeight: 48,
+        titleSpacing: 4,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          tooltip: 'Disconnect',
+          icon: const Icon(Icons.arrow_back),
+        ),
+        title: Text(widget.profile.name, overflow: TextOverflow.ellipsis),
         actions: [
-          if (_hasSavedPassword)
-            PopupMenuButton<String>(
-              tooltip: 'Remote Desktop options',
-              enabled: !_savingPassword,
-              onSelected: (_) => unawaited(_savePassword(null)),
-              itemBuilder: (_) => const [
-                PopupMenuItem(
-                  value: 'forget',
-                  child: Text('Forget saved VNC password'),
-                ),
-              ],
+          if (_connected && !_ended) ...[
+            IconButton(
+              onPressed: () => _sendViewerCommand('keyboard'),
+              tooltip: 'Show keyboard',
+              icon: const Icon(Icons.keyboard_outlined),
             ),
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            tooltip: 'Disconnect',
-            icon: const Icon(Icons.close),
-          ),
+            IconButton(
+              onPressed: _rotate,
+              tooltip: 'Rotate screen',
+              icon: const Icon(Icons.screen_rotation_outlined),
+            ),
+          ],
+          if ((_connected && !_ended) || _hasSavedPassword)
+            IconButton(
+              onPressed: _showOptions,
+              tooltip: 'Remote Desktop options',
+              icon: const Icon(Icons.more_vert),
+            ),
         ],
         bottom: _error == null && !_connected
             ? const PreferredSize(
