@@ -465,3 +465,4 @@ November 19, 2026 (Asia/Taipei).
 
 - Published the portable release to `artifacts/publish/TapMyPC-next-remote-desktop-0.15.2` while the previous release remained open. Confirmed the executable and API assembly version. All 91 .NET tests passed.
 - WPF smoke checks covered the persistent card with missing, unconfigured, stopped, ready, and connected service states and the setup shortcut. The same check verified revealing and hiding the same password, inline generation without submitting, validation, and the separate setup and reset confirmation labels. The read-only status check recognized the existing configured UltraVNC service.
+- Handoff check confirmed that the target PC was running Windows 0.15.2+26 from the staged folder, the connected phone had Android 0.14.1+29 installed, and the UltraVNC 1.8.3.2 service was running. The next physical check is the [unlock refresh comparison](implementation-plan.md#deferred-black-patches-after-windows-unlock).

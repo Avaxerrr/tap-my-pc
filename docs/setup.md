@@ -97,6 +97,10 @@ The Windows dashboard always shows the **Remote Desktop** card. It offers **Set 
 
 Use the settings card to start, stop, or repair the service and reset the viewer password. For a reset, enter a custom password of 1–8 printable ASCII characters or generate one, then select **Save password**. **Max capture FPS** and **Keep wallpaper while connected** apply to this PC. **Diagnostics** shows the server version and listener status. Saving settings or resetting the password restarts a running capture service and disconnects the viewer. After changing the password, use **Forget saved VNC password** on a phone that saved the old one, then reconnect with the new password.
 
+Setup downloads the installer to a temporary `C:\Program Files\TapMyPC-Setup-<random ID>\UltraVNC.exe` under the Windows Program Files folder. Setup cleans up the installer and the empty staging folder at the end. The installed server uses `C:\Program Files\uvnc\UltraVNC` and keeps its settings in `C:\ProgramData\UltraVNC\ultravnc.ini`.
+
+If black patches remain after Windows unlocks, select **Refresh screen** in the viewer. The [unlock investigation checklist](implementation-plan.md#deferred-black-patches-after-windows-unlock) has the reproduction steps and test baseline.
+
 For manual UltraVNC setup, use Windows service mode on `127.0.0.1:5900` with **Loopback Only**, **Password required**, and a separate VNC password. Disable the HTTP viewer, file transfer, and MS-Logon. Restart the service after saving a password change.
 
 ## HTTPS identity and certificates
