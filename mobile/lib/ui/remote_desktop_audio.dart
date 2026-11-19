@@ -45,7 +45,7 @@ class RemoteDesktopAudio extends ChangeNotifier {
   }
 
   Future<void> _play(_AudioSession session, MethodChannel bridge) async {
-    var failure = 'PC audio ended. Turn it on again to retry.';
+    var failure = 'PC audio ended. Turn it off and back on to retry.';
     try {
       final socket = await session.api.openRemoteDesktopAudio();
       if (!identical(_session, session)) {

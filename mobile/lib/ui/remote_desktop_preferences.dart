@@ -125,6 +125,7 @@ class RemoteDesktopPreferences {
   static const _key = 'tapmypc.remoteDesktop.stream.v2';
   static const _legacyKey = 'tapmypc.remoteDesktop.quality.v1';
   static const _screenFitKey = 'tapmypc.remoteDesktop.screenFit';
+  static const _audioKeyPrefix = 'tapmypc.remoteDesktop.audio.';
   final FlutterSecureStorage storage;
   Future<void> _writes = Future.value();
 
@@ -149,6 +150,14 @@ class RemoteDesktopPreferences {
         ? RemoteDesktopScreenFit.fill
         : RemoteDesktopScreenFit.fit;
   }
+
+  Future<bool> loadAudioEnabled(String pcPin) async {
+    await _writes.catchError((Object _) {});
+    return (await storage.read(key: '$_audioKeyPrefix$pcPin')) == 'true';
+  }
+
+  Future<void> saveAudioEnabled(String pcPin, bool enabled) =>
+      _save('$_audioKeyPrefix$pcPin', enabled.toString());
 
   Future<void> save(RemoteDesktopStreamSettings value) =>
       _save(_key, value.encode());

@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.0 (build 27)** and Android **0.17.4 (build 37)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.16.0 (build 27)** and Android **0.17.5 (build 38)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -110,7 +110,7 @@ After an unexpected interruption of an established session, Android tries to rec
 ### Play PC audio on Android
 
 1. With Windows and Android 0.16.0 or newer, open **Configure → Authorized phones** on Windows, select the phone, and turn on **Allow Remote Desktop audio for this phone**. This permission is off for existing and new pairings until allowed on the PC.
-2. Open the Android Remote Desktop viewer over Wi-Fi or Tailscale. In the viewer toolbar, tap **Play PC audio**. It starts off in each new viewer session. Use the phone’s media volume for its copy of the sound.
+2. Open the Android Remote Desktop viewer over Wi-Fi or Tailscale. In the viewer toolbar, tap **Play PC audio**. Audio starts off until you enable it for that PC. Android 0.17.5 and newer remember the choice and resume audio in future viewer sessions if the PC still grants permission. Use the phone’s media volume for its copy of the sound.
 
 TapMyPC follows the default Windows playback output, including changes between devices during the session. The PC keeps its current playback device and volume. Apps routed exclusively to other outputs play there. Playback sharing stops when the toggle is turned off, the viewer closes, or permission is removed. The separate audio stream uses Opus stereo. Protected audio may be silent. [Windows loopback capture](https://learn.microsoft.com/en-us/windows/win32/coreaudio/loopback-recording)
 

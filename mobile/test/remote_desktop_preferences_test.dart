@@ -67,6 +67,26 @@ void main() {
     },
   );
 
+  test('The audio choice is saved independently for each PC', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final preferences = RemoteDesktopPreferences();
+    const firstPc = 'first-certificate-pin';
+    const secondPc = 'second-certificate-pin';
+
+    expect(await preferences.loadAudioEnabled(firstPc), isFalse);
+    final enable = preferences.saveAudioEnabled(firstPc, true);
+    expect(await preferences.loadAudioEnabled(firstPc), isTrue);
+    await enable;
+    final reopened = RemoteDesktopPreferences();
+    expect(await reopened.loadAudioEnabled(firstPc), isTrue);
+    expect(await reopened.loadAudioEnabled(secondPc), isFalse);
+
+    await reopened.saveAudioEnabled(secondPc, true);
+    await reopened.saveAudioEnabled(firstPc, false);
+    expect(await RemoteDesktopPreferences().loadAudioEnabled(firstPc), isFalse);
+    expect(await RemoteDesktopPreferences().loadAudioEnabled(secondPc), isTrue);
+  });
+
   test('Fill survives reopening and resetting stream settings', () async {
     FlutterSecureStorage.setMockInitialValues({});
     final preferences = RemoteDesktopPreferences();

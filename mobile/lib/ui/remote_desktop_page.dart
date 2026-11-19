@@ -51,7 +51,8 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
   Timer? _retryTimer;
   bool _autoRecoveryUsed = false;
   bool _canReconnect = false;
-  bool _resumeAudio = false;
+  bool _audioPreferred = false;
+  Timer? _audioStartTimer;
   String? _sessionPassword;
   final _password = TextEditingController();
   late bool _hasSavedPassword = widget.profile.desktopPassword != null;
@@ -190,17 +191,7 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
             if (password != null && !_hasSavedPassword) {
               unawaited(_savePassword(password));
             }
-            if (_resumeAudio) {
-              _resumeAudio = false;
-              unawaited(
-                Future<void>.delayed(const Duration(milliseconds: 250), () {
-                  if (_isCurrent(attempt) &&
-                      widget.audioPermission.value == true) {
-                    _audio.setEnabled(true);
-                  }
-                }),
-              );
-            }
+            _startPreferredAudio(attempt);
           }
         case 'audioError':
           _audio.playbackFailed(call.arguments);
@@ -301,7 +292,43 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
   }
 
   void _audioPermissionChanged() {
-    if (widget.audioPermission.value != true) _audio.stop();
+    final attempt = _attempt;
+    if (widget.audioPermission.value != true) {
+      _audioStartTimer?.cancel();
+      _audio.stop();
+    } else if (attempt != null) {
+      _startPreferredAudio(attempt);
+    }
+  }
+
+  void _startPreferredAudio(_DesktopAttempt attempt) {
+    if (!_connected ||
+        !_audioPreferred ||
+        widget.audioPermission.value != true) {
+      return;
+    }
+    // Give the PC time to register viewer-ready before opening its audio stream.
+    _audioStartTimer?.cancel();
+    _audioStartTimer = Timer(const Duration(milliseconds: 250), () {
+      if (_isCurrent(attempt) &&
+          _audioPreferred &&
+          widget.audioPermission.value == true) {
+        _audio.setEnabled(true);
+      }
+    });
+  }
+
+  Future<void> _changeAudioPreference(bool enabled) async {
+    _audioStartTimer?.cancel();
+    setState(() => _audioPreferred = enabled);
+    _audio.setEnabled(enabled);
+    try {
+      await widget.preferences.saveAudioEnabled(widget.profile.pin, enabled);
+    } catch (_) {
+      if (mounted && !_ended && _audioPreferred == enabled) {
+        _showMessage('The PC audio preference could not be saved.');
+      }
+    }
   }
 
   void _desktopChanged() {
@@ -389,16 +416,18 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     attempt.opening = true;
     try {
       try {
-        final (stream, fit) = await (
+        final (stream, fit, audio) = await (
           widget.preferences.load(),
           widget.preferences.loadScreenFit(),
+          widget.preferences.loadAudioEnabled(attempt.profile.pin),
         ).wait;
         if (!_isCurrent(attempt)) return;
         _stream = stream;
         _screenFit = fit;
+        _audioPreferred = audio;
       } catch (_) {
         if (!_isCurrent(attempt)) return;
-        _showMessage('Saved stream settings could not be loaded.');
+        _showMessage('Saved viewer settings could not be loaded.');
       }
       final api = attempt.api = PcApi(attempt.profile);
       final socket = await api.openRemoteDesktop();
@@ -480,7 +509,6 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
       return;
     }
 
-    _resumeAudio = _audio.enabled;
     _autoRecoveryUsed = true;
     setState(_retireAttempt);
     _retryTimer = Timer(const Duration(milliseconds: 1200), () {
@@ -496,6 +524,7 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     _passwordRequired = false;
     _passwordSubmitted = false;
     _pendingPassword = null;
+    _audioStartTimer?.cancel();
     _audio.stop();
     attempt?.timeout?.cancel();
     attempt?.bridge?.setMethodCallHandler(null);
@@ -509,7 +538,6 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     _retryTimer?.cancel();
     _retryTimer = null;
     _sessionPassword = null;
-    _resumeAudio = false;
     _retireAttempt();
     if (_fullscreen) {
       _fullscreen = false;
@@ -627,8 +655,12 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
     builder: (_, _) {
       final permission = widget.audioPermission.value;
       return IconButton(
-        tooltip: _audio.enabled ? 'Stop PC audio' : 'Play PC audio',
-        isSelected: _audio.enabled,
+        tooltip: !_audioPreferred
+            ? 'Play PC audio'
+            : _audio.enabled
+            ? 'Stop PC audio'
+            : 'Turn off saved PC audio',
+        isSelected: _audioPreferred,
         icon: _audio.connecting
             ? const SizedBox.square(
                 dimension: 19,
@@ -639,17 +671,19 @@ class _RemoteDesktopPageState extends State<RemoteDesktopPage>
                     ? Icons.volume_up_outlined
                     : Icons.volume_off_outlined,
               ),
-        onPressed: () {
-          if (permission == true) {
-            _audio.setEnabled(!_audio.enabled);
-          } else {
-            _showMessage(
-              permission == null
-                  ? 'Update TapMyPC on the PC to use audio.'
-                  : 'Allow audio for this phone in Configure → Authorized phones on the PC.',
-            );
-          }
-        },
+        onPressed: !_connected
+            ? null
+            : () {
+                if (_audioPreferred || permission == true) {
+                  unawaited(_changeAudioPreference(!_audioPreferred));
+                } else {
+                  _showMessage(
+                    permission == null
+                        ? 'Update TapMyPC on the PC to use audio.'
+                        : 'Allow audio for this phone in Configure → Authorized phones on the PC.',
+                  );
+                }
+              },
       );
     },
   );

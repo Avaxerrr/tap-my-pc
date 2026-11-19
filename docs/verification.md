@@ -516,3 +516,8 @@ November 19, 2026 (Asia/Taipei).
 - Flutter analysis and 80 tests passed. The opt-in certificate fixture was skipped. Browser fixtures verified one full-frame probe after a late resize reply, manual refresh during a pending resize, and recovery on a late confirmation. They also verified that ongoing pixel updates kept the viewer connected and that a stalled resize triggered recovery without sending a second scale request.
 - An Android emulator test withheld the reply and further desktop frames after changing from 1/4 to Original. The backend received the full-frame probe and recorded a second connection. The app reopened at Original using the saved selection.
 - Verified the signature, package ID, viewer assets, and ARM64 runtime in `artifacts/mobile/TapMyPC-0.17.4-build37.apk`. Installed it in place and confirmed Android version 0.17.4 and code 37 on the connected phone.
+
+## Remembered Remote Desktop audio — Android 0.17.5+38
+
+- Flutter analysis and 81 tests passed. The opt-in certificate fixture was skipped. The preference test verified that PCs retain separate on and off choices.
+- Installed `artifacts/mobile/TapMyPC-0.17.5-build38.apk` in place after verifying its signature, package ID, viewer assets, and ARM64 runtime. Confirmed version 0.17.5 and code 38 on the connected phone. In a live viewer session, audio restored on reopen after enabling it and stayed off on reopen after disabling it. Left audio enabled for the tested PC.

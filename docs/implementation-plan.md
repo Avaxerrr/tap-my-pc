@@ -135,6 +135,8 @@ Android 0.17.3+36 lets UltraVNC finish its first desktop update before restoring
 
 Android 0.17.4+37 requests a fresh frame when UltraVNC is slow to confirm a stream resize. If desktop updates stop while the resize is pending, the viewer reconnects at the selected scale. Manual refresh also works while a resize is pending.
 
+Android 0.17.5+38 remembers the phone’s Remote Desktop audio toggle per PC and restores it on open or reconnect when the PC permits audio sharing.
+
 ### Deferred viewer work
 
 Validate monitor selection and check UltraVNC server-side scaling on the target setup, including touch accuracy and sign-in text readability.

@@ -1,6 +1,6 @@
 # TapMyPC Android client
 
-Android **0.17.4 (build 37)** recovers from a stalled Remote Desktop stream-size change. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone. See [verification](../docs/verification.md) for package and installation status.
+Android **0.17.5 (build 38)** remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone. See [verification](../docs/verification.md) for package and installation status.
 
 Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 
