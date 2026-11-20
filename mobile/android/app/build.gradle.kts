@@ -5,6 +5,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val releaseKeystore = providers.environmentVariable("TAPMYPC_ANDROID_KEYSTORE")
+
 android {
     namespace = "dev.tapmypc.tapmypc_mobile"
     compileSdk = flutter.compileSdkVersion
@@ -30,11 +32,21 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseKeystore.isPresent) {
+            create("tapmypcRelease") {
+                storeFile = file(releaseKeystore.get())
+                storePassword = providers.environmentVariable("TAPMYPC_ANDROID_STORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("TAPMYPC_ANDROID_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("TAPMYPC_ANDROID_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            val signing = if (releaseKeystore.isPresent) "tapmypcRelease" else "debug"
+            signingConfig = signingConfigs.getByName(signing)
         }
     }
 }

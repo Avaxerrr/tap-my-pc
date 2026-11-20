@@ -1,0 +1,211 @@
+name: Build TapMyPC
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: App to package
+        type: choice
+        options: [both, windows, android]
+        default: both
+      draft_release:
+        description: Create GitHub release drafts using release signing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'android'
+    runs-on: windows-2025
+    timeout-minutes: 25
+    outputs:
+      release_tag: ${{ steps.package.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+      - name: Build and test the solution
+        run: |
+          dotnet build TapMyPC.sln -c Release -m:1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet test TapMyPC.sln -c Release -m:1 --no-build
+      - name: Package and verify Windows x64
+        id: package
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          [xml]$settings = Get-Content -Raw Directory.Build.props
+          $version = $settings.Project.PropertyGroup.Version
+          $build = $settings.Project.PropertyGroup.BuildNumber
+          $publish = Join-Path $env:RUNNER_TEMP 'TapMyPC'
+          dotnet publish src/TapMyPC.Desktop -c Release -r win-x64 --self-contained false -o $publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $expected = "$version+$build"
+          $exe = (Get-Item -LiteralPath (Join-Path $publish 'TapMyPC.exe')).VersionInfo
+          $api = (Get-Item -LiteralPath (Join-Path $publish 'TapMyPC.Api.dll')).VersionInfo
+          if ($exe.ProductVersion -ne $expected -or $exe.FileVersion -ne "$version.$build" -or $api.ProductVersion -ne $expected) {
+            throw "Expected Windows and API product version $expected."
+          }
+          $manifest = Get-Content -Raw (Join-Path $publish 'TapMyPC.deps.json') | ConvertFrom-Json -AsHashtable
+          foreach ($target in $manifest.targets.Values) {
+            foreach ($package in $target.Values) {
+              foreach ($asset in $package.runtime.Keys) {
+                $name = [IO.Path]::GetFileName($asset)
+                if (!(Test-Path -LiteralPath (Join-Path $publish $name) -PathType Leaf)) {
+                  throw "Missing Windows runtime asset $asset."
+                }
+              }
+            }
+          }
+
+          Copy-Item -LiteralPath LICENSE,THIRD_PARTY_NOTICES.md -Destination $publish
+          New-Item -ItemType Directory -Path dist -Force | Out-Null
+          $zip = "dist/TapMyPC-$version-build$build-win-x64.zip"
+          Compress-Archive -LiteralPath $publish -DestinationPath $zip
+          "release_tag=windows-v$expected" >> $env:GITHUB_OUTPUT
+          "Packaged Windows $expected"
+      - name: Upload the Windows package
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: tapmypc-windows
+          path: dist/*.zip
+          if-no-files-found: error
+
+  android:
+    name: Android
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'windows'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      release_tag: ${{ steps.package.outputs.release_tag }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Flutter 3.41.5
+        run: |
+          sdk="$RUNNER_TEMP/flutter"
+          git clone --depth=1 --branch=3.41.5 https://github.com/flutter/flutter.git "$sdk"
+          test "$(git -C "$sdk" rev-parse HEAD)" = 2c9eb20739dfec95e2c74bd3dfa4601b0a8a36aa
+          "$sdk/bin/flutter" --disable-analytics
+          echo "$sdk/bin" >> "$GITHUB_PATH"
+      - name: Analyze and test Flutter
+        working-directory: mobile
+        run: |
+          flutter pub get
+          flutter analyze --no-pub
+          flutter test --no-pub
+      - name: Build the signed Android APK
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DRAFT_RELEASE: ${{ inputs.draft_release }}
+          SIGNING_KEYSTORE_BASE64: ${{ inputs.draft_release && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          SIGNING_STORE_PASSWORD: ${{ inputs.draft_release && secrets.ANDROID_KEYSTORE_PASSWORD || '' }}
+          SIGNING_KEY_ALIAS: ${{ inputs.draft_release && secrets.ANDROID_KEY_ALIAS || '' }}
+          SIGNING_KEY_PASSWORD: ${{ inputs.draft_release && secrets.ANDROID_KEY_PASSWORD || '' }}
+        run: |
+          umask 077
+          keystore="$RUNNER_TEMP/tapmypc-signing.p12"
+          trap 'rm -f -- "$keystore"' EXIT
+          if [[ "$DRAFT_RELEASE" == true ]]; then
+            if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+              echo "::error::Release signing requires the main branch."
+              exit 1
+            fi
+            if [[ -z "$SIGNING_KEYSTORE_BASE64" || -z "$SIGNING_STORE_PASSWORD" || -z "$SIGNING_KEY_ALIAS" || -z "$SIGNING_KEY_PASSWORD" ]]; then
+              echo "::error::Set all four Android signing secrets before creating an Android release draft."
+              exit 1
+            fi
+            printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          else
+            SIGNING_STORE_PASSWORD="$(openssl rand -hex 24)"
+            echo "::add-mask::$SIGNING_STORE_PASSWORD"
+            SIGNING_KEY_ALIAS=tapmypc-ci
+            SIGNING_KEY_PASSWORD="$SIGNING_STORE_PASSWORD"
+            keytool -genkeypair -storetype PKCS12 -keystore "$keystore" \
+              -storepass "$SIGNING_STORE_PASSWORD" -keypass "$SIGNING_KEY_PASSWORD" \
+              -alias "$SIGNING_KEY_ALIAS" -keyalg RSA -keysize 2048 -validity 7 -dname 'CN=TapMyPC CI'
+          fi
+          signer="$(keytool -exportcert -keystore "$keystore" -storepass "$SIGNING_STORE_PASSWORD" \
+            -alias "$SIGNING_KEY_ALIAS" | sha256sum | cut -d' ' -f1)"
+          [[ "$signer" =~ ^[0-9a-f]{64}$ ]]
+          export TAPMYPC_ANDROID_KEYSTORE="$keystore"
+          export TAPMYPC_ANDROID_STORE_PASSWORD="$SIGNING_STORE_PASSWORD"
+          export TAPMYPC_ANDROID_KEY_ALIAS="$SIGNING_KEY_ALIAS"
+          export TAPMYPC_ANDROID_KEY_PASSWORD="$SIGNING_KEY_PASSWORD"
+          unset SIGNING_KEYSTORE_BASE64
+          cd mobile
+          flutter build apk --release
+          echo "ANDROID_SIGNER_SHA256=$signer" >> "$GITHUB_ENV"
+      - name: Verify and package Android and its viewer source
+        id: package
+        if: github.event_name == 'workflow_dispatch'
+        run: bash tools/Package-Android.sh
+      - name: Upload the Android package
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: tapmypc-android
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: Create release drafts
+    needs: [windows, android]
+    if: >-
+      always() && github.event_name == 'workflow_dispatch' && inputs.draft_release &&
+      !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Require main for release drafts
+        run: |
+          if [[ "$GITHUB_REF" != refs/heads/main ]]; then
+            echo "::error::Create release drafts from main."
+            exit 1
+          fi
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: tapmypc-*
+          path: packages
+      - name: Draft Windows release
+        if: needs.windows.result == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.windows.outputs.release_tag }}
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "TapMyPC Windows ${{ needs.windows.outputs.release_tag }}" \
+            --notes "Extract the complete ZIP before running TapMyPC.exe. See the README for setup." \
+            packages/tapmypc-windows/*.zip
+      - name: Draft Android release
+        if: needs.android.result == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.android.outputs.release_tag }}
+        run: |
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+            --title "TapMyPC Android ${{ needs.android.outputs.release_tag }}" \
+            --notes "Install the signed APK. The matching noVNC source archive and TapMyPC license are attached below." \
+            packages/tapmypc-android/*

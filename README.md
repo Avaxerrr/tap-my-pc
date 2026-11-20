@@ -60,6 +60,8 @@ dotnet run --project src/TapMyPC.Desktop -c Release
 
 See the [Android build guide](mobile/README.md#development), the [simulator](docs/setup.md#simulator), and the [documentation index](docs/README.md) for setup, architecture, and the API contract.
 
+To package a build from GitHub, open **Actions → Build TapMyPC → Run workflow** and choose Windows, Android, or both. A test run puts the packages under **Artifacts** on the workflow run. Published downloads appear under **Releases**.
+
 ## License
 
 TapMyPC is available under the [MIT License](LICENSE). Bundled components retain their [third-party licenses and notices](THIRD_PARTY_NOTICES.md).
