@@ -19,9 +19,19 @@ if ! grep -Fq "package: name='dev.tapmypc.tapmypc_mobile' versionCode='$build' v
   echo "::error::APK package name or version differs from the project metadata."
   exit 1
 fi
-signatures="$("$build_tools/apksigner" verify --print-certs "$apk")"
-if ! grep -Fxq "Signer #1 certificate SHA-256 digest: $ANDROID_SIGNER_SHA256" <<< "$signatures"; then
-  echo "::error::APK signing certificate differs from the selected keystore."
+signatures="$("$build_tools/apksigner" verify --print-certs-pem "$apk")"
+actual_signers="$(printf '%s\n' "$signatures" | python3 -c '
+import hashlib
+import re
+import ssl
+import sys
+
+certificates = re.findall(r"-----BEGIN CERTIFICATE-----\s+[\s\S]*?-----END CERTIFICATE-----", sys.stdin.read())
+fingerprints = {hashlib.sha256(ssl.PEM_cert_to_DER_cert(cert)).hexdigest() for cert in certificates}
+print("\n".join(sorted(fingerprints)))
+')"
+if [[ "$actual_signers" != "$ANDROID_SIGNER_SHA256" ]]; then
+  echo "::error::APK signer does not match the selected keystore. Expected $ANDROID_SIGNER_SHA256. Found: $actual_signers"
   exit 1
 fi
 unzip -tq "$apk"
