@@ -1,6 +1,6 @@
 # Bluetooth secondary connection
 
-TapMyPC Android supports encrypted Classic Bluetooth RFCOMM with the Windows host. See [current versions](setup.md#versions-and-qr-visibility) and [verification history](verification.md).
+TapMyPC Android supports encrypted Classic Bluetooth RFCOMM with the Windows host. See [current versions](setup.md#versions-and-qr-visibility).
 
 ## Setup and normal use
 
@@ -38,15 +38,7 @@ WindowsRfcommServer owns adapter checks, advertisement, encrypted accept, four c
 
 Android requests BLUETOOTH_CONNECT on Android 12+; legacy Bluetooth permissions are restricted to Android 11 and earlier. It needs no Bluetooth scanning or location permission because the authenticated PC supplies its address. Optional HTTP requests share one Bluetooth TLS/RFCOMM stream rather than opening simultaneous same-service connections. Native sockets have bounded connection timeouts and close when the Dart client, profile, or activity closes. Nearby devices permission denial and disabled radios remain visible; Wi-Fi stays available.
 
-These builds use Classic RFCOMM, not BLE GATT. Classic support was detected and an actual encrypted exchange was verified on the development PC/Android phone. Other adapters, driver policies, range/interference, OS pairing UI, and long background/resume intervals still need broader device coverage.
-
-## Verification tools
-
-tools/TapMyPC.BluetoothTestHost starts the real Windows Bluetooth adapter with temporary settings/certificates and simulated command controllers. Its setup/control HTTP listeners bind loopback only and require a fresh test secret for control. Run it with a fixture JSON path under ignored artifacts. Stop through its authenticated /test/stop control endpoint so its own certificates/settings are removed.
-
-mobile/integration_test/bluetooth_test.dart takes TEST_BLUETOOTH_FIXTURE as base64 fixture JSON through a temporary --dart-define-from-file file. Use a separate temporary Android applicationId, grant/request Nearby devices access, and forward only the fixture setup/control ports with adb reverse. Bluetooth data itself must cross the radios. The test closes the Wi-Fi endpoint before proving automatic fallback, checks command counts/timer cancellation/reconnect/revocation, and switches transports through the actual phone UI. It restores protected profile/selection state in the test app.
-
-dotnet run --project tools/TapMyPC.CertificateUiCheck -c Release -- --bluetooth checks global start/pause, identity reset/resume, fresh QR, and timer preservation with the real Bluetooth listener and simulated PC operations. Run these hardware tools separately because they advertise the same service UUID. Normal APKs must be built from lib/main.dart without test defines.
+The connection uses Classic Bluetooth RFCOMM. Adapter support, driver policies, radio interference, and OS pairing behavior can affect availability.
 
 ## Platform references
 

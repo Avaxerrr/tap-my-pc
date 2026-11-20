@@ -2,11 +2,11 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.7 (build 34)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.16.7 (build 34)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
-Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build.props`; Android has its own declaration in `mobile/pubspec.yaml`. Follow [versioning guidelines](versioning.md) automatically for future deliverables. Version numbers need not match across the two apps when API compatibility is unchanged.
+Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build.props`; Android has its own declaration in `mobile/pubspec.yaml`. Version numbers need not match across the two apps when API compatibility is unchanged.
 
 Android offers long-press actions and a configurable TapMyPC Controls widget on supported launchers. [Home-screen controls](../mobile/README.md#home-screen-controls)
 
@@ -83,11 +83,11 @@ For Android **Stats**, update the Windows TapMyPC host and run PC Stats Tray 0.7
 3. Connect the phone to the PC’s local Wi-Fi, then put the PC to sleep. Wait for TapMyPC to show **Offline**, then open **Power** and tap **Wake PC**.
 4. Confirm that the PC resumes and TapMyPC reconnects. Repeat from hibernate.
 
-Wake PC is enabled when the selected PC is offline and has usable settings. The Power screen explains when the PC is still connected or needs wake settings. The wake button sends one UDP magic packet per tap. With a VPN active, the phone uses Android’s normal routing for destinations on the connected Wi-Fi subnet that the VPN leaves on the LAN. Once a connection attempt fails, the app shows **Offline**. After sending a packet it shows **Wake packet sent. Waiting for PC…** and reports the PC back online after an authenticated status response. The PC needs working network wake settings. The development laptop's Wi-Fi wake investigation is closed for its current configuration. See [wake investigation](wake-investigation.md).
+Wake PC is enabled when the selected PC is offline and has usable settings. The Power screen explains when the PC is still connected or needs wake settings. The wake button sends one UDP magic packet per tap. With a VPN active, the phone uses Android’s normal routing for destinations on the connected Wi-Fi subnet that the VPN leaves on the LAN. Once a connection attempt fails, the app shows **Offline**. After sending a packet it shows **Wake packet sent. Waiting for PC…** and reports the PC back online after an authenticated status response. Wake support depends on the PC, network adapter, firmware settings, and power state.
 
 ## Remote Desktop preview
 
-The Android viewer shows the physical Windows session, including a locked screen and the desktop after sign-in. It uses TapMyPC pairing over the current Wi-Fi or Tailscale route. Windows 0.13.0 and Android 0.12.0 are required. The device checks for sign-in after sleep or hibernate and for cellular performance are pending.
+The Android viewer shows the physical Windows session, including a locked screen and the desktop after sign-in. It uses TapMyPC pairing over the current Wi-Fi or Tailscale route. Windows 0.13.0 and Android 0.12.0 are required.
 
 1. On Windows 0.15.2 or newer, select **Set up** on the **Remote Desktop** dashboard card, then **Set up Remote Desktop** in settings. Enter a viewer password or use **Generate password** to fill the field. **Show password** reveals the entry. Select **Continue**, then approve the Windows administrator prompt. On x64 Windows, TapMyPC checks the official UltraVNC downloads page for the latest stable version when the service is missing. Setup verifies the x64 installer’s published SHA-256 checksum, signing publisher, and version before running it. It then disables the installer’s inbound VNC firewall rules, configures the service for `127.0.0.1:5900`, and starts it. TapMyPC itself still runs from the extracted folder. TapMyPC installs silently and displays download progress and setup stages. **Copy** is available in its generated-password dialog. Repairing an existing service keeps its viewer password. [UltraVNC downloads](https://uvnc.com/downloads/ultravnc.html)
 2. In TapMyPC on Windows, open **Configure → Authorized phones**, select the phone, and turn on **Allow Remote Desktop for this phone**. Existing pairings start with this permission off.
@@ -101,7 +101,7 @@ Use the settings card to start, stop, or repair the service and reset the viewer
 
 Setup downloads the installer to a temporary `C:\Program Files\TapMyPC-Setup-<random ID>\UltraVNC.exe` under the Windows Program Files folder. Setup cleans up the installer and the empty staging folder at the end. The installed server uses `C:\Program Files\uvnc\UltraVNC` and keeps its settings in `C:\ProgramData\UltraVNC\ultravnc.ini`.
 
-Android requests a follow-up full frame one second after VNC sign-in. When authenticated PC status reports a Windows lock or unlock, the viewer requests a full frame immediately and again after one second. Use **Refresh screen** if black patches persist. See the [black-screen verification checklist](implementation-plan.md#deferred-black-patches-after-windows-unlock).
+Android requests a follow-up full frame one second after VNC sign-in. When authenticated PC status reports a Windows lock or unlock, the viewer requests a full frame immediately and again after one second. Use **Refresh screen** if black patches persist.
 
 The options sheet reports the received stream resolution, screen receive rate and update rate. Expand **Stream details** for observed RFB encodings, JPEG chroma when a JPEG is received, and the audio format when available.
 
@@ -130,7 +130,7 @@ Browser certificate inspection and exception controls vary. An IP change or cert
 
 The app does not automatically create firewall rules, request elevation, or change the network profile. Localhost testing needs no inbound LAN rule. If the phone cannot connect, check the selected address and network isolation before adding a rule. Automatic discovery uses mDNS UDP 5353 on the selected trusted adapter; if blocked, saved/direct addresses remain usable when TCP is reachable. The app does not open that firewall port automatically.
 
-On a trusted home network configured as Private, allow the published executable's TCP port for the Private profile and LocalSubnet only. This example is for a user to run in an elevated PowerShell when ready; it has not been run by the agent:
+On a trusted home network configured as Private, allow the published executable's TCP port for the Private profile and LocalSubnet only. Run the example below in an elevated PowerShell session.
 
 ```powershell
 $remoteExecutable = (Resolve-Path '.\artifacts\publish\TapMyPC\TapMyPC.exe').Path
@@ -147,7 +147,7 @@ Scope LocalAddress to the chosen Wi-Fi address as well if desired. Update the ru
 - Display-off affects connected monitors through the Windows display-power message. Input/activity may wake them.
 - All power actions require confirmation. With Windows 0.10.0 or newer, Android runs Lock, Sleep, and Hibernate immediately after confirmation. Older Windows hosts use the previous three-second countdown. Restart and Shut down keep a ten-second cancellation window.
 - In Android **Power > Set a timer**, enter seconds or minutes and choose the action. The field starts at 30 minutes. Scheduled Lock, Sleep, and Hibernate accept 3 seconds to 24 hours. Scheduled Restart and Shut down accept 10 seconds to 24 hours. A timer stays visible while counting down offline and hides when due. The next authenticated status refresh supplies the current timer state.
-- Silent TapMyPC notifications show remote activity without activating the window. The final ten seconds of a pending power action show a cancel button. The main-screen Show command notifications switch can disable these custom notifications. This does not disable Windows' own media/volume overlays. Exclusive-fullscreen visibility still needs manual verification.
+- Silent TapMyPC notifications show remote activity without activating the window. The final ten seconds of a pending power action show a cancel button. The main-screen Show command notifications switch can disable these custom notifications. This does not disable Windows' own media/volume overlays. Exclusive-fullscreen apps may cover these notifications.
 - There is one pending power action. Cancel it before scheduling a different one. The timer runs on the PC after browser disconnection and after stopping the API listener.
 - Exiting the process cancels the timer. Timers are not persisted, do not wake a sleeping PC, and cannot be canceled once execution begins.
 - Shutdown/restart never pass `/f`. Windows or unsaved work may block the transition. Sleep/hibernate use the existing user shutdown privilege, enabled temporarily during execution; no elevation prompt is requested.
@@ -208,11 +208,11 @@ Exit the old PC Remote instance before opening TapMyPC; both versions share an i
 dotnet publish src/TapMyPC.Desktop -c Release -r win-x64 --self-contained false -o artifacts/publish/TapMyPC
 ```
 
-Run `TapMyPC.exe` from that folder. Keep its companion files together. This is a folder deployment, not an installer, and requires both .NET 10 Windows Desktop and ASP.NET Core runtimes on the target PC. The development machine already has them.
+Run `TapMyPC.exe` from that folder. Keep its companion files together. This is a folder deployment, not an installer, and requires both .NET 10 Windows Desktop and ASP.NET Core runtimes on the target PC.
 
-## Update integrity checks
+## Update files
 
-The update script copies the complete publish tree, including nested runtime libraries, while preserving existing installation files and per-user settings. Run `tools/Test-Apply-Update.ps1` for the isolated copy regression check. Preserve the paths produced by publish: a runtime-specific publish can place dependencies at the root, while a portable publish can include nested runtime assets. In the repaired portable installation, missing `runtimes/win/lib/net10.0/System.Management.dll` caused monitor enumeration to fail even though authentication and basic status succeeded. Do not copy only the top-level files of a publish that includes subdirectories.
+The update script copies the complete publish tree, including nested runtime libraries, while preserving existing installation files and per-user settings. Keep the folder structure produced by publish.
 
 Android keeps the PC connected when status succeeds but a device list fails. The affected section shows a warning and retries its read on the existing ten-second cadence or on manual refresh. Credentials rejected by any request still require pairing.
 
@@ -242,25 +242,6 @@ dotnet run --project tools/TapMyPC.Simulator -c Release
 
 The simulator binds only to `https://127.0.0.1:45832`, prints a one-time pairing code, and uses memory-only audio/state plus simulated power/media/display actions. It has no dependency on the Windows control project. Restart it for a fresh pairing code or after code expiry. Stop with Ctrl+C. Credentials/settings do not survive simulator restart.
 
-For headless browser verification using installed Chrome:
-
-```powershell
-npm install --prefix artifacts/browser-qa --no-save --package-lock=false playwright@1.65.1
-node tools/browser-smoke.cjs <code-printed-by-simulator>
-```
-
-This script targets only the simulator port, uses an isolated browser profile, and writes screenshots under `artifacts/screenshots`. Its certificate-validation exception is test-only for the ephemeral localhost simulator. Set `TAPMYPC_CHROME` to an alternative Chromium executable if necessary.
-
 ## Remaining limitations
 
-These are development builds. IPv6, a desktop installer, presets, a standalone remote touchpad or keyboard, display arrangement, iOS deployment, and Bluetooth peripheral management remain outside the current implementation. Keyboard and pointer input inside the Android Remote Desktop viewer are available in the preview. [Verification history](verification.md) · [Implementation plan](implementation-plan.md)
-
-## Certificate lifecycle checks
-
-Run dotnet run --project tools/TapMyPC.CertificateUiCheck -c Release for the isolated WPF confirmation/recovery check. It uses temporary settings, test-owned certificates, loopback HTTPS, and simulated controls.
-
-For Windows/Flutter end-to-end checks, start dotnet run --project tools/TapMyPC.CertificateTestHost -c Release -- artifacts/certificate-test.json in the repository root. In a second shell run flutter test --dart-define=TEST_CERT_FIXTURE_PATH=ABSOLUTE_PATH_TO_FIXTURE from mobile (or its synchronized temporary build copy). The fixture must be fresh for each scenario run. Without that define, the fixture-specific test is explicitly skipped; the rest of the suite runs normally.
-
-Afterward, read the fixture JSON in PowerShell and POST to its controlUrl + /test/stop with the X-Test-Key header set to its controlKey. This lets the helper remove its own certificates and temporary settings. Never point this harness at the real app. Its control listener is loopback-only, requires a fresh test-only secret, and has no real Windows command controller.
-
-For native testing, mobile/integration_test/certificate_lifecycle_test.dart takes TEST_CERT_FIXTURE as the base64-encoded fixture JSON through a temporary --dart-define-from-file file. Use a separate temporary Android applicationId, forward only the fixture API/control loopback ports with adb reverse, then remove those mappings. The test restores protected profiles/selection in its test app. Fixtures contain temporary test credentials and belong under ignored artifacts, never in normal APK build defines. Test certificate fixtures under mobile/test/fixtures contain public test-only keys, not live identities.
+These are development builds. IPv6, a desktop installer, presets, a standalone remote touchpad or keyboard, display arrangement, iOS deployment, and Bluetooth peripheral management remain outside the current implementation. Keyboard and pointer input inside the Android Remote Desktop viewer are available in the preview.

@@ -47,4 +47,4 @@ Old Android profiles retain pins and credentials. A previous combined wifi prefe
 
 No account login, router forwarding, firewall rule or public listener is created automatically. Tailnet policy and Windows Firewall must allow the phone to reach the PC and TapMyPC port. A LAN rule limited to LocalSubnet or Private profiles may not cover Tailscale. A dedicated rule, when needed, should be scoped to the app, Tailscale interface, local Tailscale IP, port and intended phone/peers.
 
-Tailscale documents its default range in [What are these 100.x addresses?](https://tailscale.com/docs/concepts/tailscale-ip-addresses) and reachability in [Connect to devices](https://tailscale.com/docs/how-to/connect-to-devices). Verification results and remaining physical-network limits are recorded in [verification](verification.md).
+Tailscale documents its default range in [What are these 100.x addresses?](https://tailscale.com/docs/concepts/tailscale-ip-addresses) and reachability in [Connect to devices](https://tailscale.com/docs/how-to/connect-to-devices).

@@ -134,4 +134,4 @@ The app bundles static Inter faces and the same five accent palettes as desktop.
 
 ## Resource expectations
 
-Aim for near-idle CPU while waiting for requests and modest memory use. Measure a release build with settings closed and open; prior discussion of tens of MB to around 100 MB was a rough estimate, not a verified target or guarantee.
+The desktop host uses asynchronous listeners and targeted status checks to limit work while idle.

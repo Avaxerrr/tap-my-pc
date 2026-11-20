@@ -58,7 +58,7 @@ dotnet test TapMyPC.sln -c Release -m:1
 dotnet run --project src/TapMyPC.Desktop -c Release
 ```
 
-See the [Android build and test guide](mobile/README.md), [simulator](docs/setup.md#simulator), and [verification history](docs/verification.md). The [documentation index](docs/README.md) links the API contract, architecture, and product scope. Repository guidance is in [AGENTS.md](AGENTS.md).
+See the [Android build guide](mobile/README.md#development), the [simulator](docs/setup.md#simulator), and the [documentation index](docs/README.md) for setup, architecture, and the API contract.
 
 ## License
 

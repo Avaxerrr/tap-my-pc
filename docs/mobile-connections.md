@@ -1,6 +1,6 @@
 # Mobile connections and trust
 
-Android supports QR and manual pairing, saved PC profiles, and connections over the local network, Tailscale, and Bluetooth. See [current versions](setup.md#versions-and-qr-visibility) and [verification history](verification.md). Wake-on-LAN uses the PC’s local network. See [wake setup](setup.md#android-wake-on-lan).
+Android supports QR and manual pairing, saved PC profiles, and connections over the local network, Tailscale, and Bluetooth. See [current versions](setup.md#versions-and-qr-visibility). Wake-on-LAN uses the PC’s local network. See [wake setup](setup.md#android-wake-on-lan).
 
 ## Current Android enrollment
 
@@ -45,7 +45,7 @@ Android protects credentials with Keystore-backed encryption. Credential loss, P
 
 ## Multiple PCs
 
-The Android client supports separately selected saved profiles for the user's home desktop and work laptop. The saved certificate fingerprint is the current stable identity; the Android profile also stores a verified identity-key pin that survives normal renewal. Explicit recovery changes the key and re-pairs only the deliberately selected phone profile. Pair each separately. Each profile owns its PC identity, friendly name, endpoint hints, trust pin, and credential. Each PC retains independent paired phones, capabilities, shortcuts, activity, and timers.
+The Android client supports separately selected saved profiles for multiple PCs. The saved certificate fingerprint is the current stable identity; the Android profile also stores a verified identity-key pin that survives normal renewal. Explicit recovery changes the key and re-pairs only the deliberately selected phone profile. Pair each separately. Each profile owns its PC identity, friendly name, endpoint hints, trust pin, and credential. Each PC retains independent paired phones, capabilities, shortcuts, activity, and timers.
 
 Keep selected PC visible, especially in power confirmations. Switching profiles must isolate responses and in-flight work. Never redirect commands or silently fall back to another PC. Hardware monitoring availability depends on the collector running on the selected PC. The desktop connection badge reflects authenticated requests in the last ten seconds, including requests whose operation later fails; it does not establish that all hardware queries succeeded. See [connection feedback](action-feedback.md#main-window-connection-indicator).
 
