@@ -6,7 +6,7 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 | Component | Current development version |
 | --- | --- |
-| Windows desktop and API | **0.16.7 (build 35)** |
+| Windows desktop and API | **0.16.8 (build 36)** |
 | Android | **0.18.3 (build 47)** |
 
 Both apps include **About TapMyPC** with app and build information, setup help, third-party notices, and a link to the GitHub repository. Open it from **Settings** on Android or the **Configure** drawer on Windows.
@@ -46,7 +46,7 @@ Android lets you set power timers in seconds or minutes. With an updated Windows
 
 On Android, open **Stats** to see hardware readings. On the PC, run PC Stats Tray 0.7.1 or newer and select **Show Stats → Local apps**. Check the collector status in TapMyPC Desktop under **Configure → Hardware monitoring**. [Hardware monitoring](docs/monitoring-integration.md)
 
-The experimental Android **Power → Open desktop** viewer shows and controls the Windows console over Wi-Fi or Tailscale. TapMyPC for Windows downloads the latest stable UltraVNC installer when needed, shows progress during setup, and manages the local capture service and viewer password. The dashboard offers Remote Desktop setup and identifies the connected viewer once the service is configured and the phone reports successful VNC sign-in. Android offers automatic fullscreen in landscape, a toolbar with keyboard, rotation and PC audio, and Fit or pannable Fill. Open the viewer options for presets, saved custom stream settings, live stream diagnostics, and a reset to the default settings. The viewer attempts to reconnect after an unexpected interruption. The viewer automatically requests a full frame after connection and when Windows changes desktops. With both apps updated, a locally authorized phone can play audio from the default Windows output during a viewer session and remember its audio choice for that PC. [Remote Desktop setup](docs/setup.md#remote-desktop-preview)
+The experimental Android **Power → Open desktop** viewer shows and controls the Windows console over Wi-Fi or Tailscale. TapMyPC for Windows downloads the latest stable UltraVNC installer when needed, supports using an installer downloaded from the official site, and manages the local capture service and viewer password. The dashboard offers Remote Desktop setup and identifies the connected viewer once the service is configured and the phone reports successful VNC sign-in. Android offers automatic fullscreen in landscape, a toolbar with keyboard, rotation and PC audio, and Fit or pannable Fill. Open the viewer options for presets, saved custom stream settings, live stream diagnostics, and a reset to the default settings. The viewer attempts to reconnect after an unexpected interruption. The viewer automatically requests a full frame after connection and when Windows changes desktops. With both apps updated, a locally authorized phone can play audio from the default Windows output during a viewer session and remember its audio choice for that PC. [Remote Desktop setup](docs/setup.md#remote-desktop-preview)
 
 ## Development
 

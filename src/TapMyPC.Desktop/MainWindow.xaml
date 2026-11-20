@@ -605,6 +605,13 @@
                   <Button Content="Reset viewer password" Command="{Binding ResetPassword}" Padding="10,6" FontSize="12" Margin="0,0,8,8"
                           Visibility="{Binding Installed, Converter={StaticResource BoolVisibility}}" />
                 </WrapPanel>
+                <WrapPanel Visibility="{Binding ShowInstallerOptions, Converter={StaticResource BoolVisibility}}">
+                  <Button Content="Use downloaded installer" Command="{Binding UseDownloadedInstaller}"
+                          Padding="10,6" FontSize="12" Margin="0,0,8,8" />
+                  <TextBlock VerticalAlignment="Center" FontSize="12" Margin="0,0,0,8">
+                    <Hyperlink Command="{Binding OpenUltraVncDownloads}" Foreground="{DynamicResource AccentText}">Download UltraVNC manually</Hyperlink>
+                  </TextBlock>
+                </WrapPanel>
                 <StackPanel Visibility="{Binding Installed, Converter={StaticResource BoolVisibility}}">
                   <DockPanel Margin="0,6,0,8">
                     <TextBox DockPanel.Dock="Right" Width="65" MaxLength="2"

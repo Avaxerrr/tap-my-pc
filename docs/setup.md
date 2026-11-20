@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.7 (build 35)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
+Current development versions are Windows desktop/API **0.16.8 (build 36)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -95,11 +95,13 @@ The Android viewer shows the physical Windows session, including a locked screen
 4. Use the toolbar to type, rotate, play PC audio, or disconnect. Landscape hides Android's system bars and collapses the toolbar into a **Show viewer controls** button. An Android edge swipe reveals the system bars temporarily. Portrait restores the regular toolbar. **Remote Desktop options** includes **Fit**, **Fill**, stream settings, **Refresh screen**, and **Send Ctrl+Alt+Del**. Fit shows the entire desktop. The phone remembers Fit or Fill, and the viewer centers the image on open, when the display mode changes, and when the stream size changes. Use the horizontal or vertical scrollbar to pan any cropped area in Fill. Touching the desktop still controls Windows.
 5. To try the viewer from outside the home network, use [Tailscale](tailscale.md) while the PC is running. The existing **Wake PC** action still sends a local Wi-Fi packet. Away-from-home wake depends on a separate always-on sender on the home network. The first viewer targets lock and resume of an existing session.
 
+On Windows 0.16.8 or newer, slow installer downloads continue while data arrives, and TapMyPC retries temporary interruptions. While the service is missing, **Download UltraVNC manually** opens the official site. Download the latest stable x64 setup file and choose **Use downloaded installer** to finish setup. TapMyPC still needs to reach the official site to verify the file before applying its local-only configuration.
+
 The Windows dashboard always shows the **Remote Desktop** card. It offers **Set up** until the local-only service is configured. After setup, it shows readiness and offers a **Settings** shortcut. **Connected** identifies the phone once Android 0.14.1 or newer reports successful VNC sign-in. Earlier phone versions can still stream.
 
 Use the settings card to start, stop, or repair the service and reset the viewer password. For a reset, enter a custom password of 1–8 printable ASCII characters or generate one, then select **Save password**. **Max capture FPS** and **Keep wallpaper while connected** apply to this PC. **Diagnostics** shows the server version and listener status. Saving settings or resetting the password restarts a running capture service and disconnects the viewer. After changing the password, use **Forget saved VNC password** on a phone that saved the old one, then reconnect with the new password.
 
-Setup downloads the installer to a temporary `C:\Program Files\TapMyPC-Setup-<random ID>\UltraVNC.exe` under the Windows Program Files folder. Setup cleans up the installer and the empty staging folder at the end. The installed server uses `C:\Program Files\uvnc\UltraVNC` and keeps its settings in `C:\ProgramData\UltraVNC\ultravnc.ini`.
+Setup stages the installer at a temporary `C:\Program Files\TapMyPC-Setup-<random ID>\UltraVNC.exe` under the Windows Program Files folder. Setup cleans up the installer and the empty staging folder at the end. The installed server uses `C:\Program Files\uvnc\UltraVNC` and keeps its settings in `C:\ProgramData\UltraVNC\ultravnc.ini`.
 
 Android requests a follow-up full frame one second after VNC sign-in. When authenticated PC status reports a Windows lock or unlock, the viewer requests a full frame immediately and again after one second. Use **Refresh screen** if black patches persist.
 

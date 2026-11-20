@@ -1,6 +1,8 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Microsoft.Win32;
 using TapMyPC.Windows.RemoteDesktop;
 
 namespace TapMyPC.Desktop.Features.Settings;
@@ -28,6 +30,8 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
             Notify(nameof(ShowDiagnostics));
         });
         Configure = new AsyncCommand(() => RunAsync(RemoteDesktopOperation.Configure));
+        UseDownloadedInstaller = new AsyncCommand(ChooseInstallerAsync);
+        OpenUltraVncDownloads = new RelayCommand(OpenDownloads);
         ToggleService = new AsyncCommand(() => RunAsync(
             status?.Running == true ? RemoteDesktopOperation.Stop : RemoteDesktopOperation.Start));
         ResetPassword = new AsyncCommand(() => RunAsync(RemoteDesktopOperation.ResetPassword));
@@ -37,6 +41,8 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
     public AsyncCommand Refresh { get; }
     public RelayCommand ToggleDiagnostics { get; }
     public AsyncCommand Configure { get; }
+    public AsyncCommand UseDownloadedInstaller { get; }
+    public RelayCommand OpenUltraVncDownloads { get; }
     public AsyncCommand ToggleService { get; }
     public AsyncCommand ResetPassword { get; }
     public AsyncCommand Save { get; }
@@ -57,6 +63,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
         ? $"UltraVNC {status.Version ?? "version unavailable"}{Environment.NewLine}{status.Listener ?? "Listener status unavailable"}"
         : "Set up Remote Desktop to see the server version and listener status.";
     public bool Installed => status?.Installed == true;
+    public bool ShowInstallerOptions => !Installed;
     public bool Configured => status?.Configured == true;
     public bool Ready => !busy;
     public bool Working => working;
@@ -97,7 +104,34 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
         finally { polling = false; }
     }
 
-    private async Task RunAsync(RemoteDesktopOperation operation)
+    private void OpenDownloads()
+    {
+        try
+        {
+            using var browser = Process.Start(new ProcessStartInfo("https://uvnc.com/downloads/ultravnc.html")
+            {
+                UseShellExecute = true
+            });
+        }
+        catch (Win32Exception ex) { Message = $"Could not open the UltraVNC download page. {ex.Message}"; }
+    }
+
+    private Task ChooseInstallerAsync()
+    {
+        if (busy || Installed) return Task.CompletedTask;
+        var picker = new OpenFileDialog
+        {
+            Title = "Select the official UltraVNC x64 installer",
+            Filter = "Windows installer (*.exe)|*.exe",
+            CheckFileExists = true,
+            DereferenceLinks = false
+        };
+        return picker.ShowDialog(System.Windows.Application.Current.MainWindow) == true
+            ? RunAsync(RemoteDesktopOperation.Configure, picker.FileName)
+            : Task.CompletedTask;
+    }
+
+    private async Task RunAsync(RemoteDesktopOperation operation, string? installerPath = null)
     {
         if (busy) return;
         var settings = RemoteDesktopCaptureSettings.Default;
@@ -126,7 +160,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
                 new Progress<RemoteDesktopSetupProgress>(update =>
                 {
                     if (working) SetProgress(update);
-                }));
+                }), installerPath);
             SetWorking(false);
             Message = outcome.Result switch
             {
@@ -169,6 +203,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
         Notify(nameof(DashboardStatus));
         Notify(nameof(Diagnostics));
         Notify(nameof(Installed));
+        Notify(nameof(ShowInstallerOptions));
         Notify(nameof(Configured));
         Notify(nameof(DashboardAction));
         Notify(nameof(HasViewer));

@@ -25,6 +25,7 @@ $newPassword = $null
 $script:setupReader = $null
 $script:setupWriter = $null
 $script:setupPipe = $null
+$script:hasLocalInstaller = $false
 
 function Connect-SetupPipe {
     Add-Type -TypeDefinition @"
@@ -51,6 +52,9 @@ public static class TapMyPcSetupPipe {
     $chosen = $script:setupReader.ReadLine()
     if ($null -eq $chosen) { throw 'The TapMyPC setup window closed.' }
     if ($chosen -ne '' -and $chosen -notmatch '\A[\x20-\x7e]{1,8}\z') { throw 'Invalid VNC password.' }
+    $source = $script:setupReader.ReadLine()
+    if ($source -notin 'download', 'local') { throw 'Invalid UltraVNC installer source.' }
+    $script:hasLocalInstaller = $source -eq 'local'
     return $chosen
 }
 
@@ -198,13 +202,19 @@ function Receive-Installer([uri]$Uri, [string]$Destination, [version]$Version) {
     $request = [Net.HttpWebRequest][Net.WebRequest]::Create($Uri)
     $request.AllowAutoRedirect = $false
     $request.Timeout = 30000
+    # Bound inactivity on each read while allowing an active transfer to finish.
     $request.ReadWriteTimeout = 30000
-    try { $response = $request.GetResponse() } catch {
-        $networkError = $_.Exception.GetBaseException()
-        if ($networkError -is [Net.WebException] -and $networkError.Response) {
-            $status = [int]$networkError.Response.StatusCode
-            $networkError.Response.Dispose()
-            if ($status -eq 404) { return $false }
+    try { $response = $request.GetResponse() } catch [Net.WebException] {
+        $failure = $_.Exception
+        while ($failure -isnot [Net.WebException] -and $failure.InnerException) { $failure = $failure.InnerException }
+        if ($failure.Response) {
+            $status = [int]$failure.Response.StatusCode
+            $failure.Response.Dispose()
+            if ($status -eq 404) { return 'Unavailable' }
+            if ($status -in 408, 429, 500, 502, 503, 504) { return 'Interrupted' }
+        } elseif ($failure.Status -in 'Timeout', 'ConnectFailure', 'ConnectionClosed', 'NameResolutionFailure',
+            'ReceiveFailure', 'SendFailure', 'KeepAliveFailure') {
+            return 'Interrupted'
         }
         throw
     }
@@ -212,49 +222,72 @@ function Receive-Installer([uri]$Uri, [string]$Destination, [version]$Version) {
     try {
         if ([int]$response.StatusCode -ne 200) { throw 'The official installer download returned an unexpected response.' }
         $stream = $response.GetResponseStream()
-        $target = [IO.File]::Open($Destination, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
         try {
-            $clock = [Diagnostics.Stopwatch]::StartNew()
-            $lastReport = 0
-            $received = [long]0
-            $buffer = [byte[]]::new(65536)
-            while (($count = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                $target.Write($buffer, 0, $count)
-                $received += $count
-                if ($clock.Elapsed.TotalMinutes -ge 3) { throw 'The UltraVNC installer download timed out.' }
-                if ($clock.ElapsedMilliseconds - $lastReport -lt 350 -and $received -ne $response.ContentLength) { continue }
-                $lastReport = $clock.ElapsedMilliseconds
-                $progress = @{ progress = ('Downloading UltraVNC {0} · {1:N1} MB' -f $Version, ($received / 1MB)) }
-                if ($response.ContentLength -gt 0) {
-                    $progress.percent = [int][Math]::Min(100, [Math]::Floor(100 * $received / $response.ContentLength))
+            $target = [IO.File]::Open($Destination, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            try {
+                $clock = [Diagnostics.Stopwatch]::StartNew()
+                $lastReport = 0
+                $received = [long]0
+                $buffer = [byte[]]::new(65536)
+                while ($true) {
+                    try { $count = $stream.Read($buffer, 0, $buffer.Length) }
+                    catch [IO.IOException], [Net.WebException] { return 'Interrupted' }
+                    if ($count -eq 0) { break }
+                    $target.Write($buffer, 0, $count)
+                    $received += $count
+                    if ($clock.ElapsedMilliseconds - $lastReport -lt 350 -and $received -ne $response.ContentLength) { continue }
+                    $lastReport = $clock.ElapsedMilliseconds
+                    $progress = @{ progress = ('Downloading UltraVNC {0} · {1:N1} MB' -f $Version, ($received / 1MB)) }
+                    if ($response.ContentLength -gt 0) {
+                        $progress.percent = [int][Math]::Min(100, [Math]::Floor(100 * $received / $response.ContentLength))
+                    }
+                    if (!(Publish-SetupEvent $progress)) { throw 'The TapMyPC setup window closed.' }
                 }
-                [void](Publish-SetupEvent $progress)
-            }
-        } finally {
-            $target.Dispose()
-            $stream.Dispose()
-        }
-        return $true
-    } finally {
-        $response.Dispose()
-    }
+                if ($received -eq 0 -or ($response.ContentLength -ge 0 -and $received -ne $response.ContentLength)) {
+                    return 'Interrupted'
+                }
+            } finally { $target.Dispose() }
+        } finally { $stream.Dispose() }
+        return 'Complete'
+    } finally { $response.Dispose() }
 }
 
-function Get-VerifiedInstaller($Release, [string]$Destination) {
-    $downloaded = $false
-    Report-SetupProgress "Downloading UltraVNC $($Release.Version)…"
+function Get-UltraVncInstaller($Release, [string]$Destination) {
     foreach ($uri in $Release.DownloadUris) {
-        if (Receive-Installer $uri $Destination $Release.Version) {
-            $downloaded = $true
-            break
+        Report-SetupProgress "Downloading UltraVNC $($Release.Version)…"
+        $result = Receive-Installer $uri $Destination $Release.Version
+        if ($result -eq 'Interrupted') {
+            Report-SetupProgress 'The UltraVNC download was interrupted. Retrying…'
+            Start-Sleep -Seconds 2
+            $result = Receive-Installer $uri $Destination $Release.Version
         }
+        if ($result -eq 'Complete') { return }
     }
-    if (!$downloaded) { throw "The official mirror did not provide the x64 installer for UltraVNC $($Release.Version)." }
+    throw 'Could not download the x64 installer. Use Download UltraVNC manually to get the installer from the official site.'
+}
+
+function Receive-LocalInstaller([string]$Destination) {
+    Report-SetupProgress 'Reading the selected UltraVNC installer…'
+    if (!(Publish-SetupEvent @{ installerRequested = $true })) { throw 'The TapMyPC setup window closed.' }
+    $target = [IO.File]::Open($Destination, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        while ($true) {
+            $line = $script:setupReader.ReadLine()
+            if ($null -eq $line) { throw 'The TapMyPC setup window closed.' }
+            if ($line -eq '') { break }
+            $chunk = [Convert]::FromBase64String($line)
+            if ($target.Length + $chunk.Length -gt 64MB) { throw 'The selected installer exceeds 64 MB.' }
+            $target.Write($chunk, 0, $chunk.Length)
+        }
+    } finally { $target.Dispose() }
+}
+
+function Confirm-UltraVncInstaller($Release, [string]$Path) {
     Report-SetupProgress "Verifying UltraVNC $($Release.Version)…"
-    if ((Get-FileHash -LiteralPath $Destination -Algorithm SHA256).Hash -ne $Release.Hash -or
-        !(Test-UltraVncSignature $Destination) -or
-        [version](Get-Item -LiteralPath $Destination).VersionInfo.FileVersion -ne $Release.Version) {
-        throw 'The downloaded UltraVNC installer did not match its published checksum, publisher, or version.'
+    if ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -ne $Release.Hash -or
+        !(Test-UltraVncSignature $Path) -or
+        [version](Get-Item -LiteralPath $Path).VersionInfo.FileVersion -ne $Release.Version) {
+        throw "The installer must match the official UltraVNC $($Release.Version) x64 setup file."
     }
 }
 
@@ -315,8 +348,15 @@ try {
         $setupStage = 'checking the official UltraVNC release'
         Report-SetupProgress 'Checking for the latest stable UltraVNC release…'
         $release = Get-UltraVncRelease
-        $setupStage = "downloading and verifying UltraVNC $($release.Version)"
-        Get-VerifiedInstaller $release $installer
+        if ($script:hasLocalInstaller) {
+            $setupStage = 'reading the selected UltraVNC installer'
+            Receive-LocalInstaller $installer
+        } else {
+            $setupStage = "downloading UltraVNC $($release.Version)"
+            Get-UltraVncInstaller $release $installer
+        }
+        $setupStage = "verifying UltraVNC $($release.Version)"
+        Confirm-UltraVncInstaller $release $installer
         $setupStage = "installing UltraVNC $($release.Version)"
         Report-SetupProgress "Installing UltraVNC $($release.Version)…"
 

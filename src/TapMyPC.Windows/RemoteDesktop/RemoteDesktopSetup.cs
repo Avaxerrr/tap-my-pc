@@ -93,11 +93,18 @@ public static class RemoteDesktopSetup
 
     public static async Task<RemoteDesktopSetupOutcome> RunAsync(
         RemoteDesktopOperation operation, RemoteDesktopCaptureSettings settings,
-        string? chosenPassword, IProgress<RemoteDesktopSetupProgress> progress)
+        string? chosenPassword, IProgress<RemoteDesktopSetupProgress> progress, string? installerPath = null)
     {
         if (!Enum.IsDefined(operation)) throw new ArgumentOutOfRangeException(nameof(operation));
         if (settings.MaxFps is < 5 or > 60) throw new ArgumentOutOfRangeException(nameof(settings));
         if (chosenPassword is not null && !IsValidPassword(chosenPassword)) throw new ArgumentException("Invalid VNC password.");
+
+        if (installerPath is not null && operation != RemoteDesktopOperation.Configure)
+            throw new ArgumentException("An UltraVNC installer can only be used for setup.", nameof(installerPath));
+
+        using var installer = installerPath is null ? null : File.OpenRead(installerPath);
+        if (installer is { Length: <= 0 or > 64 * 1024 * 1024 })
+            throw new ArgumentException("Choose a complete UltraVNC installer no larger than 64 MB.", nameof(installerPath));
 
         var pipeName = $"TapMyPC.RemoteDesktop.{Guid.NewGuid():N}";
         using var identity = WindowsIdentity.GetCurrent();
@@ -160,6 +167,7 @@ public static class RemoteDesktopSetup
             using var writer = new StreamWriter(pipe, new UTF8Encoding(false), leaveOpen: true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
             await writer.WriteLineAsync(chosenPassword ?? "");
+            await writer.WriteLineAsync(installer is null ? "download" : "local");
 
             string? error = null;
             string? generatedPassword = null;
@@ -173,6 +181,11 @@ public static class RemoteDesktopSetup
                         ? value : null;
                     progress.Report(new(stage.GetString() ?? "", percent));
                 }
+                if (message.TryGetProperty("installerRequested", out _))
+                {
+                    if (installer is null) throw new IOException("Windows setup requested an installer that was not selected.");
+                    await SendInstallerAsync(installer, writer);
+                }
                 if (message.TryGetProperty("error", out var detail)) error = detail.GetString();
                 if (message.TryGetProperty("password", out var secret)) generatedPassword = secret.GetString();
             }
@@ -185,6 +198,16 @@ public static class RemoteDesktopSetup
         {
             return new(RemoteDesktopOperationResult.Canceled);
         }
+    }
+
+    // Send only the selected file's bytes. The elevated process never opens a user-supplied path.
+    private static async Task SendInstallerAsync(Stream installer, StreamWriter writer)
+    {
+        var buffer = new byte[48 * 1024];
+        int count;
+        while ((count = await installer.ReadAsync(buffer)) != 0)
+            await writer.WriteLineAsync(Convert.ToBase64String(buffer, 0, count));
+        await writer.WriteLineAsync();
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]
