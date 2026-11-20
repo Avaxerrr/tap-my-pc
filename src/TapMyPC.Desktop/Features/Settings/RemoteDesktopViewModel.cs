@@ -13,6 +13,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
     private bool busy;
     private bool polling;
     private bool working;
+    private bool downloadFailed;
     private bool showDiagnostics;
     private bool networkAvailable;
     private string? viewer;
@@ -64,6 +65,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
         : "Set up Remote Desktop to see the server version and listener status.";
     public bool Installed => status?.Installed == true;
     public bool ShowInstallerOptions => !Installed;
+    public bool ShowManualDownload => ShowInstallerOptions && downloadFailed;
     public bool Configured => status?.Configured == true;
     public bool Ready => !busy;
     public bool Working => working;
@@ -154,6 +156,8 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
             if ((operation == RemoteDesktopOperation.ResetPassword || operation == RemoteDesktopOperation.Configure && !Installed) &&
                 !RemoteDesktopPasswordDialog.TryChoose(operation, out password, out generated)) return;
 
+            var automaticSetup = operation == RemoteDesktopOperation.Configure && installerPath is null;
+            if (automaticSetup) SetDownloadFailed(false);
             SetProgress(new("Waiting for Windows administrator approval…", null));
             SetWorking(true);
             var outcome = await RemoteDesktopSetup.RunAsync(operation, settings, password,
@@ -162,6 +166,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
                     if (working) SetProgress(update);
                 }), installerPath);
             SetWorking(false);
+            if (automaticSetup) SetDownloadFailed(outcome.DownloadFailed);
             Message = outcome.Result switch
             {
                 RemoteDesktopOperationResult.Canceled => "Remote Desktop change canceled.",
@@ -204,6 +209,7 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
         Notify(nameof(Diagnostics));
         Notify(nameof(Installed));
         Notify(nameof(ShowInstallerOptions));
+        Notify(nameof(ShowManualDownload));
         Notify(nameof(Configured));
         Notify(nameof(DashboardAction));
         Notify(nameof(HasViewer));
@@ -217,6 +223,13 @@ public sealed class RemoteDesktopViewModel : INotifyPropertyChanged
         Message = progress.Percent is { } percent ? $"{progress.Message} · {percent}%" : progress.Message;
         Notify(nameof(ProgressValue));
         Notify(nameof(ProgressIndeterminate));
+    }
+
+    private void SetDownloadFailed(bool value)
+    {
+        if (downloadFailed == value) return;
+        downloadFailed = value;
+        Notify(nameof(ShowManualDownload));
     }
 
     private void SetWorking(bool value)

@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
-    <Version>0.16.8</Version>
-    <BuildNumber>36</BuildNumber>
+    <Version>0.16.9</Version>
+    <BuildNumber>37</BuildNumber>
     <AssemblyVersion>$(Version).0</AssemblyVersion>
     <FileVersion>$(Version).$(BuildNumber)</FileVersion>
     <InformationalVersion>$(Version)+$(BuildNumber)</InformationalVersion>

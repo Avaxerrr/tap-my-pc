@@ -20,6 +20,7 @@ $stagingDir = $null
 $installer = $null
 $managedService = $false
 $setupStage = 'checking UltraVNC'
+$automaticDownloadInProgress = $false
 $newPassword = $null
 
 $script:setupReader = $null
@@ -345,6 +346,7 @@ try {
         [void](New-Item -ItemType Directory -Path $stagingDir)
         $installer = Join-Path $stagingDir 'UltraVNC.exe'
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $automaticDownloadInProgress = !$script:hasLocalInstaller
         $setupStage = 'checking the official UltraVNC release'
         Report-SetupProgress 'Checking for the latest stable UltraVNC release…'
         $release = Get-UltraVncRelease
@@ -354,6 +356,7 @@ try {
         } else {
             $setupStage = "downloading UltraVNC $($release.Version)"
             Get-UltraVncInstaller $release $installer
+            $automaticDownloadInProgress = $false
         }
         $setupStage = "verifying UltraVNC $($release.Version)"
         Confirm-UltraVncInstaller $release $installer
@@ -451,7 +454,10 @@ public static class TapMyPcIni {
     if ($managedService) {
         try { Stop-UltraVnc } catch { }
     }
-    [void](Publish-SetupEvent @{ error = "Could not finish $setupStage. $($_.Exception.Message)" })
+    [void](Publish-SetupEvent @{
+        error = "Could not finish $setupStage. $($_.Exception.Message)"
+        downloadFailed = $automaticDownloadInProgress
+    })
     exit 1
 } finally {
     if ($installer -and (Test-Path -LiteralPath $installer)) {

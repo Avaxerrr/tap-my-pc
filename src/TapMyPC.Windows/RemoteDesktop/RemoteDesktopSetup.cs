@@ -24,7 +24,8 @@ public sealed record RemoteDesktopCaptureSettings(int MaxFps, bool KeepWallpaper
 }
 
 public sealed record RemoteDesktopSetupProgress(string Message, int? Percent);
-public sealed record RemoteDesktopSetupOutcome(RemoteDesktopOperationResult Result, string? Error = null, string? GeneratedPassword = null);
+public sealed record RemoteDesktopSetupOutcome(
+    RemoteDesktopOperationResult Result, string? Error = null, string? GeneratedPassword = null, bool DownloadFailed = false);
 
 public sealed record RemoteDesktopServiceStatus(
     bool Installed, bool Running, string ServiceState, string? Version, string? Listener,
@@ -170,6 +171,7 @@ public static class RemoteDesktopSetup
             await writer.WriteLineAsync(installer is null ? "download" : "local");
 
             string? error = null;
+            var downloadFailed = false;
             string? generatedPassword = null;
             while (await reader.ReadLineAsync() is { } line)
             {
@@ -186,13 +188,18 @@ public static class RemoteDesktopSetup
                     if (installer is null) throw new IOException("Windows setup requested an installer that was not selected.");
                     await SendInstallerAsync(installer, writer);
                 }
-                if (message.TryGetProperty("error", out var detail)) error = detail.GetString();
+                if (message.TryGetProperty("error", out var detail))
+                {
+                    error = detail.GetString();
+                    downloadFailed = message.TryGetProperty("downloadFailed", out var failed) && failed.ValueKind == JsonValueKind.True;
+                }
                 if (message.TryGetProperty("password", out var secret)) generatedPassword = secret.GetString();
             }
             await exited;
             return process.ExitCode == 0
                 ? new(RemoteDesktopOperationResult.Completed, GeneratedPassword: generatedPassword)
-                : new(RemoteDesktopOperationResult.Failed, error ?? "Windows Remote Desktop setup did not finish.");
+                : new(RemoteDesktopOperationResult.Failed, error ?? "Windows Remote Desktop setup did not finish.",
+                    DownloadFailed: downloadFailed);
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {

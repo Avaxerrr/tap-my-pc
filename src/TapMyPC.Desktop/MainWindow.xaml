@@ -608,7 +608,8 @@
                 <WrapPanel Visibility="{Binding ShowInstallerOptions, Converter={StaticResource BoolVisibility}}">
                   <Button Content="Use downloaded installer" Command="{Binding UseDownloadedInstaller}"
                           Padding="10,6" FontSize="12" Margin="0,0,8,8" />
-                  <TextBlock VerticalAlignment="Center" FontSize="12" Margin="0,0,0,8">
+                  <TextBlock VerticalAlignment="Center" FontSize="12" Margin="0,0,0,8"
+                             Visibility="{Binding ShowManualDownload, Converter={StaticResource BoolVisibility}}">
                     <Hyperlink Command="{Binding OpenUltraVncDownloads}" Foreground="{DynamicResource AccentText}">Download UltraVNC manually</Hyperlink>
                   </TextBlock>
                 </WrapPanel>
