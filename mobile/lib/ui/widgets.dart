@@ -103,30 +103,34 @@ class ActionGrid extends StatelessWidget {
 
 class StatusBadge extends StatelessWidget {
   final String text;
+  final IconData statusIcon;
   final String? transport;
-  const StatusBadge({super.key, required this.text, this.transport});
+  const StatusBadge({
+    super.key,
+    required this.text,
+    required this.statusIcon,
+    this.transport,
+  });
   @override
   Widget build(BuildContext context) {
-    final (label, background, border, foreground) = switch (transport) {
+    final foreground = Theme.of(context).colorScheme.onSurface;
+    final (label, background, border) = switch (transport) {
       'Bluetooth' => (
         'Bluetooth',
         const Color(0xff14263b),
         const Color(0xff344f71),
-        const Color(0xffa1d0ff),
       ),
       'Local network' => (
         'Wi-Fi',
         const Color(0xff182c24),
         const Color(0xff365647),
-        const Color(0xffa4e2bf),
       ),
       'Tailscale' => (
         'Tailscale',
         const Color(0xff29223a),
         const Color(0xff53426d),
-        const Color(0xffd5c1ff),
       ),
-      _ => (text, AppColors.subtle, AppColors.subtle, AppColors.secondary),
+      _ => (text, AppColors.subtle, AppColors.subtle),
     };
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -139,14 +143,17 @@ class StatusBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
+            switch (transport) {
+              'Bluetooth' => Icon(Icons.bluetooth, size: 13, color: foreground),
+              'Local network' => Icon(Icons.wifi, size: 13, color: foreground),
+              'Tailscale' => Image.asset(
+                'assets/icons/tailscale.png',
+                width: 12,
+                height: 12,
                 color: foreground,
-                shape: BoxShape.circle,
               ),
-            ),
+              _ => Icon(statusIcon, size: 13, color: foreground),
+            },
             const SizedBox(width: 6),
             Text(
               label,

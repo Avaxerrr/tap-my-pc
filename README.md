@@ -6,8 +6,8 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 | Component | Current development version |
 | --- | --- |
-| Windows desktop and API | **0.16.0 (build 27)** |
-| Android | **0.17.5 (build 38)** |
+| Windows desktop and API | **0.16.4 (build 31)** |
+| Android | **0.17.9 (build 42)** |
 
 ## Get started
 
@@ -24,9 +24,9 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 Android saves profiles separately for each PC. Reconnection verifies the saved PC identity before sending credentials. The Windows host owns power timers.
 
-The Windows connection card shows each active phone and a color-coded Wi-Fi, Tailscale, or Bluetooth badge. [Connection status](docs/setup.md#phone-names-and-connection-feedback)
+Windows and Android use the theme text color for connection badge icons and labels, including when offline. Badge backgrounds and outlines identify Wi-Fi, Tailscale, and Bluetooth. On Windows, active phone names use the theme text color and the outer card border uses the accent. [Connection status](docs/setup.md#phone-names-and-connection-feedback)
 
-Android shows the same connection colors and lets you set power timers in seconds or minutes. With an updated Windows host, Android sends Lock, Sleep, and Hibernate immediately after confirmation. [Power actions and timers](docs/setup.md#timers-and-controls)
+Android lets you set power timers in seconds or minutes. With an updated Windows host, Android sends Lock, Sleep, and Hibernate immediately after confirmation. [Power actions and timers](docs/setup.md#timers-and-controls)
 
 On Android, open **Stats** to see hardware readings. On the PC, run PC Stats Tray 0.7.1 or newer and select **Show Stats → Local apps**. Check the collector status in TapMyPC Desktop under **Configure → Hardware monitoring**. [Hardware monitoring](docs/monitoring-integration.md)
 

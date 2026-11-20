@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.0 (build 27)** and Android **0.17.5 (build 38)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.16.4 (build 31)** and Android **0.17.9 (build 42)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -10,7 +10,7 @@ Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build
 
 ## Phone names and connection feedback
 
-The desktop connection card shows each active phone's name and its latest authenticated connection. The network address and Bluetooth readiness lines describe the available listeners. Existing phones update their name on their next authenticated request after the Android update.
+The desktop connection card shows each active phone's name and its latest authenticated connection. Windows and Android use the theme text color for connection badge icons and labels. The badge background and outline identify Wi-Fi, Bluetooth, or Tailscale. Idle and offline badges use a disconnected icon. On Windows, phone names use the theme text color and the outer card border uses the accent. The network address and Bluetooth readiness lines describe the available listeners. Existing phones update their name on their next authenticated request after the Android update.
 
 To customize a name, open Configure > Authorized phones, select the phone, edit Phone name, and select Save phone name. The override remains local to this PC and is not overwritten by the phone.
 
@@ -180,9 +180,9 @@ The dashboard opens at 680 × 640 with bundled Inter typography, a frameless tit
 
 ### Phone activity and PC notifications
 
-The connection card shows a gray **No phone connected** badge while idle. When a phone is active, its name appears below a blue **Bluetooth**, green **Wi-Fi**, or purple **Tailscale** badge. The card border follows the connection color when all active phones use the same connection and stays neutral when they use different routes. The title-bar dot uses your theme accent and pulses while the dashboard is visible. Activity expires after ten seconds. Authenticated browser requests and phone availability checks also count. Stopping connections or revoking a client clears its presence.
+The connection card shows a gray **No phone connected** badge while idle. When a phone is active, its name appears below a **Bluetooth**, **Wi-Fi**, or **Tailscale** badge. The badge backgrounds and outlines are blue, green, and purple respectively. The badge icon, label, and phone name use the theme text color. The card border uses the selected accent. The title-bar dot uses your theme accent and pulses while the dashboard is visible. Activity expires after ten seconds. Authenticated browser requests and phone availability checks also count. Stopping connections or revoking a client clears its presence.
 
-Windows preference toggles use the selected theme accent when on. Android uses the same Bluetooth, Wi-Fi, and Tailscale badge colors on its selected-PC card, with a gray Offline badge.
+Windows preference toggles use the selected theme accent when on. Android follows the same badge styling on its selected-PC card and uses a disconnected icon on the gray Offline badge.
 
 The PC notification banner follows your desktop theme, accent, Inter font, and corner styling, with a brief fade on appearance. Failures remain red, and scheduled actions retain their countdown and Cancel action button. Notifications stay silent and do not activate or steal focus. The title-bar pulse stops while the dashboard is hidden/minimized, and notification suppression settings remain unchanged.
 

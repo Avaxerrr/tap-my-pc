@@ -521,3 +521,24 @@ November 19, 2026 (Asia/Taipei).
 
 - Flutter analysis and 81 tests passed. The opt-in certificate fixture was skipped. The preference test verified that PCs retain separate on and off choices.
 - Installed `artifacts/mobile/TapMyPC-0.17.5-build38.apk` in place after verifying its signature, package ID, viewer assets, and ARM64 runtime. Confirmed version 0.17.5 and code 38 on the connected phone. In a live viewer session, audio restored on reopen after enabling it and stayed off on reopen after disabling it. Left audio enabled for the tested PC.
+
+## Connection badge icons
+
+- Windows 0.16.1+28 passed all 93 .NET tests. An offscreen WPF check verified the three transport icons, existing badge colors, and the accent border for idle, connected, and mixed routes in light and dark palettes. Verified the full Windows x64 publish at `artifacts/publish/TapMyPC-next`, including the executable and API product versions. The Windows update is staged.
+- Android 0.17.6+39 passed Flutter analysis and 81 tests. The opt-in certificate fixture was skipped. The dashboard test checks the transport icons and colors and the offline badge. Verified the release APK's package ID, signature, and bundled Tailscale artwork at `artifacts/mobile/TapMyPC-0.17.6-build39.apk`. Installed it in place on the connected phone and verified version 0.17.6 and code 39.
+
+## Theme colors for dashboard icons
+
+- Windows 0.16.2+29 passed all 93 .NET tests. Offscreen WPF checks covered all 25 theme and accent combinations, including the three connection icons, their existing badge colors, and the Pair a Phone and Remote Desktop icons. Applied the update to `artifacts/publish/TapMyPC-next` after the app exited. Verified all 28 installed files and the executable and API product versions.
+- Android 0.17.7+40 passed Flutter analysis and 81 tests. The opt-in certificate fixture was skipped. The dashboard test verifies that transport icons use the theme text color and retain the route labels and colors. Verified the release APK's version, package ID, signer, and bundled artwork. Installed `artifacts/mobile/TapMyPC-0.17.7-build40.apk` in place and verified version 0.17.7 and code 40.
+
+## Accent colors for connection badges
+
+- Windows 0.16.3+30 passed 93 .NET tests. Offscreen WPF checks covered all 25 theme and accent combinations, including transport icon and label colors, connected phone names, the badge backgrounds and outlines, text contrast, and the outer card border. Verified all 28 files in the Windows x64 package and the executable and API product versions. The build is staged in `artifacts/desktop-update-0.16.3` while the existing TapMyPC process is running.
+- Android 0.17.8+41 passed Flutter analysis and 81 tests. The opt-in certificate fixture was skipped. The dashboard test covers each transport with all five accent palettes and checks the muted offline badge. Verified the APK metadata, signer, and bundled artwork, installed `artifacts/mobile/TapMyPC-0.17.8-build41.apk` in place, and confirmed version 0.17.8 and code 41 on the connected phone.
+
+## Neutral connection badges and offline icons
+
+- Windows 0.16.4+31 passed 93 .NET tests. Offscreen WPF checks verified transport and offline glyphs, badge labels, and connected phone names. The connected badges were checked across all 25 theme and accent combinations. Verified the 28-file x64 package and the executable and API product versions. The build is staged in `artifacts/desktop-update-0.16.4` while TapMyPC is running.
+- Android 0.17.9+42 passed Flutter analysis and 81 tests. The opt-in certificate fixture was skipped. The dashboard test verifies neutral foregrounds across all five accents and checks the Offline, Working, and Connected fallback icons. Verified the APK package, signature, and bundled artwork, installed `artifacts/mobile/TapMyPC-0.17.9-build42.apk` in place, and confirmed version 0.17.9 and code 42 on the connected phone.
+- Rebuilt Windows 0.16.4+31 without a version bump after the staged release. Applied it to the usual executable path once TapMyPC exited and verified all 28 installed files plus the executable and API product versions.

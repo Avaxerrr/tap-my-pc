@@ -359,6 +359,11 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
   @override
   Widget build(BuildContext context) {
     final connected = widget.status != null;
+    final (connectionLabel, connectionIcon) = connected
+        ? ('Connected', Icons.link)
+        : widget.busy
+        ? ('Working', Icons.hourglass_empty)
+        : ('Offline', Icons.link_off);
     final largeText = MediaQuery.textScalerOf(context).scale(14) / 14 > 1.4;
     return Scaffold(
       appBar: AppBar(
@@ -440,11 +445,8 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                                   ),
                                   const Spacer(),
                                   StatusBadge(
-                                    text: connected
-                                        ? 'Connected'
-                                        : widget.busy
-                                        ? 'Working'
-                                        : 'Offline',
+                                    text: connectionLabel,
+                                    statusIcon: connectionIcon,
                                     transport: connected
                                         ? widget.connectionTransport
                                         : null,

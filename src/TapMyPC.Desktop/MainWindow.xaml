@@ -38,18 +38,43 @@
     <Setter Property="Focusable" Value="False" />
     <Setter Property="Background" Value="{DynamicResource SurfaceElevated}" />
     <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
-    <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="ContentControl">
           <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="1" CornerRadius="6" Padding="10,4">
             <StackPanel Orientation="Horizontal">
-              <Ellipse Width="6" Height="6" Margin="0,0,7,0" Fill="{TemplateBinding Foreground}" />
+              <Grid Margin="0,0,7,0" VerticalAlignment="Center">
+                <TextBlock x:Name="ConnectionGlyph" Text="&#xF384;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                           Foreground="{TemplateBinding Foreground}" />
+                <Rectangle x:Name="TailscaleIcon" Width="12" Height="12"
+                           Fill="{TemplateBinding Foreground}" Visibility="Collapsed">
+                  <Rectangle.OpacityMask>
+                    <ImageBrush ImageSource="Assets/Icons/Tailscale.png" />
+                  </Rectangle.OpacityMask>
+                </Rectangle>
+              </Grid>
               <TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}}"
-                         Foreground="{TemplateBinding Foreground}" FontSize="11" FontWeight="SemiBold" />
+                         Foreground="{TemplateBinding Foreground}" FontSize="11" FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
             </StackPanel>
           </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="Content" Value="Connected">
+              <Setter TargetName="ConnectionGlyph" Property="Text" Value="&#xF385;" />
+            </Trigger>
+            <Trigger Property="Tag" Value="{x:Static devices:RemoteTransport.Bluetooth}">
+              <Setter TargetName="ConnectionGlyph" Property="Text" Value="&#xE702;" />
+            </Trigger>
+            <Trigger Property="Tag" Value="{x:Static devices:RemoteTransport.WiFi}">
+              <Setter TargetName="ConnectionGlyph" Property="Text" Value="&#xE701;" />
+            </Trigger>
+            <Trigger Property="Tag" Value="{x:Static devices:RemoteTransport.Tailscale}">
+              <Setter TargetName="ConnectionGlyph" Property="Visibility" Value="Collapsed" />
+              <Setter TargetName="TailscaleIcon" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
@@ -57,24 +82,22 @@
 
   <Style x:Key="TransportBadge" TargetType="ContentControl" BasedOn="{StaticResource ConnectionBadge}">
     <Setter Property="Content" Value="Connected" />
+    <Setter Property="Tag" Value="{Binding Transport}" />
     <Style.Triggers>
       <DataTrigger Binding="{Binding Transport}" Value="{x:Static devices:RemoteTransport.Bluetooth}">
         <Setter Property="Content" Value="Bluetooth" />
         <Setter Property="Background" Value="{DynamicResource BluetoothBadgeFill}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BluetoothBorder}" />
-        <Setter Property="Foreground" Value="{DynamicResource BluetoothText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Transport}" Value="{x:Static devices:RemoteTransport.WiFi}">
         <Setter Property="Content" Value="Wi-Fi" />
         <Setter Property="Background" Value="{DynamicResource WiFiBadgeFill}" />
         <Setter Property="BorderBrush" Value="{DynamicResource WiFiBorder}" />
-        <Setter Property="Foreground" Value="{DynamicResource WiFiText}" />
       </DataTrigger>
       <DataTrigger Binding="{Binding Transport}" Value="{x:Static devices:RemoteTransport.Tailscale}">
         <Setter Property="Content" Value="Tailscale" />
         <Setter Property="Background" Value="{DynamicResource TailscaleBadgeFill}" />
         <Setter Property="BorderBrush" Value="{DynamicResource TailscaleBorder}" />
-        <Setter Property="Foreground" Value="{DynamicResource TailscaleText}" />
       </DataTrigger>
     </Style.Triggers>
   </Style>
@@ -232,6 +255,15 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+  </Style>
+
+  <Style x:Key="DashboardIconTile" TargetType="Border">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="{DynamicResource SurfaceSubtle}" />
+    <Setter Property="Margin" Value="0,0,12,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
   <!-- Action Card Toggle Button (For Main Canvas Quick Actions) -->
@@ -449,26 +481,11 @@
       <!-- A. Hero Status & Primary Toggle Card -->
       <Border x:Name="HeroCard" Grid.Row="0"
               Background="{DynamicResource SurfaceCard}"
+              BorderBrush="{DynamicResource AccentBorder}"
               BorderThickness="1"
               CornerRadius="10"
               Padding="26,22"
               Margin="0,0,0,16">
-        <Border.Style>
-          <Style TargetType="Border">
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderHairline}" />
-            <Style.Triggers>
-              <DataTrigger Binding="{Binding SharedConnectionTransport}" Value="{x:Static devices:RemoteTransport.Bluetooth}">
-                <Setter Property="BorderBrush" Value="{DynamicResource BluetoothBorder}" />
-              </DataTrigger>
-              <DataTrigger Binding="{Binding SharedConnectionTransport}" Value="{x:Static devices:RemoteTransport.WiFi}">
-                <Setter Property="BorderBrush" Value="{DynamicResource WiFiBorder}" />
-              </DataTrigger>
-              <DataTrigger Binding="{Binding SharedConnectionTransport}" Value="{x:Static devices:RemoteTransport.Tailscale}">
-                <Setter Property="BorderBrush" Value="{DynamicResource TailscaleBorder}" />
-              </DataTrigger>
-            </Style.Triggers>
-          </Style>
-        </Border.Style>
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -561,8 +578,8 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border Width="36" Height="36" CornerRadius="6" Background="{DynamicResource AccentSoft}" Margin="0,0,12,0">
-              <TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource AccentBlue}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <Border Style="{StaticResource DashboardIconTile}">
+              <TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
               <TextBlock Text="Pair a Phone" FontSize="13.5" FontWeight="SemiBold" />
@@ -582,7 +599,7 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Border Width="36" Height="36" CornerRadius="6" Background="{DynamicResource SurfaceSubtle}" Margin="0,0,12,0">
+            <Border Style="{StaticResource DashboardIconTile}">
               <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <StackPanel Grid.Column="1" VerticalAlignment="Center">
@@ -599,10 +616,14 @@
         <Border x:Name="RemoteDesktopDashboardCard" Style="{StaticResource GroupedCard}" Margin="0,0,0,16">
           <Grid Margin="18,12">
             <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel Margin="0,0,10,0" VerticalAlignment="Center">
+            <Border Style="{StaticResource DashboardIconTile}">
+              <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="16" Foreground="{DynamicResource TextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Center">
               <TextBlock Text="Remote Desktop" FontSize="13.5" FontWeight="Medium" />
               <TextBlock Text="{Binding RemoteDesktop.DashboardStatus}" FontSize="11.5" Margin="0,2,0,0"
                          TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
@@ -618,7 +639,7 @@
                 </TextBlock.Style>
               </TextBlock>
             </StackPanel>
-            <Button Grid.Column="1" Content="{Binding RemoteDesktop.DashboardAction}" Click="OpenRemoteDesktopSettings_Click"
+            <Button Grid.Column="2" Content="{Binding RemoteDesktop.DashboardAction}" Click="OpenRemoteDesktopSettings_Click"
                     AutomationProperties.Name="Remote Desktop settings" FontSize="12" Padding="10,6" />
           </Grid>
         </Border>

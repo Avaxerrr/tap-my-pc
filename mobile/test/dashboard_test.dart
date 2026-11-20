@@ -126,6 +126,7 @@ void main() {
     bool pending = false,
     Duration pendingRemaining = const Duration(minutes: 30),
     String? transport,
+    AccentPalette? accent,
     double scale = 1,
     Size size = const Size(393, 852),
     List<Object?>? sent,
@@ -138,6 +139,7 @@ void main() {
     addTearDown(() => tester.view.resetDevicePixelRatio());
     final appearance = AppearanceController();
     addTearDown(appearance.dispose);
+    if (accent != null) await appearance.setAccent(accent);
     await tester.pumpWidget(
       AppearanceScope(
         controller: appearance,
@@ -514,24 +516,84 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('The connection badge follows the active route and its color', (
+  testWidgets('Connection badge icons and labels use the neutral foreground', (
     tester,
   ) async {
-    for (final (transport, label, color) in [
-      ('Local network', 'Wi-Fi', const Color(0xffa4e2bf)),
-      ('Tailscale', 'Tailscale', const Color(0xffd5c1ff)),
-      ('Bluetooth', 'Bluetooth', const Color(0xffa1d0ff)),
+    final badge = find.byType(StatusBadge);
+    for (final (transport, label, background, border, icon) in [
+      (
+        'Local network',
+        'Wi-Fi',
+        const Color(0xff182c24),
+        const Color(0xff365647),
+        Icons.wifi,
+      ),
+      (
+        'Tailscale',
+        'Tailscale',
+        const Color(0xff29223a),
+        const Color(0xff53426d),
+        null,
+      ),
+      (
+        'Bluetooth',
+        'Bluetooth',
+        const Color(0xff14263b),
+        const Color(0xff344f71),
+        Icons.bluetooth,
+      ),
     ]) {
-      await render(tester, transport: transport);
-      final badge = find.descendant(
-        of: find.byType(StatusBadge),
-        matching: find.text(label),
-      );
-      expect(tester.widget<Text>(badge).style?.color, color);
+      for (final accent in AccentPalette.choices) {
+        await render(tester, transport: transport, accent: accent);
+        final text = find.descendant(of: badge, matching: find.text(label));
+        expect(tester.widget<Text>(text).style?.color, AppColors.text);
+        final decoration =
+            tester
+                    .widget<DecoratedBox>(
+                      find.descendant(
+                        of: badge,
+                        matching: find.byType(DecoratedBox),
+                      ),
+                    )
+                    .decoration
+                as BoxDecoration;
+        expect(decoration.color, background);
+        expect(decoration.border, Border.all(color: border));
+        if (icon == null) {
+          final image = tester.widget<Image>(
+            find.descendant(of: badge, matching: find.byType(Image)),
+          );
+          expect(
+            (image.image as AssetImage).assetName,
+            'assets/icons/tailscale.png',
+          );
+          expect(image.color, AppColors.text);
+        } else {
+          final marker = find.descendant(
+            of: badge,
+            matching: find.byIcon(icon),
+          );
+          expect(tester.widget<Icon>(marker).color, AppColors.text);
+        }
+      }
     }
-    await render(tester, offline: true, transport: 'Bluetooth');
-    expect(find.text('Offline'), findsOneWidget);
-    expect(find.text('Bluetooth'), findsNothing);
+    for (final (offline, busy, label, icon) in [
+      (true, false, 'Offline', Icons.link_off),
+      (true, true, 'Working', Icons.hourglass_empty),
+      (false, false, 'Connected', Icons.link),
+    ]) {
+      await render(
+        tester,
+        offline: offline,
+        busy: busy,
+        transport: offline ? 'Bluetooth' : null,
+      );
+      final text = find.descendant(of: badge, matching: find.text(label));
+      final marker = find.descendant(of: badge, matching: find.byIcon(icon));
+      expect(tester.widget<Text>(text).style?.color, AppColors.text);
+      expect(tester.widget<Icon>(marker).color, AppColors.text);
+      expect(find.text('Bluetooth'), findsNothing);
+    }
   });
 
   testWidgets(

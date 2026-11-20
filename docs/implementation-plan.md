@@ -2,6 +2,14 @@
 
 ## Current state
 
+Windows 0.16.4+31 and Android 0.17.9+42 use the theme text color for connection badge icons and labels and show a disconnected icon when idle or offline. Windows phone names also use the theme text color. [Setup](setup.md#phone-names-and-connection-feedback)
+
+Windows 0.16.3+30 and Android 0.17.8+41 apply the selected accent to connection badge icons and labels. Windows also applies it to active phone names. [Setup](setup.md#phone-names-and-connection-feedback)
+
+Windows 0.16.2+29 and Android 0.17.7+40 use the theme text color for connection icons. Windows also applies that color to the Pair a Phone icon and adds a monitor icon to the Remote Desktop card. [Setup](setup.md#phone-names-and-connection-feedback)
+
+Windows 0.16.1+28 and Android 0.17.6+39 replace the active connection badge dots with Wi-Fi, Bluetooth, and Tailscale icons. The Windows connection card border uses the selected accent. [Setup](setup.md#phone-names-and-connection-feedback)
+
 Windows 0.15.2+26 keeps the Remote Desktop card available for setup and simplifies the viewer password dialog with a visibility toggle, inline generation, and one confirmation action. [Setup](setup.md#remote-desktop-preview)
 
 Windows 0.15.1+25 adds an optional dashboard status card, live setup progress, and generated or custom viewer passwords with a Copy action for generated passwords. Android 0.14.1+29 adds password visibility and reports viewer readiness on a compatible Windows host. [Setup](setup.md#remote-desktop-preview)

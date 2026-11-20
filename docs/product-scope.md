@@ -74,11 +74,11 @@ The Android development client implements QR and manual pinned enrollment, prote
 - The normal command listener cannot execute while the PC is asleep, hibernating, or shut down. Remote wake is a separate capability.
 - Unsupported features should report that they are unavailable rather than appear to succeed.
 
-The desktop displays recently active remote clients on the main connection card and title-bar indicator. While listening without an active client, a muted No phone connected badge distinguishes idle availability from an actual connection. Presence reflects authenticated activity in the last ten seconds; browser traffic and phone availability probes count, including authenticated requests whose operation fails. It is distinct from saved pairing and does not assert which PC is selected for control.
+The desktop displays recently active remote clients on the main connection card and title-bar indicator. While listening without an active client, a neutral No phone connected badge with a disconnected icon marks idle availability. Presence reflects authenticated activity in the last ten seconds; browser traffic and phone availability probes count, including authenticated requests whose operation fails. It is distinct from saved pairing and does not assert which PC is selected for control.
 
 ## Phone identity and radio presentation
 
-- The Windows connection card shows each active phone's OS name, model, or locally saved name and a badge for its latest authenticated connection. Bluetooth is blue, Wi-Fi is green, and Tailscale is purple. The card also shows listener readiness.
+- The Windows connection card shows each active phone's OS name, model, or locally saved name and a badge for its latest authenticated connection. Both apps use blue for Bluetooth badge backgrounds and outlines, green for Wi-Fi, and purple for Tailscale. Badge icons and labels use the theme text color. On Windows, the phone name uses that same text color and the card border uses the accent. The card shows listener readiness.
 - Existing Android pairings update their reported name through authenticated traffic without re-pairing. PC-side names can be edited in Configure > Authorized phones and take precedence over reported names.
 - Mobile shows PC Bluetooth: On/Off. Over Wi-Fi it offers only the applicable action; unavailable/unknown/mixed state disables changes. Radio changes are disabled while actually connected over Bluetooth, including Automatic fallback, with a switch-to-Wi-Fi explanation. The Bluetooth API listener enforces the same restriction.
 

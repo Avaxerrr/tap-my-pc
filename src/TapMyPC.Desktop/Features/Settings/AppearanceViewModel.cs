@@ -104,13 +104,10 @@ public sealed class AppearanceViewModel : INotifyPropertyChanged
             ("AccentBorder", accent.Border), ("AccentText", accent.Text), ("AccentForeground", accent.Foreground),
             ("BluetoothBadgeFill", light ? "#E5EFFF" : "#14263B"),
             ("BluetoothBorder", light ? "#7D9FCB" : "#344F71"),
-            ("BluetoothText", light ? "#244E81" : "#A1D0FF"),
             ("WiFiBadgeFill", light ? "#DFF2E7" : "#182C24"),
             ("WiFiBorder", light ? "#79A890" : "#365647"),
-            ("WiFiText", light ? "#285B43" : "#A4E2BF"),
             ("TailscaleBadgeFill", light ? "#F0E9FC" : "#29223A"),
             ("TailscaleBorder", light ? "#A894C6" : "#53426D"),
-            ("TailscaleText", light ? "#563B83" : "#D5C1FF"),
             ("ErrorText", light ? "#972A28" : "#FFB4AB"),
             ("ErrorSoft", light ? "#FBE9E7" : "#342124"),
             ("ErrorBorder", light ? "#CF9490" : "#694047")

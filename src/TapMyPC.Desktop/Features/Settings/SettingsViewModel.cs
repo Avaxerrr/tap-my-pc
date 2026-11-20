@@ -265,16 +265,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public bool HasPending => scheduler.State.Pending is not null;
     public IReadOnlyList<PairedClient> ConnectedClients => connectedClients;
     public bool HasConnectedClients => connectedClients.Count > 0;
-    public RemoteTransport? SharedConnectionTransport
-    {
-        get
-        {
-            var transport = connectedClients.FirstOrDefault()?.Transport;
-            return transport is not null && connectedClients.All(client => client.Transport == transport)
-                ? transport
-                : null;
-        }
-    }
     public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => $"{c.Name} · {(c.Transport switch { RemoteTransport.Bluetooth => "Bluetooth", RemoteTransport.Tailscale => "Tailscale", _ => "Wi-Fi" })}"));
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
@@ -622,7 +612,6 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         connectedClients = active;
         Notify(nameof(ConnectedClients));
         Notify(nameof(HasConnectedClients));
-        Notify(nameof(SharedConnectionTransport));
         Notify(nameof(ConnectionSummary));
         Notify(nameof(ConnectionHint));
     }
