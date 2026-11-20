@@ -11,6 +11,18 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 Both apps include **About TapMyPC** with app and build information, setup help, third-party notices, and a link to the GitHub repository. Open it from **Settings** on Android or the **Configure** drawer on Windows.
 
+## Screenshots
+
+**Windows dashboard** · Pair a phone, see connection status, and manage Remote Desktop.
+
+<img src="docs/screenshots/windows-dashboard.png" alt="TapMyPC Windows dashboard with a phone connected over Wi-Fi" width="750">
+
+**Android** · Control sound and media, launch shortcuts, and set PC power timers.
+
+<img src="docs/screenshots/android-remote.png" alt="TapMyPC Android Remote tab with volume, media controls, and app shortcuts" width="265"> <img src="docs/screenshots/android-power.png" alt="TapMyPC Android Power tab with a 30-minute sleep timer and cancellation controls" width="265">
+
+Screenshots use demo devices and connection details.
+
 ## Get started
 
 1. [Build and run the Windows host](docs/setup.md#build-and-launch), or [apply a staged desktop update](docs/setup.md#apply-a-staged-update).
@@ -47,3 +59,7 @@ dotnet run --project src/TapMyPC.Desktop -c Release
 ```
 
 See the [Android build and test guide](mobile/README.md), [simulator](docs/setup.md#simulator), and [verification history](docs/verification.md). The [documentation index](docs/README.md) links the API contract, architecture, and product scope. Repository guidance is in [AGENTS.md](AGENTS.md).
+
+## License
+
+TapMyPC is available under the [MIT License](LICENSE). Bundled components retain their [third-party licenses and notices](THIRD_PARTY_NOTICES.md).
