@@ -27,12 +27,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="QRCoder" Version="1.8.1" />
+    <PackageReference Include="QRCoder" Version="1.8.1" GeneratePathProperty="true" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets/Fonts/*.ttf" />
     <Resource Include="Assets/Icons/Tailscale.png" />
     <Resource Include="Assets/TapMyPC.ico" />
+    <EmbeddedResource Include="Assets/Fonts/Inter-OFL.txt" LogicalName="TapMyPC.Licenses.Inter.txt" />
+    <EmbeddedResource Include="$(PkgQRCoder)/LICENSE.txt" LogicalName="TapMyPC.Licenses.QRCoder.txt" />
+    <EmbeddedResource Include="../TapMyPC.Windows/ThirdParty/NAudio-LICENSE.txt" LogicalName="TapMyPC.Licenses.NAudio.txt" />
+    <EmbeddedResource Include="../TapMyPC.Windows/ThirdParty/Concentus-LICENSE.txt" LogicalName="TapMyPC.Licenses.Concentus.txt" />
     <None Update="Assets/Fonts/Inter-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" TargetPath="Inter-OFL.txt" />
   </ItemGroup>
 </Project>

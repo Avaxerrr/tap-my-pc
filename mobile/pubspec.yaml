@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.18.0+44
+version: 0.18.3+47
 
 environment:
   sdk: ^3.11.3
@@ -31,9 +31,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   flutter_secure_storage: ^11.2.0
   crypto: ^3.0.8
   asn1lib: ^1.6.5
@@ -76,6 +73,12 @@ flutter:
   assets:
     - assets/fonts/Inter-OFL.txt
     - assets/icons/tailscale.png
+    - android/app/src/main/assets/remote-desktop/AUTHORS
+    - android/app/src/main/assets/remote-desktop/LICENSE.MPL-2.0
+    - android/app/src/main/assets/remote-desktop/LICENSE.BSD-2-Clause
+    - android/app/src/main/assets/remote-desktop/LICENSE.BSD-3-Clause
+    - android/app/src/main/assets/remote-desktop/LICENSE.OFL-1.1
+    - android/app/src/main/assets/remote-desktop/LICENSE.pako
 
   # To add assets to your application, add an assets section, like this:
   # assets:

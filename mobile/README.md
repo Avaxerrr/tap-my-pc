@@ -1,6 +1,6 @@
 # TapMyPC Android client
 
-Android **0.18.0 (build 44)** adds launcher shortcuts and a configurable TapMyPC Controls widget. The app remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone. See [verification](../docs/verification.md) for package and installation status.
+Android **0.18.3 (build 47)** links to the GitHub repository from **About TapMyPC** in Settings, alongside copyable app and PC host versions, setup help, and third-party licenses. The app offers launcher shortcuts and a configurable TapMyPC Controls widget. The app remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone. See [verification](../docs/verification.md) for package and installation status.
 
 Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 
@@ -32,7 +32,7 @@ Requires Flutter and an Android SDK/JDK. Use flutter analyze, flutter test, and 
 
 On this Windows machine, Controlled Folder Access blocks some generated files under Documents. The initial build used a source copy at C:\temp\TapMyPC-mobile-build, excluding build, .dart_tool, .gradle, and local.properties. Keep edits in this repository and sync source to the build copy before building. Do not disable folder protection.
 
-The test APK uses the normal package ID dev.tapmypc.tapmypc_mobile. Release signing/distribution has not been configured; current APKs are development builds.
+The app uses package ID `dev.tapmypc.tapmypc_mobile`. Both debug and release builds use the Android debug signing configuration. The release APKs in the verification history are development packages.
 
 ## Device integration test
 
@@ -62,7 +62,7 @@ The reconnection_test.dart device test combines actual desktop mDNS advertisemen
 
 The Android OS device name (model fallback) identifies the phone during pairing and authenticated reconnection. Existing credentials remain valid. PC-side custom names take priority. The desktop shows the phone and its actual most-recent authenticated transport.
 
-Devices shows PC Bluetooth: On/Off and one applicable action on Wi-Fi. Actual Bluetooth connections disable radio changes, including Automatic fallback. Unknown/unavailable/mixed states cannot offer a guessed action. No new Android permission is needed for the device-name lookup.
+Devices shows PC Bluetooth: On/Off and one applicable action over Wi-Fi or Tailscale. Actual Bluetooth connections disable radio changes, including Automatic fallback. Unknown/unavailable/mixed states cannot offer a guessed action. No new Android permission is needed for the device-name lookup.
 
 ## Bluetooth secondary connection
 
@@ -84,7 +84,7 @@ Native Android carries opaque TLS bytes over secure RFCOMM; the existing Dart cl
 - **Power:** named-PC confirmation for every power action and editable timer durations. Pending countdowns stay above bottom navigation. While offline, cancellation is disabled and the card hides when the countdown is due.
 - The selected PC and connection feedback remain visible. PC switching, activity, and settings use focused sheets. Successful/failed command feedback is retained while status polling continues, and no action is automatically retried. Optional device-list failures leave the verified connection and other controls usable; their specific warnings clear after a successful refresh. Failed lists retry on the existing ten-second polling cadence, and authentication rejection still requires pairing.
 - Settings offers the desktop's five accent palettes, saved independently of PC credentials, and transitions that automatically respect Android reduced motion; there is no separate animation setting. Static Inter fonts and their OFL are bundled; the launcher/splash use the TapMyPC mark and dark surfaces.
-- First connection uses one setup card with two pairing steps and a single Add your PC action. The initial app bar omits the version; Settings > About always shows it, and the dashboard header shows it once a PC is saved. Version/build is read from the installed Android package. PC serverVersion is shown separately. See [versioning](../docs/versioning.md).
+- First connection uses one setup card with two pairing steps and a single Add your PC action. The initial app bar omits the version; Settings > About TapMyPC always shows it, and the dashboard header shows it once a PC is saved. Version/build is read from the installed Android package. PC serverVersion is shown separately. See [versioning](../docs/versioning.md).
 
 `flutter test` includes presentation/action-routing, offline/busy, PC selection, timer cancellation, appearance persistence, and small-screen/large-text checks. Visual previews are generated under ignored `artifacts/mobile-ui/`.
 

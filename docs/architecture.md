@@ -7,15 +7,15 @@ One Windows process hosts the WPF application, tray integration, local-network A
 ```text
 Browser remote / Flutter Android client
                     |
-   Pinned HTTPS over Wi-Fi / Bluetooth RFCOMM
+   HTTPS over LAN / Tailscale / Bluetooth RFCOMM
                     |
              Core feature handlers
                     |
          Windows-specific implementations
 
-WPF view models call the same core handlers.
-Bluetooth carries the same authenticated HTTPS API through a process-owned loopback listener, reusing the same core handlers.
 ```
+
+Android verifies the saved PC identity on every route. Bluetooth carries the authenticated HTTPS API through a process-owned loopback listener. WPF view models call the same core handlers.
 
 The PC listener remains independent of any client screen. The web prototype is a replaceable client; its HTML/CSS/JavaScript will not automatically convert to Flutter widgets.
 
@@ -24,39 +24,14 @@ The PC listener remains independent of any client screen. The web prototype is a
 ```text
 TapMyPC.sln
 src/
-  TapMyPC.Desktop/
-    Features/{Dashboard,Pairing,Settings}/
-    Tray/
-  TapMyPC.Core/
-    Audio/
-    Bluetooth/
-    Media/
-    Display/
-    Power/
-    Timers/
-    Presets/
-    Devices/
-  TapMyPC.Windows/
-    Audio/
-    Bluetooth/
-    Media/
-    Display/
-    Power/
-    Interop/
-  TapMyPC.Api/
-    Endpoints/
-    Contracts/
-    Authentication/
-    wwwroot/
-tests/
-  TapMyPC.Tests/
-mobile/                 # Flutter Android client and device tests
-tools/
-  TapMyPC.Simulator/
-  browser-smoke.cjs
+  TapMyPC.Desktop/       # WPF dashboard, tray, and connection lifecycle
+  TapMyPC.Core/          # Feature commands, pairing, timers, and platform interfaces
+  TapMyPC.Windows/       # Windows implementations, settings, and native interop
+  TapMyPC.Api/           # HTTPS host, endpoints, contracts, and browser assets
+tests/TapMyPC.Tests/
+mobile/                  # Flutter Android app, native Android bridges, and tests
+tools/                   # Simulator, verification harnesses, and updater
 ```
-
-Create feature folders as they become necessary. Not all future feature folders above exist yet. Do not generate empty classes or abstractions for every planned feature.
 
 ## Responsibilities and dependencies
 
@@ -68,7 +43,7 @@ Create feature folders as they become necessary. Not all future feature folders 
 | Desktop | WPF views/view models, tray lifecycle, settings UI, startup composition and dependency injection | Core, Windows, Api |
 | Tests | Focused behavior and integration verification | Projects under test |
 
-Desktop wires implementations and hosts the API through application startup/shutdown. API endpoints validate requests and call core handlers. WPF uses the same handlers through view models. Neither layer directly invokes platform APIs.
+Desktop wires implementations and hosts the API through application startup/shutdown. ConnectionListenerHost owns the LAN, Tailscale, and Bluetooth listener lifecycles, certificate use, and discovery. SettingsViewModel serializes host operations with settings changes and publishes their results to WPF. API endpoints validate requests and call core handlers. WPF uses the same handlers through view models. Neither layer directly invokes platform APIs.
 
 ## Organization rules
 
@@ -80,7 +55,7 @@ Desktop wires implementations and hosts the API through application startup/shut
 - Dispose listeners and background work during application exit.
 - Do not add a separate Windows service unless a concrete requirement justifies it. Interactive-session controls need particular care if that changes.
 
-Bluetooth radio control uses a separate Core interface and asynchronous command handler. Windows implements it with WinRT radio APIs, filters exclusively for Bluetooth adapters, and requests change permission on the WPF Dispatcher only when needed. The status endpoint reads radio state without requesting permission. This feature uses the existing Wi-Fi API; Bluetooth command transport is implemented separately through WindowsRfcommServer and Desktop/Connections/BluetoothConnectionHost. It forwards encrypted bytes to a fixed loopback ApiHost and shares the same feature handlers, pairing, timers, and activity.
+Bluetooth radio control uses a separate Core interface and asynchronous command handler. Windows implements it with WinRT radio APIs, filters exclusively for Bluetooth adapters, and requests change permission on the WPF Dispatcher only when needed. The status endpoint reads radio state without requesting permission. Radio changes are available over the local network and Tailscale. Bluetooth command transport uses WindowsRfcommServer and Desktop/Connections/BluetoothConnectionHost. It forwards encrypted bytes to a fixed loopback ApiHost and shares the same feature handlers, pairing, timers, and activity.
 
 Audio output and per-monitor controls have dedicated Core interfaces with Windows implementations. HardwareCommands validates selections/ranges and publishes shared activity. The API serves device lists separately from the two-second status poll; the phone refreshes them on connection, after commands, on request, or on the ten-second foreground retry cadence when a list previously failed. Monitor I/O runs off the UI thread, serializes changes, briefly caches reads, and always releases native physical-monitor handles. Built-in brightness uses WMI where available; external displays use DDC/CI.
 
@@ -105,7 +80,7 @@ Pairing and authenticated commands are required. Kestrel serves HTTPS with the e
 
 ## Mobile connections and monitoring
 
-Manual browser pairing remains available. The desktop saves the active certificate reference in identity.json. It reuses the certificate across selected-IP changes and automatically renews it within 30 days of expiry, preserving the persisted RSA identity key. An expired certificate can renew with its existing key; a missing/unusable key requires confirmed local recovery. Android now supports QR enrollment, protected saved profiles, and explicit PC selection. The QR carries a one-use secret and exact leaf fingerprint; verification of that leaf precedes secret transmission. The phone derives its stable key pin from the TLS certificate, never discovery or an unverified payload. Shared pairing state atomically consumes both QR and manual paths. Desktop image rendering uses QRCoder; native Android decoding uses bundled ML Kit through mobile_scanner. Native Android NSD discovers _tapmypc._tcp hints; saved-pin HTTPS authentication validates candidates before updating stored addresses. Desktop advertising is limited to its selected trusted adapter. Connection preference persists, auto-starts by default, waits on Public/unidentified networks, and rebinds after network changes. Initial QR generation occurs only with no paired clients; subsequent enrollment is explicit. Authenticated status includes Bluetooth address/service metadata. Android saves per-PC Automatic/Wi-Fi-only/Bluetooth-only preferences. Bluetooth uses the same TLS identity checks before credentials, remains usable when Wi-Fi is unavailable, and shares the remembered Start/Stop choice. First-time enrollment stays on Wi-Fi. See [Bluetooth](bluetooth.md). Android learns a SHA-256 SubjectPublicKeyInfo pin only from a verified TLS peer, stores it with the saved profile, and accepts valid renewed certificates with that same key. Legacy leaf-only profiles migrate on their next verified connection; without prior migration they need a fresh QR after renewal. Confirmed local reset creates a new key, persistently revokes all phones and invitations, and retains PC timers and connection preference. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
+Manual browser pairing remains available. The desktop saves the active certificate reference in identity.json. It reuses the certificate across selected-IP changes and automatically renews it within 30 days of expiry, preserving the persisted RSA identity key. An expired certificate can renew with its existing key; a missing/unusable key requires confirmed local recovery. Android now supports QR enrollment, protected saved profiles, and explicit PC selection. The QR carries a one-use secret and exact leaf fingerprint; verification of that leaf precedes secret transmission. The phone derives its stable key pin from the TLS certificate, never discovery or an unverified payload. Shared pairing state atomically consumes both QR and manual paths. Desktop image rendering uses QRCoder; native Android decoding uses bundled ML Kit through mobile_scanner. Native Android NSD discovers _tapmypc._tcp hints; saved-pin HTTPS authentication validates candidates before updating stored addresses. Desktop advertising is limited to its selected trusted adapter. Connection preference persists, auto-starts by default, waits on Public/unidentified networks, and rebinds after network changes. Initial QR generation occurs only with no paired clients; subsequent enrollment is explicit. Authenticated status includes Bluetooth address/service metadata. Bluetooth uses the same TLS identity checks before credentials, remains usable when Wi-Fi is unavailable, and shares the remembered Start/Stop choice. First-time enrollment stays on Wi-Fi. See [Bluetooth](bluetooth.md). Android learns a SHA-256 SubjectPublicKeyInfo pin only from a verified TLS peer, stores it with the saved profile, and accepts valid renewed certificates with that same key. Legacy leaf-only profiles migrate on their next verified connection; without prior migration they need a fresh QR after renewal. Confirmed local reset creates a new key, persistently revokes all phones and invitations, and retains PC timers and connection preference. See [mobile connections](mobile-connections.md). Discovery provides address hints rather than trust; connection failure must never redirect commands to another PC. AP isolation is a reachability issue.
 
 The Windows monitoring source reads cached PC Stats Tray snapshots on loopback. The TapMyPC API serves them through its paired connections. Android polls while its Stats tab is open and the app is in the foreground. [Hardware monitoring](monitoring-integration.md)
 
@@ -151,11 +126,11 @@ AppearanceViewModel persists the desktop theme and accent through LocalSettings 
 
 ## Android presentation
 
-Flutter's main.dart initializes the app and its entry points. RemotePage coordinates the selected PC session and hands connection dialogs to widgets in ui/connection_dialogs.dart. The client layer implements certificate pinning, discovery, and transport. `mobile/lib/ui/` owns the shared theme, reusable cards/sheets, dashboard navigation, feature controls, and PC-owned timer banner. It does not add Windows operations or alter the API contract.
+Flutter's main.dart initializes the app and its entry points. PcConnectionPolling owns the active API client, status cadence, route recovery, and optional device-list reads. RemotePage applies results to the selected PC session and hands connection dialogs to widgets in ui/connection_dialogs.dart. The client layer implements certificate pinning, discovery, and transport. `mobile/lib/ui/` owns the shared theme, reusable cards/sheets, dashboard navigation, feature controls, and PC-owned timer banner. It does not add Windows operations or alter the API contract.
 
 Remote groups sound, media, and shortcuts. Devices groups displays and Bluetooth. Power groups confirmed actions and timers configurable in seconds or minutes. Android uses `supportsImmediatePower` to choose zero delay for direct Lock, Sleep, and Hibernate. The server accepts zero-delay actions separately from cancellable timers and dispatches after writing the response. The selected PC card uses the active API transport for its badge background and outline. Its badge icons and labels use the theme text color, including the disconnected icon shown when offline. Pending timers remain above bottom navigation, including their last known countdown offline. Android hides expired offline countdowns and reads authoritative timer state and server time on reconnect. Switching PCs clears pending and feedback snapshots. A successful authenticated status response establishes connectivity before optional device lists load. List failures clear the affected list, show a warning, and retry on the ten-second cadence. A failed status request or authentication rejection invalidates control. Commands are sent once.
 
-The app bundles static Inter faces and the same five accent palettes as desktop. Appearance preferences use the separate `tapmypc.appearance.v1` secure-storage key, with serialized writes and protection against a late startup read overwriting a user's choice. App appearance and desktop appearance are independent. Motion automatically follows Android accessibility preferences, without an app-level override. Legacy saved motion values are ignored; accent preferences remain compatible. The first-connection screen uses a compact app bar and a single setup card with numbered Wi-Fi pairing instructions and one Add your PC action. Installed package metadata supplies version text in Settings > About and in the header after a PC is saved; the onboarding header omits it. No duplicated UI version constant is used.
+The app bundles static Inter faces and the same five accent palettes as desktop. Appearance preferences use the separate `tapmypc.appearance.v1` secure-storage key, with serialized writes and protection against a late startup read overwriting a user's choice. App appearance and desktop appearance are independent. Motion automatically follows Android accessibility preferences, without an app-level override. Legacy saved motion values are ignored; accent preferences remain compatible. The first-connection screen uses a compact app bar and a single setup card with numbered Wi-Fi pairing instructions and one Add your PC action. Installed package metadata supplies version text in Settings > About TapMyPC and in the header after a PC is saved; the onboarding header omits it. No duplicated UI version constant is used.
 
 ## Resource expectations
 

@@ -24,7 +24,7 @@ If the certificate/private key is missing or unusable, use desktop Configure > A
 
 On Android select the affected PC, then Settings > Re-pair selected PC. Explicitly scan and confirm that PC's new QR, or enter its new fingerprint and manual code. Only that profile is replaced; other PCs remain saved. No changed identity is accepted merely because its name/address matches. Browser users must verify the new fingerprint and accept the new self-signed certificate after renewal/reset.
 
-## Current prototype
+## Browser pairing and desktop startup
 
 The browser uses a manual HTTPS address and a single-use six-digit pairing code. Pairing creates a persistent per-client bearer credential; the PC stores its hash and supports revocation. Reconnects do not inherently require another code. Browser credentials are origin-bound, so an address change affects access to saved browser storage.
 
@@ -32,7 +32,7 @@ Normal desktop launch resumes connections unless Stop connections was previously
 
 ## Automatic connection behavior
 
-- Android discovers _tapmypc._tcp services with native NSD while foregrounded, and tries saved addresses. Advertisements contain a version, public certificate fingerprint and machine name, never a credential.
+- Android discovers _tapmypc._tcp services with native NSD while foregrounded, and tries saved addresses. Advertisements contain a version, public certificate and identity-key fingerprints, and machine name, never a credential.
 - Treat discovered names, IDs, and addresses as untrusted hints. Verify saved cryptographic identity before sending credentials or commands.
 - Authenticate silently per PC; ordinary restarts, IP changes, and temporary disconnections do not require new enrollment.
 - Existing valid certificates migrate into a persistent identity reference. The desktop renews within 30 days of expiry, including after expiry when the original private key still exists. A missing/unusable key, or a lost identity reference with existing paired clients, fails closed with a local reset instruction. Older installations that have saved phones but never wrote identity.json require a local reset instead of guessing a certificate from its subject. Never silently trust a replacement key.
@@ -41,13 +41,13 @@ Normal desktop launch resumes connections unless Stop connections was previously
 - A successful pinned/authenticated status response establishes the selected-PC connection. Failed audio-output, monitor, or shortcut lists show a warning in the affected section and clear that list, without marking the PC offline. Failed device lists retry on the existing ten-second foreground cadence or on manual refresh. Failed status or rejected credentials still disable control; 401 requires pairing.
 - Do not replay non-idempotent media, launch, or power-scheduling commands during reconnection.
 
-Protect credentials with Keystore-backed encryption on Android and Keychain on iOS. Credential loss, PC-side revocation, or identity reset requires recovery/pairing. Do not assume app reinstall always removes platform keychain data.
+Android protects credentials with Keystore-backed encryption. Credential loss, PC-side revocation, or identity reset requires recovery or pairing.
 
 ## Multiple PCs
 
 The Android client supports separately selected saved profiles for the user's home desktop and work laptop. The saved certificate fingerprint is the current stable identity; the Android profile also stores a verified identity-key pin that survives normal renewal. Explicit recovery changes the key and re-pairs only the deliberately selected phone profile. Pair each separately. Each profile owns its PC identity, friendly name, endpoint hints, trust pin, and credential. Each PC retains independent paired phones, capabilities, shortcuts, activity, and timers.
 
-Keep selected PC visible, especially in power confirmations. Switching profiles must isolate responses and in-flight work. Never redirect commands or silently fall back to another PC. Future monitoring availability is per PC. The desktop connection badge reflects authenticated requests in the last ten seconds, including requests whose operation later fails; it does not establish that all hardware queries succeeded. See [connection feedback](action-feedback.md#main-window-connection-indicator).
+Keep selected PC visible, especially in power confirmations. Switching profiles must isolate responses and in-flight work. Never redirect commands or silently fall back to another PC. Hardware monitoring availability depends on the collector running on the selected PC. The desktop connection badge reflects authenticated requests in the last ten seconds, including requests whose operation later fails; it does not establish that all hardware queries succeeded. See [connection feedback](action-feedback.md#main-window-connection-indicator).
 
 ## Security and validation
 

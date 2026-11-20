@@ -158,15 +158,17 @@ class _ConnectionSettingsDialogState extends State<ConnectionSettingsDialog> {
 }
 
 class ConnectionHelpDialog extends StatelessWidget {
-  const ConnectionHelpDialog({super.key});
+  const ConnectionHelpDialog({super.key, this.title = 'How connections work'});
+
+  final String title;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('How connections work'),
+    title: Text(title),
     content: const SingleChildScrollView(
       child: Text(
-        'Pair once: open TapMyPC on your PC and scan its temporary QR. '
-        'The QR hides after pairing.\n\n'
+        'Pair once: on Windows, open Pair a Phone. On Android, tap Add your PC '
+        'and then Scan PC QR, scan the code on the PC, and confirm pairing.\n\n'
         'Normal use: open both apps. This phone looks for your saved PCs, '
         'verifies their certificates, and reconnects without another code. '
         'Each PC has its own pairing.\n\n'

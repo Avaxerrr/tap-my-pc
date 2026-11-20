@@ -2,11 +2,13 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.4 (build 31)** and Android **0.18.0 (build 44)**. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
+Current development versions are Windows desktop/API **0.16.7 (build 34)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds. See [verification](verification.md) for build and install history.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
 Desktop metadata is derived from `Version` and `BuildNumber` in `Directory.Build.props`; Android has its own declaration in `mobile/pubspec.yaml`. Follow [versioning guidelines](versioning.md) automatically for future deliverables. Version numbers need not match across the two apps when API compatibility is unchanged.
+
+Android offers long-press actions and a configurable TapMyPC Controls widget on supported launchers. [Home-screen controls](../mobile/README.md#home-screen-controls)
 
 ## Phone names and connection feedback
 
@@ -70,7 +72,7 @@ Android QR enrollment, saved PC selection, native mDNS discovery, certificate re
 
 Public/guest Wi-Fi may allow internet while blocking direct phone-to-PC traffic through AP/client isolation. Saved credentials, QR scanning, or a correct IP cannot override that block. If only discovery is blocked, a reachable direct address may work. A timeout alone does not identify isolation conclusively.
 
-Use a network you control for initial LAN operation. Hotspot/USB networking require device tests. VPN/relay support is future work and needs a permitted route. Do not expose the command port publicly or disable firewall protections as a workaround. See [mobile connections](mobile-connections.md).
+Use a network you control for initial pairing. For access from another network or cellular, enable the optional Tailscale listener while the paired PC is awake. Hotspot and USB networking still need device testing. Do not expose the command port publicly or disable firewall protections as a workaround. [Tailscale setup](tailscale.md) · [Mobile connection limits](mobile-connections.md)
 
 For Android **Stats**, update the Windows TapMyPC host and run PC Stats Tray 0.7.1 or newer. Select **Show Stats → Local apps** and keep the default port, 4587. [Hardware monitoring](monitoring-integration.md)
 
@@ -122,7 +124,7 @@ The prototype creates an initial self-signed, one-year certificate in Current Us
 
 A phone browser will initially show a certificate warning. Before making a site-specific exception, verify that the address is the one displayed by the PC and compare the certificate's SHA-256 fingerprint with settings where the browser exposes it. Use Export public certificate if a trusted transfer or certificate inspection is needed; the exported `.cer` contains no private key. If the phone cannot verify the certificate identity, complete that setup separately rather than treating encryption alone as proof of identity. Do not broadly disable certificate validation.
 
-Browser certificate inspection/exception controls differ, and this is a prototype setup friction. The Android client verifies an exact QR/saved certificate pin before sending credentials, including after address recovery. An IP change or certificate renewal may require a new browser exception; confirm the new identity on the PC.
+Browser certificate inspection and exception controls vary. An IP change or certificate renewal may require a new browser exception. Verify the fingerprint on the PC before accepting it. Before sending credentials, Android verifies the exact certificate during enrollment and uses the saved certificate or verified identity-key pin on reconnection. [Certificate renewal and recovery](mobile-connections.md#certificate-renewal-and-recovery)
 
 ## Windows Firewall
 
@@ -251,7 +253,7 @@ This script targets only the simulator port, uses an isolated browser profile, a
 
 ## Remaining limitations
 
-The user has confirmed phone Wi-Fi connectivity. Certificate trust, native mutating controls, interactive tray behavior, and sign-in startup still require further verification. IPv6, a desktop installer, presets (deferred), remote input (deferred), display arrangement, iOS deployment, and Bluetooth peripheral management are not implemented. The current build is a prototype, not a verified production release.
+These are development builds. IPv6, a desktop installer, presets, a standalone remote touchpad or keyboard, display arrangement, iOS deployment, and Bluetooth peripheral management remain outside the current implementation. Keyboard and pointer input inside the Android Remote Desktop viewer are available in the preview. [Verification history](verification.md) · [Implementation plan](implementation-plan.md)
 
 ## Certificate lifecycle checks
 

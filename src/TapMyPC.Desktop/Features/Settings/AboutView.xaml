@@ -1,0 +1,83 @@
+<UserControl x:Class="TapMyPC.Desktop.Features.Settings.AboutView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Margin="0,0,0,20">
+      <Button x:Name="Back" Content="&#x2039;  Configure" Click="Back_Click"
+              HorizontalAlignment="Left" Padding="10,5" Margin="0,0,0,12" />
+      <TextBlock x:Name="Heading" Text="About TapMyPC" FontSize="19" FontWeight="SemiBold"
+                 AutomationProperties.HeadingLevel="Level1" />
+    </StackPanel>
+
+    <ScrollViewer x:Name="AboutContent" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+      <StackPanel>
+        <TextBlock Text="Control your Windows PC from your phone."
+                   Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,0,0,16" />
+        <Border Style="{DynamicResource GroupedCard}" Background="{DynamicResource SurfaceElevated}"
+                Padding="16" Margin="0,0,0,22">
+          <DockPanel>
+            <Border Style="{DynamicResource DashboardIconTile}" DockPanel.Dock="Left">
+              <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Windows app" Foreground="{DynamicResource TextSecondary}" FontSize="11.5" />
+              <TextBlock x:Name="VersionText" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+
+        <Button x:Name="CopyVersion" Click="CopyVersion_Click" Style="{DynamicResource DrawerActionButton}"
+                AutomationProperties.Name="Copy version info">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+            <TextBlock Text="Copy version info" />
+          </DockPanel>
+        </Button>
+        <Button x:Name="SetupGuide" Click="SetupGuide_Click" Style="{DynamicResource DrawerActionButton}"
+                AutomationProperties.Name="Setup guide">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+            <TextBlock Text="Setup guide" />
+          </DockPanel>
+        </Button>
+        <Button x:Name="Licenses" Click="Licenses_Click" Style="{DynamicResource DrawerActionButton}"
+                AutomationProperties.Name="Third-party licenses">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+            <TextBlock Text="Third-party licenses" />
+          </DockPanel>
+        </Button>
+        <Button x:Name="GitHubRepository" Click="GitHubRepository_Click" Style="{DynamicResource DrawerActionButton}"
+                AutomationProperties.Name="GitHub repository">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                       Foreground="{DynamicResource TextMuted}" VerticalAlignment="Center" />
+            <TextBlock Text="GitHub repository" />
+          </DockPanel>
+        </Button>
+        <TextBlock x:Name="Feedback" Foreground="{DynamicResource AccentText}"
+                   AutomationProperties.LiveSetting="Polite" FontSize="12" />
+
+        <TextBlock Foreground="{DynamicResource TextSecondary}" FontSize="12" Margin="0,12,0,0">
+          <Run Text="Developed by " /><Hyperlink x:Name="DeveloperCredit" NavigateUri="https://github.com/Avaxerrr"
+                     RequestNavigate="DeveloperCredit_RequestNavigate"
+                     Foreground="{DynamicResource AccentText}">@Avaxerrr</Hyperlink>
+        </TextBlock>
+      </StackPanel>
+    </ScrollViewer>
+
+    <TextBox x:Name="DetailsText" Grid.Row="1" Visibility="Collapsed" IsReadOnly="True" TextWrapping="Wrap"
+             AutomationProperties.Name="{Binding Text, ElementName=Heading}"
+             Background="{DynamicResource BgPrimary}" Foreground="{DynamicResource TextPrimary}"
+             BorderBrush="{DynamicResource BorderHairline}" Padding="12" VerticalScrollBarVisibility="Auto" />
+  </Grid>
+</UserControl>

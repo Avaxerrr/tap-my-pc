@@ -1,7 +1,9 @@
 package dev.tapmypc.tapmypc_mobile
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
@@ -60,6 +62,20 @@ class MainActivity : FlutterActivity() {
                     @Suppress("DEPRECATION")
                     val number = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode else info.versionCode.toLong()
                     result.success(mapOf("version" to info.versionName, "build" to number.toString()))
+                } else if (call.method == "openDeveloperProfile" || call.method == "openRepository") {
+                    val url = if (call.method == "openRepository") {
+                        "https://github.com/Avaxerrr/tap-my-pc"
+                    } else {
+                        "https://github.com/Avaxerrr"
+                    }
+                    try {
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        result.success(null)
+                    } catch (_: ActivityNotFoundException) {
+                        result.error("no_browser", "Could not open the GitHub link.", null)
+                    } catch (_: SecurityException) {
+                        result.error("browser_blocked", "Could not open the GitHub link.", null)
+                    }
                 } else if (call.method == "viewerFullscreen") {
                     val fullscreen = call.arguments == true
                     val controller = WindowCompat.getInsetsController(window, window.decorView)

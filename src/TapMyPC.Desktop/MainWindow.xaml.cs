@@ -47,6 +47,7 @@ public partial class MainWindow : Window
     private void Drawer_Checked(object sender, RoutedEventArgs e)
     {
         if (switchingDrawer || sender is not ToggleButton selected) return;
+        if (selected == SettingsDrawerToggle) ShowConfigureContent();
         switchingDrawer = true;
         try
         {
@@ -80,11 +81,33 @@ public partial class MainWindow : Window
 
     private void OpenRemoteDesktopSettings_Click(object sender, RoutedEventArgs e)
     {
+        ShowConfigureContent();
         SettingsDrawerToggle.IsChecked = true;
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
             if (SettingsDrawerToggle.IsChecked == true) RemoteDesktopSettingsCard.BringIntoView();
         }));
+    }
+
+    private void OpenAbout_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsViewModel settings) return;
+        AboutPage.Prepare(settings.VersionLabel);
+        ConfigureContent.Visibility = Visibility.Hidden;
+        AboutPage.Visibility = Visibility.Visible;
+        AboutPage.FocusBack();
+    }
+
+    private void About_BackRequested(object? sender, EventArgs e)
+    {
+        ShowConfigureContent();
+        AboutAction.Focus();
+    }
+
+    private void ShowConfigureContent()
+    {
+        AboutPage.Visibility = Visibility.Collapsed;
+        ConfigureContent.Visibility = Visibility.Visible;
     }
 
     private void CloseDrawers()
@@ -103,7 +126,10 @@ public partial class MainWindow : Window
         if (e.Key != Key.Escape || !DrawerToggles.Any(toggle => toggle.IsChecked == true)) return;
         // Let an open network dropdown consume Escape before dismissing its panel.
         if (Keyboard.FocusedElement is System.Windows.Controls.ComboBox { IsDropDownOpen: true }) return;
-        CloseDrawers();
+        if (SettingsDrawerToggle.IsChecked == true && AboutPage.IsVisible)
+            AboutPage.GoBack();
+        else
+            CloseDrawers();
         e.Handled = true;
     }
 

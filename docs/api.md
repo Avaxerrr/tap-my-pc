@@ -21,6 +21,7 @@ Successful authenticated requests also refresh a transient desktop presence indi
 | GET | `/api/v1/status` | None | 200 status object below |
 | GET | `/api/v1/monitoring` | None | 200 monitoring response below |
 | GET | `/api/v1/remote-desktop` | WebSocket upgrade | 101 binary VNC stream for an approved phone over LAN or Tailscale |
+| GET | `/api/v1/remote-desktop/audio` | WebSocket upgrade | 101 Opus stream for the authorized active viewer |
 | PUT | `/api/v1/audio/volume` | `{"volume":35}` | 200 `{"accepted":true}` |
 | PUT | `/api/v1/audio/mute` | `{"muted":true}` | 200 `{"accepted":true}` |
 | POST | `/api/v1/audio/step` | `{"direction":"Up"}` | 200 accepted + requested-key feedback |
@@ -190,7 +191,7 @@ QR identity is the exact leaf certificate. The desktop persists its certificate 
 
 Authenticated requests may include X-TapMyPC-Device-Name containing a Base64-encoded UTF-8 phone name. The server bounds the header to 512 characters and accepts only a trimmed 1–60-character name without control characters. Invalid hints are ignored. The hint updates only that credential's paired-client label unless the PC has saved a custom name. It never authorizes access, changes credentials, or determines connection transport. Older clients/servers may omit/ignore it.
 
-Transport classification comes from the listener composition, not request data. PUT /api/v1/bluetooth returns 422 with a switch-to-Wi-Fi message on the Bluetooth listener and does not call the radio controller. Wi-Fi radio control remains available subject to reported hardware capability and explicit desired state.
+The server classifies transport by listener. `PUT /api/v1/bluetooth` returns 422 on the Bluetooth listener and tells the client to switch to local network or Tailscale. On those routes, radio control requires reported hardware capability and an explicit desired state.
 
 ## Bluetooth connection metadata
 
@@ -198,15 +199,13 @@ Authenticated status includes optional bluetoothConnection: {available:boolean,a
 
 Bluetooth carries the existing API unchanged through encrypted RFCOMM and a fixed loopback HTTPS listener. The same TLS identity, bearer credentials, route validation, revocation, feedback, and timer state apply. No unauthenticated Bluetooth command route or localhost authorization exemption exists. See [Bluetooth](bluetooth.md).
 
-## Discovery and remaining protocol work
+## Discovery
 
 Desktop mDNS advertises _tapmypc._tcp on the selected trusted adapter, with v=1, fp=certificate SHA-256 fingerprint, pk=SubjectPublicKeyInfo SHA-256 fingerprint, and name=machine name in TXT records. Android NSD resolves saved-PC address hints, then verifies pinned HTTPS and authenticated status before updating the saved address. Advertisements never contain command tokens or pairing secrets and never authorize access. Same-key renewal and explicit local identity reset are implemented; see [mobile connections](mobile-connections.md).
 
-Monitoring is planned after Bluetooth. This contract does not promise a metrics endpoint; the proposed future bridge is recorded in [monitoring integration](monitoring-integration.md).
-
 ## Flutter and Bluetooth
 
-Flutter implements native presentation/client code and stores credentials using mobile secure storage. It verifies the host certificate identity through QR/manual pairing and exact certificate pinning on every connection. Do not copy the simulator's validation exception into production.
+Flutter stores credentials using Android secure storage. The client verifies the exact leaf certificate for QR or manual enrollment. For saved profiles, the client accepts a valid certificate matching the enrolled leaf or the previously verified identity key. Keep the simulator's validation exception confined to its test harness.
 
 Bluetooth carries the same pinned HTTPS API over encrypted Classic RFCOMM with the existing pairing identity and bearer credential. Windows and Android byte adapters forward TLS without introducing a second command or authorization protocol. See [Bluetooth](bluetooth.md).
 

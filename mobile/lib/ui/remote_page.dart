@@ -6,11 +6,11 @@ import 'package:flutter/services.dart';
 
 import '../bluetooth_connection.dart';
 import '../connection.dart';
+import '../connection_polling.dart';
 import '../discovery.dart';
 import '../home_screen.dart';
 import '../pairing_page.dart';
 import '../phone_identity.dart';
-import '../selected_connection.dart';
 import 'connection_dialogs.dart';
 import 'remote_dashboard.dart';
 import 'remote_desktop_page.dart';
@@ -30,11 +30,14 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   final desktopPreferences = RemoteDesktopPreferences();
   List<PcProfile> profiles = [];
   PcProfile? selected;
-  PcApi? api;
+  late final polling = PcConnectionPolling(
+    createApi: (profile) => widget.createApi(profile),
+  );
+  PcApi? get api => polling.api;
   Map<String, dynamic>? status;
   List<dynamic> outputs = [], monitors = [], shortcuts = [];
   String message = 'Add your first PC to get started.';
-  bool busy = false, refreshing = false, foreground = true;
+  bool busy = false, foreground = true;
   bool editingConnection = false;
   bool awaitingWake = false;
   String appVersion = '';
@@ -43,7 +46,6 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   Map<String, dynamic>? pendingSnapshot;
   Map<String, String> deviceErrors = {};
   int epoch = 0;
-  Timer? timer;
   StreamSubscription<Map<dynamic, dynamic>>? discoverySubscription;
   final Map<String, List<String>> candidates = {};
   final Map<String, DateTime> verifiedAt = {};
@@ -51,7 +53,6 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   final Set<String> unsavedProfiles = {};
   String discoveryMessage = 'Looking for saved PCs on this network.';
   bool probing = false;
-  int ticks = 0;
   ValueNotifier<int?>? desktopRevision;
   ValueNotifier<bool?>? desktopAudioPermission;
   bool homeScreenReady = false;
@@ -66,10 +67,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     });
     load();
     loadVersion();
-    timer = Timer.periodic(const Duration(seconds: 2), (_) {
-      ticks++;
-      refresh(devices: deviceErrors.isNotEmpty && ticks % 5 == 0);
-      if (ticks % 5 == 0) probeSaved();
+    polling.start((retryTick) {
+      refresh(devices: deviceErrors.isNotEmpty && retryTick);
+      if (retryTick) probeSaved();
     });
   }
 
@@ -132,8 +132,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   void select(PcProfile profile) {
     homeDesktopPin = null;
     epoch++;
-    api?.close();
-    api = null;
+    polling.disconnect();
     setState(() {
       selected = profile;
       status = null;
@@ -154,169 +153,116 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   }
 
   Future<void> refresh({bool devices = false}) async {
-    final client = api;
+    final profile = selected;
     final generation = epoch;
-    if (selected == null ||
+    if (profile == null ||
         editingConnection ||
         busy ||
-        refreshing ||
+        polling.isRefreshing ||
         !foreground ||
-        pairingRequired.contains(selected?.pin)) {
+        pairingRequired.contains(profile.pin)) {
       return;
     }
-    refreshing = true;
     try {
-      Map<String, dynamic> next;
-      final current = selected!;
-      final hints = candidates[normalizePin(current.pin)] ?? [];
-      final preferNetwork =
-          current.connectionMode == 'auto' &&
-          ticks % 5 == 0 &&
-          client != null &&
-          client.transportLabel != 'Local network';
-      VerifiedPcConnection? recovered;
-      if (client == null || preferNetwork) {
-        recovered = await connectSelectedPc(
-          current,
-          hints,
-          wifi: widget.createApi,
-          activeApi: client,
-        );
-        next = recovered.status;
-      } else {
-        try {
-          next = Map<String, dynamic>.from(await client.request('/status'));
-        } catch (error) {
-          if (!mounted || generation != epoch) return;
-          client.close();
-          api = null;
-          if (error is PcApiException && error.statusCode == 401) rethrow;
-          if (status != null) {
-            setState(() {
-              status = null;
-              message = 'Reconnecting to ${current.name}…';
-            });
-          }
-          recovered = await connectSelectedPc(
-            current,
-            hints,
-            wifi: widget.createApi,
-            excludedAddresses: client.isBluetooth
-                ? {}
-                : {client.profile.address},
-          );
-          next = recovered.status;
-        }
-      }
-      if (recovered != null) {
-        if (!mounted || generation != epoch || busy) {
-          if (!identical(recovered.api, api)) recovered.api.close();
-          return;
-        }
-        if (!identical(api, recovered.api)) api?.close();
-        api = recovered.api;
-        await rememberVerifiedProfile(recovered.profile, generation);
-      }
-      if (!mounted || generation != epoch) return;
-      final activeClient = api!;
-      var verified = selected!
-          .copy(keyPin: activeClient.verifiedProfile.keyPin)
-          .withNetworkHints(next['networkConnection']);
-      final bluetoothInfo = next['bluetoothConnection'];
-      if (bluetoothInfo is Map &&
-          bluetoothInfo['address'] is String &&
-          bluetoothInfo['serviceId'] ==
-              '8cf69287-4d5e-47f1-97c8-0a4ec3b5d290' &&
-          RegExp(
-            r'^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$',
-          ).hasMatch(bluetoothInfo['address'])) {
-        verified = verified.withBluetoothAddress(
-          (bluetoothInfo['address'] as String).toUpperCase(),
-        );
-      }
-      await rememberVerifiedProfile(
-        verified,
-        generation,
-        network: next['networkConnection'],
+      await polling.refresh(
+        profile,
+        candidates[normalizePin(profile.pin)] ?? [],
+        isCurrent: () => mounted && generation == epoch,
+        canAdoptConnection: () => !busy,
+        onReconnecting: () {
+          if (status == null) return;
+          setState(() {
+            status = null;
+            message = 'Reconnecting to ${profile.name}…';
+          });
+        },
+        onStatus: (reading) => applyPolledStatus(reading, generation, devices),
+        onDevices: (lists) => setState(() {
+          outputs = lists.outputs;
+          monitors = lists.monitors;
+          shortcuts = lists.shortcuts;
+          deviceErrors = lists.errors;
+        }),
+        onFailure: (error) => applyPollingFailure(error, generation),
       );
-      if (!mounted || generation != epoch) return;
-      final revision = next['remoteDesktopRevision'];
-      desktopRevision?.value = revision is int ? revision : null;
-      if (next['remoteDesktopAudioEnabled'] case final bool allowed) {
-        desktopAudioPermission?.value = allowed;
-      }
-      final loadDevices = devices || status == null;
-      // A verified status response establishes connectivity. Optional device
-      // lists must not turn a reachable PC into an offline one.
-      setState(() {
-        status = next;
-        if (awaitingWake) {
-          awaitingWake = false;
-          feedback = '${selected!.name} is back online.';
-          feedbackError = false;
-        }
-        final pending = next['scheduler']?['pending'];
-        pendingSnapshot = pending == null
-            ? null
-            : Map<String, dynamic>.from(pending);
-        lastServerTime = next['serverTime'];
-        verifiedAt[normalizePin(selected!.pin)] = DateTime.now();
-        message =
-            'Connected to ${selected!.name} · ${activeClient.transportLabel}${unsavedProfiles.contains(selected!.pin) ? '. Identity storage failed; retrying automatically.' : ''}';
-      });
-      finishHomeDesktopRequest(generation);
-      if (loadDevices) {
-        final errors = <String, String>{};
-        Future<List<dynamic>> loadList(String path, String label) async {
-          try {
-            return await activeClient.request(path) as List<dynamic>;
-          } catch (error) {
-            // Revoked credentials still invalidate the entire connection.
-            if (error is PcApiException && error.statusCode == 401) rethrow;
-            final detail = error is PcApiException
-                ? ' (HTTP ${error.statusCode})'
-                : '';
-            errors[path] =
-                '$label could not be loaded$detail. Pull to refresh.';
-            return [];
-          }
-        }
-
-        final lists = await Future.wait([
-          loadList('/audio/outputs', 'Audio outputs'),
-          loadList('/monitors', 'Individual display controls'),
-          loadList('/shortcuts', 'Shortcuts'),
-        ]);
-        if (!mounted || generation != epoch) return;
-        setState(() {
-          outputs = lists[0];
-          monitors = lists[1];
-          shortcuts = lists[2];
-          deviceErrors = errors;
-        });
-      }
-    } catch (error) {
-      if (mounted && generation == epoch) {
-        api?.close();
-        api = null;
-        setState(() {
-          status = null;
-          if (error is PcApiException && error.statusCode == 401) {
-            awaitingWake = false;
-            pairingRequired.add(selected!.pin);
-            message = 'Pairing required. Scan a new QR on ${selected!.name}.';
-          } else {
-            message = error is SocketException || error is TimeoutException
-                ? ''
-                : friendly(error);
-          }
-        });
-        finishHomeDesktopRequest(generation);
-      }
     } finally {
-      refreshing = false;
       if (mounted && generation != epoch) refresh(devices: true);
     }
+  }
+
+  Future<bool> applyPolledStatus(
+    PcStatusReading reading,
+    int generation,
+    bool devices,
+  ) async {
+    if (reading.recoveredProfile case final recovered?) {
+      await rememberVerifiedProfile(recovered, generation);
+    }
+    if (!mounted || generation != epoch) return false;
+    final activeClient = reading.client;
+    final next = reading.status;
+    var verified = selected!
+        .copy(keyPin: activeClient.verifiedProfile.keyPin)
+        .withNetworkHints(next['networkConnection']);
+    final bluetoothInfo = next['bluetoothConnection'];
+    if (bluetoothInfo is Map &&
+        bluetoothInfo['address'] is String &&
+        bluetoothInfo['serviceId'] == '8cf69287-4d5e-47f1-97c8-0a4ec3b5d290' &&
+        RegExp(
+          r'^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$',
+        ).hasMatch(bluetoothInfo['address'])) {
+      verified = verified.withBluetoothAddress(
+        (bluetoothInfo['address'] as String).toUpperCase(),
+      );
+    }
+    await rememberVerifiedProfile(
+      verified,
+      generation,
+      network: next['networkConnection'],
+    );
+    if (!mounted || generation != epoch) return false;
+    final revision = next['remoteDesktopRevision'];
+    desktopRevision?.value = revision is int ? revision : null;
+    if (next['remoteDesktopAudioEnabled'] case final bool allowed) {
+      desktopAudioPermission?.value = allowed;
+    }
+    final loadDevices = devices || status == null;
+    // A verified status response establishes connectivity. Optional device
+    // lists must not turn a reachable PC into an offline one.
+    setState(() {
+      status = next;
+      if (awaitingWake) {
+        awaitingWake = false;
+        feedback = '${selected!.name} is back online.';
+        feedbackError = false;
+      }
+      final pending = next['scheduler']?['pending'];
+      pendingSnapshot = pending == null
+          ? null
+          : Map<String, dynamic>.from(pending);
+      lastServerTime = next['serverTime'];
+      verifiedAt[normalizePin(selected!.pin)] = DateTime.now();
+      message =
+          'Connected to ${selected!.name} · ${activeClient.transportLabel}${unsavedProfiles.contains(selected!.pin) ? '. Identity storage failed; retrying automatically.' : ''}';
+    });
+    finishHomeDesktopRequest(generation);
+    return loadDevices;
+  }
+
+  void applyPollingFailure(Object error, int generation) {
+    setState(() {
+      status = null;
+      if (error is PcApiException && error.statusCode == 401) {
+        awaitingWake = false;
+        pairingRequired.add(selected!.pin);
+        message = 'Pairing required. Scan a new QR on ${selected!.name}.';
+      } else {
+        message = error is SocketException || error is TimeoutException
+            ? ''
+            : friendly(error);
+      }
+    });
+    finishHomeDesktopRequest(generation);
   }
 
   String friendly(Object error) => switch (error) {
@@ -768,8 +714,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       await store.save(saved);
       if (!mounted) return;
       epoch++;
-      api?.close();
-      api = null;
+      polling.disconnect();
       setState(() {
         profiles = saved;
         selected = null;
@@ -863,27 +808,24 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
             10) {
           continue;
         }
-        VerifiedPcConnection? connection;
         final generation = epoch;
         try {
-          connection = await connectSelectedPc(profile, [
-            profile.address,
-            ...?candidates[key],
-          ]);
-          if (mounted) {
-            await rememberVerifiedProfile(
-              connection.profile,
-              generation,
-              network: connection.status['networkConnection'],
-            );
-            if (mounted) setState(() => verifiedAt[key] = DateTime.now());
-          }
+          await polling.probe(profile, [profile.address, ...?candidates[key]], (
+            connection,
+          ) async {
+            if (mounted) {
+              await rememberVerifiedProfile(
+                connection.profile,
+                generation,
+                network: connection.status['networkConnection'],
+              );
+              if (mounted) setState(() => verifiedAt[key] = DateTime.now());
+            }
+          });
         } catch (error) {
           if (error is PcApiException && error.statusCode == 401 && mounted) {
             setState(() => pairingRequired.add(profile.pin));
           }
-        } finally {
-          connection?.api.close();
         }
       }
     } finally {
@@ -1089,8 +1031,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     epoch++;
     homeScreenChannel.setMethodCallHandler(null);
     stopDiscovery();
-    timer?.cancel();
-    api?.close();
+    polling.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

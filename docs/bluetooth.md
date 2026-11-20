@@ -12,7 +12,7 @@ TapMyPC Android supports encrypted Classic Bluetooth RFCOMM with the Windows hos
 
 Initial enrollment requires reachable trusted Wi-Fi. An already enrolled phone with saved Bluetooth metadata can control the PC without a LAN. Use [Wake-on-LAN](setup.md#android-wake-on-lan) over the local network when the PC is asleep and supports wake.
 
-Start/Stop connections controls both listeners and remains remembered. Public/unidentified LANs pause Wi-Fi without disabling Bluetooth for already paired phones. Turning off a PC/phone radio or moving out of range disconnects Bluetooth. PC radio changes are disabled in the Android UI and rejected by the Bluetooth API listener. Switch to Wi-Fi to change radio power. Over Wi-Fi the card shows PC Bluetooth: On/Off and offers only the applicable action; unknown/unavailable/mixed states offer no guessed action. No command is automatically replayed.
+Start/Stop connections controls the LAN, Tailscale, and Bluetooth listeners and remains remembered. Public or unidentified LANs pause the local listener while Bluetooth remains available to already paired phones. Turning off either radio or moving out of range disconnects Bluetooth. While connected over Bluetooth, Android disables PC radio changes and the Bluetooth listener rejects them. Switch to local network or Tailscale to change radio power. The card offers the applicable action when it knows the radio is on or off. TapMyPC sends each command once.
 
 ## Phone names and active transport
 
@@ -26,7 +26,7 @@ Transport labels reflect the listener that last authenticated that client. Reque
 
 Windows advertises custom Classic Bluetooth RFCOMM service 8cf69287-4d5e-47f1-97c8-0a4ec3b5d290 using an authenticated, encrypted Bluetooth socket. The server forwards opaque bytes only to its own fixed loopback HTTPS listener. Android's native BluetoothSocket adapter exposes a temporary phone-loopback socket to the existing Dart TLS client.
 
-The phone verifies the enrolled leaf/identity-key pin and certificate dates before sending any HTTP request or credential. A Bluetooth name, MAC address, OS bond, or service UUID never authorizes control by itself. The same bearer authentication, revocation, validation, request limits, feedback, power confirmations, and PC-owned timers apply on both listeners. No arbitrary forwarding destination, plaintext command protocol, unauthenticated localhost exemption, or separate command implementation is introduced.
+The phone verifies the enrolled leaf/identity-key pin and certificate dates before sending any HTTP request or credential. A Bluetooth name, MAC address, OS bond, or service UUID never authorizes control by itself. The same bearer authentication, revocation, validation, request limits, feedback, power confirmations, and PC-owned timers apply across all listeners. No arbitrary forwarding destination, plaintext command protocol, unauthenticated localhost exemption, or separate command implementation is introduced.
 
 The PC’s Bluetooth address is learned only from authenticated status. Saved fields are optional bluetoothAddress and connectionMode (auto by default) alongside the existing keyPin. The HTTPS LAN address and selected-profile identity remain unchanged when using the temporary local socket. Re-pairing/key reset retains the existing explicit identity-verification rules.
 

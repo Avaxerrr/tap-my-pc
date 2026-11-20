@@ -2,71 +2,20 @@
 
 ## Current state
 
-Android 0.18.0+44 adds long-press Wake and Remote Desktop shortcuts and a TapMyPC Controls home-screen widget bound to a paired PC. Widget status refresh is initiated by a tap. [Home-screen controls](../mobile/README.md#home-screen-controls)
+| Component | Current development version |
+| --- | --- |
+| Windows desktop and API | **0.16.7 (build 34)** |
+| Android | **0.18.3 (build 47)** |
 
-Windows 0.16.4+31 and Android 0.17.9+42 use the theme text color for connection badge icons and labels and show a disconnected icon when idle or offline. Windows phone names also use the theme text color. [Setup](setup.md#phone-names-and-connection-feedback)
+The Windows tray host serves the browser remote and authenticated API. It manages pairing, command feedback, and power timers. Android uses QR or manual pairing and saves independent PC profiles. It can reconnect over the local network, Tailscale, or Bluetooth. [Setup](setup.md) · [Mobile connections](mobile-connections.md)
 
-Windows 0.16.3+30 and Android 0.17.8+41 apply the selected accent to connection badge icons and labels. Windows also applies it to active phone names. [Setup](setup.md#phone-names-and-connection-feedback)
+Windows and Android connection badges use the theme text color for their icons and labels, including offline. Windows uses its theme accent for the outer connection card border. Android offers long-press actions and a TapMyPC Controls widget for a paired PC. [Connection feedback](setup.md#phone-names-and-connection-feedback) · [Home-screen controls](../mobile/README.md#home-screen-controls)
 
-Windows 0.16.2+29 and Android 0.17.7+40 use the theme text color for connection icons. Windows also applies that color to the Pair a Phone icon and adds a monitor icon to the Remote Desktop card. [Setup](setup.md#phone-names-and-connection-feedback)
+Both apps provide About TapMyPC with version copying, in-app setup help, third-party licenses, and a link to the GitHub repository. On Windows, About opens inside the Configure drawer. Android includes the PC host version when it is available.
 
-Windows 0.16.1+28 and Android 0.17.6+39 replace the active connection badge dots with Wi-Fi, Bluetooth, and Tailscale icons. The Windows connection card border uses the selected accent. [Setup](setup.md#phone-names-and-connection-feedback)
+Android supports local Wake-on-LAN and the PC Stats Tray integration. The Remote Desktop preview supports Wi-Fi and Tailscale, optional PC audio, and a Windows-managed UltraVNC service. Its remaining hardware and network checks are tracked below. See the verification history for earlier versions, test results, and package installation status. [Verification history](verification.md)
 
-Windows 0.15.2+26 keeps the Remote Desktop card available for setup and simplifies the viewer password dialog with a visibility toggle, inline generation, and one confirmation action. [Setup](setup.md#remote-desktop-preview)
-
-Windows 0.15.1+25 adds an optional dashboard status card, live setup progress, and generated or custom viewer passwords with a Copy action for generated passwords. Android 0.14.1+29 adds password visibility and reports viewer readiness on a compatible Windows host. [Setup](setup.md#remote-desktop-preview)
-
-Windows 0.15.0+24 checks for the latest stable UltraVNC installer on fresh setup and adds in-app capture service controls, password reset, and capture settings. Android 0.14.0+28 adds three viewer quality presets. [Setup](setup.md#remote-desktop-preview)
-
-Windows 0.14.1+23 corrects the firewall rule query in Remote Desktop setup and creates a viewer password on a fresh setup from TapMyPC. [Setup](setup.md#remote-desktop-preview)
-
-Windows 0.14.0+22 adds in-app setup for the local capture service and reports Windows lock and unlock transitions. Android 0.13.0+27 adds a full-frame refresh, a manual Refresh screen button, and opt-in VNC password saving. [Setup](setup.md#remote-desktop-preview)
-
-Android 0.12.1+26 identifies a desktop disconnect during VNC password checking and excludes the remote viewer from automatic Android autofill. [Setup](setup.md#remote-desktop-preview)
-
-Windows 0.13.0+21 and Android 0.12.0+25 add the experimental Remote Desktop viewer with per-phone approval, one paired stream over Wi-Fi or Tailscale, and tap and keyboard input. The Windows host uses a separately configured UltraVNC service. [Setup](setup.md#remote-desktop-preview)
-
-Windows 0.12.0+20 adds Dark, Light, Midnight, Forest, and Plum desktop themes in **Configure → Appearance**. The chosen theme and accent update the window, tray menu, and notification banners immediately.
-
-Windows 0.11.2+19 moves Authorized phones to the top of Configure and places Quick launch shortcuts before Appearance. Advanced Network & Security stays collapsed at the bottom.
-
-Windows 0.11.1+18 shows PC Stats Tray status and the last sample time in **Configure → Hardware monitoring**, with setup guidance when readings are unavailable. [Hardware monitoring](monitoring-integration.md)
-
-Windows 0.11.0+17 reads cached PC Stats Tray metrics and serves them through the paired API. Android 0.11.0+24 adds Stats with the dashboard's default and expanded views. [Hardware monitoring](monitoring-integration.md)
-
-Windows 0.10.0+16 applies the theme accent to enabled preference switches and adds confirmed zero-delay dispatch for Lock, Sleep, and Hibernate. Android 0.10.0+23 uses the active connection's badge color, supports timers in seconds or minutes, and hides due countdowns while offline. See [verification](verification.md) for delivery status.
-
-Windows 0.9.2+15 shows the connected phone name and its active connection on the dashboard. Bluetooth is blue, Wi-Fi is green, and Tailscale is purple. The card uses a neutral border for mixed connections. See [verification](verification.md) for delivery status.
-
-Android 0.9.5+22 starts system pairing from Bluetooth only and waits for it to finish before switching routes. Failed status clients are closed before the next reconnect attempt. Windows 0.9.1+14 recreates the Bluetooth listener after system resume when connections are enabled. See [Bluetooth setup](bluetooth.md) and [verification](verification.md) for test and delivery status.
-
-Installed Android 0.9.4+21 shows a steady Offline status, reports when a wake packet was sent, and preserves the parent settings screens when leaving the wake and address editors. The Wi-Fi wake sender supports an active split-tunnel VPN. Wake PC appears first in the Power action grid, which shows why wake is unavailable while connected or when settings are missing. Setup is in Settings for both automatic and manual profiles. Android learns local Wi-Fi settings from authenticated status on desktop 0.9.0+13. Saved manual settings take priority. See [setup](setup.md#android-wake-on-lan).
-
-Desktop 0.9.0+13 supplies automatic Wake-on-LAN settings. It continues to host independent local and Tailscale listeners, and both routes share the same paired HTTPS identity. See [Tailscale setup](tailscale.md) and [verification](verification.md) for checks and package status.
-
-Certificate lifecycle and Bluetooth secondary connectivity are implemented. Media information is lower priority unless a small implementation is justified. Certificate renewal/recovery is implemented before Bluetooth: same-key automatic renewal, protected Android key-pin migration, and confirmed local reset with revocation/re-pairing. The Bluetooth builds are desktop 0.6.0+10 and Android 0.6.2+12, including the earlier certificate work and the compact Android first-connection screen. Installation and validation results are recorded in verification.md. These priorities supersede earlier deferral and phase-order notes below.
-
-Previous installed desktop/server development build: **0.3.4 (build 7)**, removing the custom companion shadow for smoother dragging and showing a muted No phone connected badge until a remote is active, keeping app animations enabled independently of Windows effects, and removing the animation setting, alongside dashboard/tray polish, themed PC feedback, and recent-authenticated-remote visibility. Android is **0.4.3 (build 7)** with a desktop-matched UI, Remote/Devices/Power navigation, persistent timer/feedback presentation, saved accent themes, and installed version visibility. The Android polish patches keep selected navigation icons white in every accent theme, follow Android reduced motion automatically, and isolate optional device-list failures from verified PC connectivity. The desktop updater now preserves nested runtime dependencies; its earlier flat copy omitted the Windows monitoring library and caused monitor-list errors. QR pairing, pinned discovery/address recovery, and multi-PC selection are preserved. See [setup](setup.md) and [versioning](versioning.md).
-
-The app is branded **TapMyPC**, with the tagline **Your PC, a tap away.** The solution, project namespaces, executable, tray, dashboard, web UI, and documentation use this name. Compatibility code preserves the pre-rename preferences, paired-client credentials, certificates, and single-instance behavior.
-
-The first prototype is implemented on .NET 10: the four main projects, WPF tray/settings UI, HTTPS host, pairing/revocation, web remote, Windows control adapters, and PC-owned timers. A separate loopback-only simulator supports testing without Windows actions. See [verification](verification.md) for evidence and outstanding checks.
-
-The next usability pass is implemented: automatic network-address selection with legacy settings migration, a frameless dashboard with Advanced settings, shared command activity/progress, non-activating PC feedback and power countdowns, web loading/success/error cues, and Windows volume-key requests for relative volume controls. The current desktop and Android builds are installed and verified; see [verification](verification.md). Future desktop updates are staged while the app runs and applied after a normal tray exit; see [setup](setup.md#apply-a-staged-update).
-
-Automated HTTPS and headless browser tests use simulated controls. The user subsequently confirmed phone connectivity over Wi-Fi after selecting the Wi-Fi listen address. Certificate trust, tray interaction, startup registration, and disruptive native controls still need further manual verification when the user is no longer gaming. The agent did not start or expose the real host during the initial verification.
-
-Bluetooth radio status and explicit on/off commands are implemented over Wi-Fi, with Windows permission handling, compact PC feedback, and simulated tests. Bluetooth transport is also implemented separately; radio changes are disabled and rejected over that transport. Shutdown already exists as both a direct confirmed action and a scheduled timer. Bedtime presets are deferred at the user's request.
-
-The compact desktop UI now uses the approved dark card design at 680 × 640 with embedded Inter fonts. Pairing, activity, and configuration use exclusive side panels; startup and notification preferences stay on the main screen. This presentation update preserves host commands and tray lifecycle.
-
-The desktop polish pass adds sharper widgets, non-overlapping shortcut feedback, explicit text smoothing and per-monitor DPI handling, scrollbar hover/drag feedback, reversible drawer animations enabled independently of Windows effects, locally saved accent palettes, removal of the outer shadow after drag-performance comparison, a branded tray/app icon and dark tray menu, and responsive wide/vertical layouts. Host commands, authentication, and timer semantics are unchanged.
-
-PC notification banners now share the desktop's Inter typography, dark surfaces, accent palette, modest corners, and brief appearance fades, while preserving silent non-activation and countdown cancellation. The main connection card and title-bar dot now show recent authenticated remote presence, with a ten-second inactivity timeout and a pulse only while the dashboard is visible.
-
-The connection-feedback follow-up adds phone OS/model names with local PC overrides, actual per-client transport labels, Wi-Fi-only radio controls with explicit On/Off state, and server enforcement against Bluetooth self-disconnection. Current builds are desktop 0.6.0+10 and Android 0.6.2+12; see verification.md for delivery status.
-
-## Phase 1: Foundation and first remote command
+## Phase 1: Foundation and first remote command — implemented
 
 1. Select a supported .NET SDK and establish the solution boundaries described in [architecture](architecture.md).
 2. Implement WPF startup, tray lifecycle, settings window, and dependency injection.
@@ -76,7 +25,7 @@ The connection-feedback follow-up adds phone OS/model names with local PC overri
 
 Verify unauthorized requests are rejected, invalid input is handled, and the listener stays available after settings close. Resolve local-network setup and firewall behavior explicitly.
 
-## Phase 2: Useful web prototype
+## Phase 2: Browser remote — implemented
 
 1. Add the initial audio, media, display, and power controls from [product scope](product-scope.md).
 2. Add PC-owned timers, pending-action status, cancellation, and power confirmation behavior.
@@ -88,29 +37,17 @@ Verify timers continue after browser disconnection and cancellation prevents the
 
 ## Phase 3: Selected additions
 
-Implemented audio output switching, locally approved app/website shortcuts, and per-monitor brightness/on/off with capability detection. The user has deferred presets and remote input. Revisit remote wake alongside the mobile app rather than during this desktop/web pass.
+Implemented audio output switching, locally approved app and website shortcuts, and per-monitor brightness and power controls with capability detection. Presets and a standalone remote touchpad or keyboard remain deferred. Android Wake-on-LAN and viewer input are covered below.
 
-## Phase 4: Flutter client — in progress
+## Phase 4: Android client — implemented
 
-The first Android client is implemented in mobile/ using the existing manual enrollment API, exact certificate verification, secure profile storage, multiple saved PCs, and native controls. QR enrollment is now implemented with single-use secrets and pinned certificate verification. Native discovery, authenticated address recovery, certificate reuse across IP changes, and remembered host startup are implemented. Same-key certificate renewal and local recovery are implemented; migration and compatibility limits are in mobile-connections.md. See [mobile setup](../mobile/README.md).
-
-1. Implemented: same-key renewal, legacy profile migration, and confirmed local identity reset/re-pairing.
-2. Implement locally opened, short-lived, single-use QR enrollment with identity verification and protected per-PC credentials.
-3. Implemented: native Android discovery, last-address/manual fallback, authenticated reconnection, availability and permission/error feedback. Do not infer AP isolation from timeouts.
-4. Support home desktop/work laptop profiles with independent trust/state and explicit command targets.
-5. Implemented: remembered Start/Stop connections, automatic startup on trusted networks and rebind after network changes; Windows sign-in startup stays separate.
-6. Build Flutter controls/timers against the existing API. Verify Android first, then iPhone with macOS/Xcode.
-7. Test wrong identities, QR expiry/reuse, revocation, IP changes, isolation, permissions, PC switching, and reconnects without command replay.
-
-Reuse core behavior and rebuild presentation in Dart. Manual browser setup remains a fallback. See [mobile connections](mobile-connections.md).
-
-The Android Stats tab uses the [PC Stats Tray bridge](monitoring-integration.md). Presets/remote input stay deferred. The laptop wake investigation was brought forward and is now closed for its current configuration.
+Android provides QR and manual enrollment, pinned HTTPS, protected per-PC credentials, multiple selectable profiles, and the remote controls and timers. It discovers and verifies saved PCs and keeps their pending actions, connection state, and preferences separate. Desktop connections can resume automatically on trusted networks. Android and Windows support same-key certificate renewal and explicit local identity reset. iOS remains deferred. [Android build and test guide](../mobile/README.md) · [Mobile connections](mobile-connections.md)
 
 ## Phase 5: Bluetooth secondary connection — implemented
 
 Proved an encrypted Classic RFCOMM exchange on the development PC and Android phone. Windows advertises a secure custom RFCOMM service and forwards to a fixed process-owned loopback HTTPS listener; native Android forwards opaque TLS bytes to the Dart client. Existing TLS identity verification, bearer credentials, commands, feedback, timers, and revocation are reused. No separate command dispatcher is needed.
 
-Android saves Automatic, Local network only, Tailscale only, or Bluetooth only per PC. First enrollment and Bluetooth-address learning use authenticated Wi-Fi; saved phones can then control without LAN access. Global Start/Stop controls both listeners, while Public-network restrictions apply to Wi-Fi. Only read-only status recovery can switch transports; commands are never replayed. iOS remains deferred. See [Bluetooth](bluetooth.md).
+Android saves Automatic, Local network only, Tailscale only, or Bluetooth only per PC. First enrollment and Bluetooth-address learning use authenticated Wi-Fi; saved phones can then control without LAN access. Global Start/Stop controls the LAN, Tailscale, and Bluetooth listeners. Public-network restrictions apply to the local LAN listener. Only read-only status recovery can switch transports; commands are never replayed. iOS remains deferred. See [Bluetooth](bluetooth.md).
 
 ## Phase 6: Hardware monitoring
 
@@ -135,17 +72,7 @@ Windows 0.16.0+27 and Android 0.16.0+31 add optional, permission-gated playback 
 
 ### Android stream controls and fullscreen
 
-Android 0.17.0+32 adds landscape fullscreen, a compact controls handle with PC audio, scrollbars in Fill, and independent RFB stream settings. The options sheet reports the received size, receive and update rates, and observed encoding and JPEG chroma. See [setup](setup.md#remote-desktop-preview).
-
-Android 0.17.1+33 adds a bounded reconnect after an unexpected viewer interruption, more specific failure messages, and a reset to saved stream defaults. The viewer centers Fit and Fill on resize, uses full color, and shows the quality controls supported by the preferred encoding.
-
-Android 0.17.2+34 restores Fit or Fill in a centered view at the saved stream size, compacts the dropdowns, and explains the visual tradeoffs of each encoding. Automatic and Tight use compression levels 1–9 for decoder compatibility. Zlib supports 0–9. JPEG chroma is reported in Stream details.
-
-Android 0.17.3+36 lets UltraVNC finish its first desktop update before restoring a saved stream scale. The viewer also skips the extended desktop-size advertisement that can replace the confirmed stream size.
-
-Android 0.17.4+37 requests a fresh frame when UltraVNC is slow to confirm a stream resize. If desktop updates stop while the resize is pending, the viewer reconnects at the selected scale. Manual refresh also works while a resize is pending.
-
-Android 0.17.5+38 remembers the phone’s Remote Desktop audio toggle per PC and restores it on open or reconnect when the PC permits audio sharing.
+The viewer supports landscape fullscreen, Fit and pannable Fill, saved custom stream settings, and diagnostics. It centers the desktop after scaling, can recover a stalled resize by reconnecting, and restores the saved PC audio choice when the host allows it. [Viewer setup and controls](setup.md#remote-desktop-preview) · [Stream implementation](architecture.md#android-remote-desktop-preview)
 
 ### Deferred viewer work
 
@@ -160,17 +87,16 @@ The original device baseline was TapMyPC Windows 0.15.2+26 and Android 0.14.1+29
 Windows updates `remoteDesktopRevision` on lock and unlock. The Android status poll passes it to the viewer, which uses the same non-incremental RFB request as **Refresh screen**. The exact capture timing on the target PC is still unverified.
 
 - [ ] Compare repeated unlocks at 5, 25, and 60 FPS with the same viewer quality and no phone input after sign-in. Check whether Android receives the unlock revision and requests a full frame. Compare the request time with the first usable desktop image.
-- [ ] Repeat cold viewer opens and lock/unlock transitions with Android 0.15.0+30. Leave the phone untouched and observe whether the delayed refresh restores the entire screen.
+- [ ] Repeat cold viewer opens and lock/unlock transitions with the current Android build. Leave the phone untouched and observe whether the delayed refresh restores the entire screen.
 - [ ] If the follow-up fails, compare TapMyPC and the native UltraVNC viewer in separate sessions against the same server to narrow down the cause.
 - [ ] Verify that the whole desktop appears automatically after repeated lock and unlock cycles over both Wi-Fi and Tailscale, without touching the screen or pressing **Refresh screen**.
 
 ## Open decisions
 
 - Installer approach; the initial output is a framework-dependent folder publish.
-- QR/discovery and existing certificate migration are implemented. Automatic same-key certificate renewal and explicit local identity reset are implemented; seamless migration requires an updated phone to connect before its first renewal. Manual address/code pairing remains available.
-- Direct Tailscale HTTPS is implemented through independent opt-in listening and separate saved endpoints; see [Tailscale setup](tailscale.md). USB networking and other routed/relayed access remain exploratory. No public listener or general AP-isolation fallback is implemented.
+- USB networking and a possible relay for waking the PC from outside the home LAN.
 - Media targeting when several applications are playing.
-- Bluetooth uses Windows Classic RFCOMM server and Android secure RFCOMM client roles. Wider adapter/background behavior needs further testing.
+- Bluetooth compatibility across more adapters and Android background behavior.
 
 Implemented decisions include HTTPS with per-user self-signed certificates, hashed revocable bearer credentials, local JSON preferences, explicit listen address, and two-second status polling while visible. Direct Android Lock, Sleep, and Hibernate can dispatch immediately. The PC owns one cancellable timer and requires explicit cancellation before replacement. Positive delays start at three seconds for Lock, Sleep, and Hibernate and ten seconds for Restart and Shut down. Host-process exit cancels pending work. [API details](api.md) and [setup](setup.md) document the behavior.
 

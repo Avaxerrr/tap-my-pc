@@ -393,7 +393,12 @@ void main() {
     expect(adds, 1);
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
-    expect(find.text('v0.4.2 (build 6)'), findsOneWidget);
+    final about = find.text('About TapMyPC');
+    await tester.ensureVisible(about);
+    await tester.tap(about);
+    await tester.pumpAndSettle();
+    expect(find.text('0.4.2 (build 6)'), findsOneWidget);
+    expect(find.text('PC host'), findsNothing);
     expect(tester.takeException(), isNull);
   });
   testWidgets('Welcome remains usable on a small phone with large text', (
@@ -645,6 +650,65 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('About copies versions and opens setup and GitHub links', (
+    tester,
+  ) async {
+    final messenger = tester.binding.defaultBinaryMessenger;
+    String? copied;
+    String? appAction;
+    const appChannel = MethodChannel('dev.tapmypc/app');
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copied = call.arguments['text'] as String;
+      }
+      return null;
+    });
+    messenger.setMockMethodCallHandler(appChannel, (call) async {
+      appAction = call.method;
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+      messenger.setMockMethodCallHandler(appChannel, null);
+    });
+
+    await render(tester);
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    final about = find.text('About TapMyPC');
+    await tester.ensureVisible(about);
+    await tester.tap(about);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('about-version')), findsOneWidget);
+    expect(find.text('0.3.1 (build 4)'), findsOneWidget);
+    await tester.tap(find.text('Copy version info'));
+    await tester.pumpAndSettle();
+    expect(
+      copied,
+      'TapMyPC Android app: 0.4.2 (build 6)\nTapMyPC PC host: 0.3.1 (build 4)',
+    );
+    expect(find.text('Version info copied.'), findsOneWidget);
+
+    await tester.tap(find.text('Setup guide'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('open Pair a Phone.'), findsOneWidget);
+    await tester.tap(find.text('Got it'));
+    await tester.pumpAndSettle();
+
+    final repository = find.text('GitHub repository');
+    await tester.ensureVisible(repository);
+    await tester.tap(repository);
+    await tester.pumpAndSettle();
+    expect(appAction, 'openRepository');
+
+    final credit = find.text('Developed by @Avaxerrr');
+    await tester.ensureVisible(credit);
+    await tester.tap(credit);
+    await tester.pumpAndSettle();
+    expect(appAction, 'openDeveloperProfile');
+  });
+
   testWidgets('Small phone and large text keep every tab usable', (
     tester,
   ) async {

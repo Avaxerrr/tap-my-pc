@@ -548,3 +548,30 @@ November 19, 2026 (Asia/Taipei).
 - Android 0.18.0+44 passed Flutter analysis and 85 tests. The opt-in certificate fixture was skipped. New tests cover the widget's opaque PC identifiers, explicit profile targeting, one-shot Wake, saved network routes, and the Remote Desktop permission check.
 - On the Android 16 emulator, placed TapMyPC Controls, bound it to a paired simulator, and verified pinned status refresh from the launcher and the Desktop action's permission feedback. Verified the named dynamic Remote Desktop shortcut was published to Android. Tested the widget's Wake setup feedback without sending a packet to a real PC.
 - Verified the APK identity, build number, signature, widget manifest, and bundled assets. Installed `artifacts/mobile/TapMyPC-0.18.0-build44.apk` in place on the POCO X6, verified version 0.18.0 and code 44, and confirmed the TapMyPC Controls widget provider is registered on the phone.
+
+## Android resource cleanup (0.18.1+45)
+
+- Removed the unused Cupertino icon font dependency, five superseded launcher PNGs, and a duplicate version-qualified splash background. This build also includes the connection polling refactor.
+- Flutter analysis reported no issues. All 86 Flutter tests passed, and the opt-in certificate fixture was skipped.
+- Verified the release APK's package ID, version code, and signing certificate. Checked the active TapMyPC icon, splash screen, widget and shortcut declarations, bundled viewer, and native libraries. The APK is 116,310 bytes smaller than build 44.
+- Installed `artifacts/mobile/TapMyPC-0.18.1-build45.apk` in place on the POCO X6. Verified version 0.18.1, code 45, the original installation timestamp, the launcher activity, and the registered widget provider.
+
+## About TapMyPC (Windows 0.16.5+32, Android 0.18.2+46)
+
+- All 93 .NET tests passed, and the Release solution built with zero warnings or errors. An offscreen WPF check covered the Configure entry, version label, developer profile URL, setup guide, and four bundled licenses in the Dark and Light themes.
+- Verified the full 28-file Windows x64 publish at `artifacts/publish/TapMyPC-next`, including executable and API product versions. The Windows update is staged while the existing app runs.
+- Flutter analysis reported no issues, and 87 tests passed with the opt-in certificate fixture skipped. Dashboard tests verified access without pairing, version copying, setup navigation, and the developer credit action.
+- Verified the release APK package ID, signing certificate, and bundled license files. Installed `artifacts/mobile/TapMyPC-0.18.2-build46.apk` in place on the POCO X6 and confirmed version 0.18.2 and code 46.
+
+## Windows About drawer (0.16.6+33)
+
+- The Windows About page now opens inside Configure and uses its theme, accent, and shared controls. The setup guide and bundled licenses open in the same drawer.
+- All 93 .NET tests passed. Offscreen WPF checks verified the minimum-size layout under Light and Dark themes, the build label and developer profile destination, guide and license navigation, and returning to the previous Configure scroll position.
+- Published the Windows x64 build at `artifacts/publish/TapMyPC-next` and verified the executable and API versions.
+
+## About repository link (Windows 0.16.7+34, Android 0.18.3+47)
+
+- About opens the TapMyPC repository on both platforms. GitHub reports private visibility and no releases at verification time.
+- All 93 .NET tests and 87 Flutter tests passed. Flutter analysis reported no issues, and the opt-in Flutter certificate fixture was skipped. The Flutter dashboard test verified that the repository and developer links invoke their respective actions. Offscreen WPF checks verified the repository row in Light and Dark themes.
+- Verified the full Windows x64 build and its executable and API metadata at `artifacts/publish/TapMyPC-0.16.7-build34-win-x64`. The earlier Windows build was running from the normal staging folder, so the new build was staged separately.
+- Verified the APK identity, signing certificate, bundled contents, and repository URL. Installed `artifacts/mobile/TapMyPC-0.18.3-build47.apk` in place on the POCO X6 and confirmed version 0.18.3 and code 47.

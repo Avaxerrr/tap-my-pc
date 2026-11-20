@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'about_licenses.dart';
 import 'home_screen.dart';
 import 'ui/app_theme.dart';
 import 'ui/remote_page.dart';
@@ -10,6 +11,7 @@ export 'ui/remote_page.dart' show RemotePage;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  registerBundledLicenses();
   runApp(const TapMyPcApp());
 }
 

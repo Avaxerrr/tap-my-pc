@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../connection.dart';
+import 'about_page.dart';
 import 'app_theme.dart';
 import 'widgets.dart';
 import 'remote_controls.dart';
@@ -294,23 +295,17 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
                 ),
               ),
             const Divider(),
-            Text('ABOUT TAPMYPC', style: Theme.of(context).textTheme.bodySmall),
-            const SizedBox(height: 10),
-
-            Text(
-              widget.appVersion.isEmpty
-                  ? 'Reading installed version…'
-                  : widget.appVersion,
-              key: const Key('about-version'),
-            ),
-            if (widget.status?['serverVersion'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'PC v${widget.status!['serverVersion']}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.info_outline),
+              title: const Text('About TapMyPC'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showAboutPage(
+                context,
+                appVersion: widget.appVersion,
+                hostVersion: widget.status?['serverVersion']?.toString(),
               ),
+            ),
           ],
         ),
       ),
