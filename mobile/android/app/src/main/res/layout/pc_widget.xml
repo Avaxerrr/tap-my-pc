@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/home_widget_card"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingHorizontal="10dp"
+    android:paddingVertical="6dp">
+
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="4dp">
+
+        <TextView
+            android:id="@+id/widget_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="TapMyPC"
+            android:textColor="#F5F5F7"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:text="Tap to choose a paired PC"
+            android:textColor="#BFC6D3"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/widget_wake"
+            style="@style/PcWidgetAction"
+            android:drawableTop="@drawable/home_wake"
+            android:text="Wake PC" />
+
+        <TextView
+            android:id="@+id/widget_desktop"
+            style="@style/PcWidgetAction"
+            android:drawableTop="@drawable/home_desktop"
+            android:text="Desktop"
+            android:contentDescription="Remote Desktop" />
+
+        <TextView
+            android:id="@+id/widget_refresh"
+            style="@style/PcWidgetAction"
+            android:drawableTop="@drawable/home_refresh"
+            android:text="Refresh"
+            android:contentDescription="Refresh PC status" />
+    </LinearLayout>
+</LinearLayout>

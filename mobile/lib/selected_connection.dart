@@ -2,6 +2,26 @@ import 'dart:io';
 import 'connection.dart';
 import 'bluetooth_connection.dart';
 
+List<String> selectedNetworkAddresses(
+  PcProfile profile,
+  Iterable<String> addresses, {
+  Set<String> excludedAddresses = const {},
+}) {
+  final local = {
+    if (profile.localEndpoint != null) profile.localEndpoint!,
+    ...addresses.where((a) => !isTailscaleAddress(a)),
+  }.where((a) => !excludedAddresses.contains(a)).take(3);
+  final tail = [
+    if (profile.tailscaleEndpoint != null) profile.tailscaleEndpoint!,
+  ].where((a) => !excludedAddresses.contains(a));
+  return switch (profile.connectionMode) {
+    'local' || 'wifi' => local.toList(),
+    'tailscale' => tail.toList(),
+    'bluetooth' => [],
+    _ => [...local, ...tail],
+  };
+}
+
 Future<VerifiedPcConnection> connectSelectedPc(
   PcProfile profile,
   Iterable<String> addresses, {
@@ -11,19 +31,11 @@ Future<VerifiedPcConnection> connectSelectedPc(
   Set<String> excludedAddresses = const {},
 }) async {
   final mode = profile.connectionMode;
-  final local = {
-    if (profile.localEndpoint != null) profile.localEndpoint!,
-    ...addresses.where((a) => !isTailscaleAddress(a)),
-  }.where((a) => !excludedAddresses.contains(a)).take(3);
-  final tail = [
-    if (profile.tailscaleEndpoint != null) profile.tailscaleEndpoint!,
-  ].where((a) => !excludedAddresses.contains(a));
-  final network = switch (mode) {
-    'local' || 'wifi' => local,
-    'tailscale' => tail,
-    'bluetooth' => <String>[],
-    _ => [...local, ...tail],
-  };
+  final network = selectedNetworkAddresses(
+    profile,
+    addresses,
+    excludedAddresses: excludedAddresses,
+  );
   Object? failure;
   if (mode != 'bluetooth') {
     try {

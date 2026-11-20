@@ -2,6 +2,8 @@
 
 ## Current state
 
+Android 0.18.0+44 adds long-press Wake and Remote Desktop shortcuts and a TapMyPC Controls home-screen widget bound to a paired PC. Widget status refresh is initiated by a tap. [Home-screen controls](../mobile/README.md#home-screen-controls)
+
 Windows 0.16.4+31 and Android 0.17.9+42 use the theme text color for connection badge icons and labels and show a disconnected icon when idle or offline. Windows phone names also use the theme text color. [Setup](setup.md#phone-names-and-connection-feedback)
 
 Windows 0.16.3+30 and Android 0.17.8+41 apply the selected accent to connection badge icons and labels. Windows also applies it to active phone names. [Setup](setup.md#phone-names-and-connection-feedback)

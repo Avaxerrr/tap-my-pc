@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tapmypc_mobile/connection.dart';
+import 'package:tapmypc_mobile/home_screen.dart';
 import 'package:tapmypc_mobile/main.dart';
 import 'package:tapmypc_mobile/ui/app_theme.dart';
 import 'package:tapmypc_mobile/ui/widgets.dart';
@@ -111,6 +112,65 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   }
+
+  testWidgets('A launcher Desktop request targets the named saved PC', (
+    tester,
+  ) async {
+    const target = PcProfile(
+      'Launcher target',
+      'https://192.168.0.240:45831',
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      'test-credential-never-sent',
+    );
+    FlutterSecureStorage.setMockInitialValues({
+      'tapmypc.profiles.v1': jsonEncode([
+        testProfile.toJson(),
+        target.toJson(),
+      ]),
+      'tapmypc.selected.v1': testProfile.pin,
+    });
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    String? pending = homeProfileId(target);
+    messenger.setMockMethodCallHandler(homeScreenChannel, (call) async {
+      if (call.method != 'takeDesktopRequest') return null;
+      final request = pending;
+      pending = null;
+      return request;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(homeScreenChannel, null),
+    );
+    final clients = <FakePcApi>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(AccentPalette.choices.first),
+        home: RemotePage(
+          createApi: (profile) {
+            final client = FakePcApi(profile);
+            clients.add(client);
+            return client;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Launcher target'), findsOneWidget);
+    expect(
+      find.text('Remote Desktop is unavailable for Launcher target.'),
+      findsOneWidget,
+    );
+    expect(
+      clients.any(
+        (client) =>
+            client.profile.pin == target.pin &&
+            client.calls.contains('GET /status'),
+      ),
+      isTrue,
+    );
+    expect(clients.expand((client) => client.powerRequests), isEmpty);
+    await dispose(tester);
+  });
 
   for (final (action, supportsImmediatePower, expectedDelay) in [
     ('Lock', true, 0),

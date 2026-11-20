@@ -1,6 +1,6 @@
 # TapMyPC Android client
 
-Android **0.17.9 (build 42)** uses white connection badge icons and labels and shows a disconnected icon when offline. The app remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone. See [verification](../docs/verification.md) for package and installation status.
+Android **0.18.0 (build 44)** adds launcher shortcuts and a configurable TapMyPC Controls widget. The app remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone. See [verification](../docs/verification.md) for package and installation status.
 
 Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 
@@ -69,6 +69,13 @@ Devices shows PC Bluetooth: On/Off and one applicable action on Wi-Fi. Actual Bl
 Connect to the PC over Wi-Fi once to save authenticated Bluetooth metadata. Open **Settings > Connection** and choose **Bluetooth only**. Allow Nearby devices and confirm the matching pairing code on both devices if prompted. When pairing succeeds, the phone switches to Bluetooth and verifies the existing PC identity. After the first setup, **Automatic** can use Bluetooth when the network is unavailable. Both radios must be on. The phone shows which connection is active, and commands never retry across transports.
 
 Native Android carries opaque TLS bytes over secure RFCOMM; the existing Dart client verifies the PC identity before sending credentials. Old profile JSON remains compatible through optional bluetoothAddress and connectionMode fields. See [Bluetooth architecture and hardware tests](../docs/bluetooth.md).
+
+## Home-screen controls
+
+- Open TapMyPC once and select a paired PC. On launchers that support app shortcuts, long-press the TapMyPC icon to find **Remote Desktop** and, when Wake-on-LAN is configured for the selected PC, **Wake**. Android app shortcuts require Android 7.1 or newer.
+- Choose **TapMyPC Controls** from the launcher's widget picker and select a paired PC. Each widget keeps its own PC. Tap the widget header to choose a different one.
+- **Wake PC** sends one wake packet using that PC's saved settings and the current local Wi-Fi route. A sent packet does not confirm that the PC woke.
+- **Desktop** opens the viewer when the selected PC grants permission and is reachable over Wi-Fi or Tailscale. **Refresh** performs an authenticated check against the saved Wi-Fi or Tailscale endpoints and shows the result and time. Use the app to check Bluetooth-only connections. Widgets do not poll in the background.
 
 ## Android presentation
 

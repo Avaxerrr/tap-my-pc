@@ -33,6 +33,26 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity
+            android:name=".HomeShortcutActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/HomeActionTheme" />
+        <activity
+            android:name=".PcWidgetConfigActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize"
+            android:theme="@style/HomeActionTheme">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <receiver android:name=".PcWidgetProvider" android:exported="false" android:label="TapMyPC Controls">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/pc_widget_info" />
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

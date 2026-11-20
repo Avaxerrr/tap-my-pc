@@ -1,6 +1,7 @@
 package dev.tapmypc.tapmypc_mobile
 
 import android.content.Context
+import android.content.Intent
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
@@ -18,6 +19,7 @@ import java.util.ArrayDeque
 
 class MainActivity : FlutterActivity() {
     private var bluetoothBridge: BluetoothBridge? = null
+    private var homeScreen: MethodChannel? = null
     private var sink: EventChannel.EventSink? = null
     private var listener: NsdManager.DiscoveryListener? = null
     private var multicastLock: WifiManager.MulticastLock? = null
@@ -30,6 +32,22 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         registerWakeOnLan(applicationContext, flutterEngine)
+        homeScreen = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "dev.tapmypc/home_screen").apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "publish" -> {
+                        try {
+                            HomeScreenActions.publish(this@MainActivity, call.arguments as? Map<*, *>)
+                            result.success(null)
+                        } catch (_: RuntimeException) {
+                            result.error("launcher", "Could not update launcher shortcuts.", null)
+                        }
+                    }
+                    "takeDesktopRequest" -> result.success(HomeScreenActions.takeDesktopRequest())
+                    else -> result.notImplemented()
+                }
+            }
+        }
         flutterEngine.platformViewsController.registry.registerViewFactory(
             "dev.tapmypc/remote-desktop-view", RemoteDesktopViewFactory(flutterEngine.dartExecutor.binaryMessenger)
         )
@@ -157,6 +175,11 @@ class MainActivity : FlutterActivity() {
         multicastLock?.let { if (it.isHeld) it.release() }
         multicastLock = null
     }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        homeScreen?.invokeMethod("desktopRequested", null)
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (bluetoothBridge?.permissionResponse(requestCode, grantResults) != true) super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }

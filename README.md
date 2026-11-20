@@ -7,7 +7,7 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 | Component | Current development version |
 | --- | --- |
 | Windows desktop and API | **0.16.4 (build 31)** |
-| Android | **0.17.9 (build 42)** |
+| Android | **0.18.0 (build 44)** |
 
 ## Get started
 
@@ -23,6 +23,8 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 - To use **Wake-on-LAN**, join the PC’s local Wi‑Fi, then select **Power → Wake PC** once the selected PC shows **Offline**. Set or review the adapter details in **Settings → Wake-on-LAN**. The PC must support wake in its current power state. [Wake-on-LAN setup](docs/setup.md#android-wake-on-lan)
 
 Android saves profiles separately for each PC. Reconnection verifies the saved PC identity before sending credentials. The Windows host owns power timers.
+
+On supported Android launchers, long-press TapMyPC for the selected PC’s Wake and Remote Desktop shortcuts. Add a TapMyPC Controls widget to the home screen to choose a paired PC and access Wake PC, Desktop, and Refresh. [Home-screen controls](mobile/README.md#home-screen-controls)
 
 Windows and Android use the theme text color for connection badge icons and labels, including when offline. Badge backgrounds and outlines identify Wi-Fi, Tailscale, and Bluetooth. On Windows, active phone names use the theme text color and the outer card border uses the accent. [Connection status](docs/setup.md#phone-names-and-connection-feedback)
 

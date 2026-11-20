@@ -8,6 +8,7 @@ import 'bluetooth_connection.dart';
 import 'selected_connection.dart';
 import 'pairing_page.dart';
 import 'discovery.dart';
+import 'home_screen.dart';
 import 'ui/app_theme.dart';
 import 'ui/remote_dashboard.dart';
 import 'ui/remote_desktop_page.dart';
@@ -20,6 +21,9 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const TapMyPcApp());
 }
+
+@pragma('vm:entry-point')
+Future<void> homeActionMain(List<String> arguments) => runHomeAction(arguments);
 
 class TapMyPcApp extends StatefulWidget {
   const TapMyPcApp({super.key});
@@ -103,11 +107,16 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   int ticks = 0;
   ValueNotifier<int?>? desktopRevision;
   ValueNotifier<bool?>? desktopAudioPermission;
+  bool homeScreenReady = false;
+  String? homeDesktopPin;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    homeScreenChannel.setMethodCallHandler((call) async {
+      if (call.method == 'desktopRequested') await takeHomeDesktopRequest();
+    });
     load();
     loadVersion();
     timer = Timer.periodic(const Duration(seconds: 2), (_) {
@@ -146,7 +155,11 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         );
         startDiscovery();
         unawaited(probeSaved());
+      } else {
+        unawaited(publishHomeShortcuts(null));
       }
+      homeScreenReady = true;
+      unawaited(takeHomeDesktopRequest());
     } catch (_) {
       if (mounted) {
         setState(
@@ -170,6 +183,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   }
 
   void select(PcProfile profile) {
+    homeDesktopPin = null;
     epoch++;
     api?.close();
     api = null;
@@ -188,6 +202,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
       message = 'Connecting to ${profile.name}…';
     });
     unawaited(store.select(profile.pin).catchError((Object _) {}));
+    unawaited(publishHomeShortcuts(profile));
     refresh(devices: true);
   }
 
@@ -302,6 +317,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         message =
             'Connected to ${selected!.name} · ${activeClient.transportLabel}${unsavedProfiles.contains(selected!.pin) ? '. Identity storage failed; retrying automatically.' : ''}';
       });
+      finishHomeDesktopRequest(generation);
       if (loadDevices) {
         final errors = <String, String>{};
         Future<List<dynamic>> loadList(String path, String label) async {
@@ -348,6 +364,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
                 : friendly(error);
           }
         });
+        finishHomeDesktopRequest(generation);
       }
     } finally {
       refreshing = false;
@@ -507,6 +524,9 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     try {
       await store.save(profiles);
       unsavedProfiles.remove(updated.pin);
+      if (mounted && selected?.pin == updated.pin) {
+        unawaited(publishHomeShortcuts(selected));
+      }
     } catch (_) {
       if (mounted && generation == epoch) {
         setState(
@@ -547,6 +567,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
             : 'Wake-on-LAN settings saved for ${target.name}.';
         feedbackError = false;
       });
+      unawaited(publishHomeShortcuts(updated));
     } catch (_) {
       if (mounted && selected?.pin == target.pin) {
         setState(() {
@@ -933,6 +954,8 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
         );
         startDiscovery();
         unawaited(probeSaved());
+      } else {
+        unawaited(publishHomeShortcuts(null));
       }
     } catch (_) {
       if (mounted) {
@@ -1068,6 +1091,66 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     ),
   );
 
+  Future<void> takeHomeDesktopRequest() async {
+    if (!homeScreenReady || !mounted) return;
+    String? id;
+    try {
+      id = await homeScreenChannel.invokeMethod<String>('takeDesktopRequest');
+    } on MissingPluginException {
+      return;
+    } on PlatformException {
+      return;
+    }
+    if (!mounted || id == null) return;
+    final target = profiles.where((p) => homeProfileId(p) == id).firstOrNull;
+    if (target == null) {
+      showHomeDesktopError('This PC is no longer paired.');
+      return;
+    }
+    if (desktopRevision != null ||
+        busy ||
+        editingConnection ||
+        ModalRoute.of(context)?.isCurrent != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Finish the current TapMyPC action first.'),
+        ),
+      );
+      return;
+    }
+    if (selected?.pin != target.pin) select(target);
+    if (pairingRequired.contains(target.pin)) {
+      showHomeDesktopError('Pair ${target.name} again to open Remote Desktop.');
+      return;
+    }
+    homeDesktopPin = target.pin;
+    unawaited(refresh());
+  }
+
+  void finishHomeDesktopRequest(int generation) {
+    final target = selected;
+    if (target == null || target.pin != homeDesktopPin || generation != epoch) {
+      return;
+    }
+    homeDesktopPin = null;
+    if (status == null) {
+      showHomeDesktopError('Could not reach ${target.name}.');
+    } else if (api?.isBluetooth == true) {
+      showHomeDesktopError('Remote Desktop requires Wi-Fi or Tailscale.');
+    } else if (status?['remoteDesktopEnabled'] != true) {
+      showHomeDesktopError('Remote Desktop is unavailable for ${target.name}.');
+    } else if (ModalRoute.of(context)?.isCurrent == true) {
+      unawaited(openRemoteDesktop());
+    }
+  }
+
+  void showHomeDesktopError(String text) {
+    setState(() {
+      feedback = text;
+      feedbackError = true;
+    });
+  }
+
   Future<void> openRemoteDesktop() async {
     final client = api;
     final target = selected;
@@ -1192,6 +1275,7 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
   @override
   void dispose() {
     epoch++;
+    homeScreenChannel.setMethodCallHandler(null);
     stopDiscovery();
     timer?.cancel();
     api?.close();
