@@ -83,149 +83,183 @@ class _PairPageState extends State<PairPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.recovering == null ? 'Add PC' : 'Re-pair selected PC'),
-    ),
-    body: Align(
-      alignment: Alignment.topCenter,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            if (widget.recovering != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: Text(
-                  'Replace the saved pairing for ${widget.recovering!.name}. Scan a fresh QR displayed by that PC. Other saved PCs stay unchanged.',
-                ),
-              ),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.qr_code_scanner,
-                  size: 28,
-                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Scan. Pair. You’re in.',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Open Pair a Phone in the PC app, then scan its temporary QR here. Both devices need a reachable local network.',
-            ),
-            const SizedBox(height: 24),
-            FilledButton.icon(
-              onPressed: busy ? null : scan,
-              icon: const Icon(Icons.camera_alt_outlined),
-              label: Text(
-                invitation == null ? 'Scan PC QR' : 'Scan another QR',
-              ),
-            ),
-            if (invitation != null)
-              Card(
-                margin: const EdgeInsets.symmetric(vertical: 20),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        invitation!.name,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(invitation!.address),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Pair only with a QR displayed by your PC. Its certificate will be verified before pairing.',
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton(
-                        onPressed: busy ? null : () => pair(qr: true),
-                        child: Text(
-                          busy
-                              ? 'Pairing…'
-                              : widget.recovering == null
-                              ? 'Pair with this PC'
-                              : 'Replace saved pairing',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            if (error.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  error,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            if (busy) const LinearProgressIndicator(),
-            const SizedBox(height: 20),
-            ExpansionTile(
-              title: const Text(
-                'Enter details manually',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: AppColors.border),
-              ),
-              collapsedShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: AppColors.border),
-              ),
-              backgroundColor: AppColors.surface,
-              collapsedBackgroundColor: AppColors.surface,
-              childrenPadding: const EdgeInsets.all(16),
-              children: [
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    'Copy the address and SHA-256 fingerprint from the PC’s Advanced settings, then generate a pairing code.',
-                  ),
-                ),
-                for (final field in [
-                  (name, 'PC name'),
-                  (address, 'HTTPS address'),
-                  (pin, 'SHA-256 fingerprint'),
-                  (code, 'Pairing code'),
-                ])
+  Widget build(BuildContext context) => PopScope<PcProfile>(
+    canPop: invitation == null && !busy,
+    onPopInvokedWithResult: (didPop, _) {
+      if (didPop || busy || invitation == null) return;
+      setState(() {
+        invitation = null;
+        error = '';
+      });
+    },
+    child: Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.recovering == null ? 'Add PC' : 'Re-pair selected PC',
+        ),
+      ),
+      body: Align(
+        alignment: Alignment.topCenter,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 640),
+          child: ListView(
+            key: ValueKey(invitation != null),
+            padding: const EdgeInsets.all(24),
+            children: [
+              if (invitation case final scanned?)
+                ...reviewInvitation(context, scanned)
+              else ...[
+                if (widget.recovering != null)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: TextField(
-                      controller: field.$1,
-                      enabled: !busy,
-                      autocorrect: false,
-                      decoration: InputDecoration(labelText: field.$2),
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      'Replace the saved pairing for ${widget.recovering!.name}. Scan a fresh QR displayed by that PC. Other saved PCs stay unchanged.',
                     ),
                   ),
-                OutlinedButton(
-                  onPressed: busy ? null : pair,
-                  child: const Text('Pair manually'),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.qr_code_scanner,
+                      size: 28,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Pair with a PC',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Open Pair a Phone in the PC app, then scan its temporary QR here. Both devices need a reachable local network.',
+                ),
+                const SizedBox(height: 24),
+                FilledButton.icon(
+                  onPressed: busy ? null : scan,
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: const Text('Scan PC QR'),
+                ),
+                const SizedBox(height: 20),
+                ExpansionTile(
+                  title: const Text(
+                    'Enter details manually',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  collapsedShape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(color: AppColors.border),
+                  ),
+                  backgroundColor: AppColors.surface,
+                  collapsedBackgroundColor: AppColors.surface,
+                  childrenPadding: const EdgeInsets.all(16),
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'Copy the address and SHA-256 fingerprint from the PC’s Advanced settings, then generate a pairing code.',
+                      ),
+                    ),
+                    for (final field in [
+                      (name, 'PC name'),
+                      (address, 'HTTPS address'),
+                      (pin, 'SHA-256 fingerprint'),
+                      (code, 'Pairing code'),
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: TextField(
+                          controller: field.$1,
+                          enabled: !busy,
+                          autocorrect: false,
+                          decoration: InputDecoration(labelText: field.$2),
+                        ),
+                      ),
+                    if (error.isNotEmpty) pairingError(context),
+                    OutlinedButton(
+                      onPressed: busy ? null : pair,
+                      child: Text(busy ? 'Pairing…' : 'Pair manually'),
+                    ),
+                  ],
                 ),
               ],
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  List<Widget> reviewInvitation(
+    BuildContext context,
+    PairingInvitation scanned,
+  ) => [
+    Text('Review the PC', style: Theme.of(context).textTheme.headlineSmall),
+    const SizedBox(height: 12),
+    const Text('Check that these details match your PC.'),
+    const SizedBox(height: 20),
+    Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(scanned.name, style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            Text(scanned.address),
+            const SizedBox(height: 12),
+            const Text(
+              'Use the QR displayed by your PC. TapMyPC verifies its certificate before pairing.',
+            ),
+            if (error.isNotEmpty) pairingError(context),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: busy ? null : () => pair(qr: true),
+              child: Text(
+                busy
+                    ? 'Pairing…'
+                    : widget.recovering == null
+                    ? 'Pair with this PC'
+                    : 'Replace saved pairing',
+              ),
             ),
           ],
         ),
       ),
     ),
+    const SizedBox(height: 8),
+    Center(
+      child: TextButton.icon(
+        onPressed: busy ? null : scan,
+        icon: const Icon(Icons.camera_alt_outlined, size: 18),
+        label: const Text('Scan a different QR'),
+      ),
+    ),
+  ];
+
+  Widget pairingError(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Semantics(
+      liveRegion: true,
+      child: Text(
+        error,
+        style: TextStyle(color: Theme.of(context).colorScheme.error),
+      ),
+    ),
   );
+
   @override
   void dispose() {
     for (final c in [name, address, pin, code]) {

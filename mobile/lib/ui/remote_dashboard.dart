@@ -8,6 +8,18 @@ import 'pending_banner.dart';
 import 'pc_welcome.dart';
 import 'stats_panel.dart';
 
+enum PcAvailability {
+  connected('Connected', isOnline: true),
+  available('Available', isOnline: true),
+  offline('Offline / searching'),
+  pairingRequired('Pairing required');
+
+  const PcAvailability(this.label, {this.isOnline = false});
+
+  final String label;
+  final bool isOnline;
+}
+
 class RemoteDashboard extends StatefulWidget {
   final List<PcProfile> profiles;
   final PcProfile? selected;
@@ -19,7 +31,7 @@ class RemoteDashboard extends StatefulWidget {
   final PcApi? monitoringApi;
   final List<dynamic> outputs, monitors, shortcuts;
   final Map<String, String> deviceErrors;
-  final String Function(PcProfile) profileStatus;
+  final PcAvailability Function(PcProfile) profileStatus;
   final ValueChanged<PcProfile> onSelect;
   final Future<void> Function() onAdd, onForget, onRefresh;
   final Future<bool> Function()? onConnection;
@@ -90,7 +102,7 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.desktop_windows_outlined),
             title: Text(profile.name),
-            subtitle: Text(widget.profileStatus(profile)),
+            subtitle: _PcStatusLabel(widget.profileStatus(profile)),
             trailing: profile.pin == widget.selected?.pin
                 ? Icon(
                     Icons.check,
@@ -683,4 +695,24 @@ class _RemoteDashboardState extends State<RemoteDashboard> {
             ),
     );
   }
+}
+
+class _PcStatusLabel extends StatelessWidget {
+  const _PcStatusLabel(this.availability);
+
+  final PcAvailability availability;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(
+        Icons.circle,
+        size: 7,
+        color: availability.isOnline ? AppColors.online : AppColors.offline,
+        applyTextScaling: false,
+      ),
+      const SizedBox(width: 6),
+      Flexible(child: Text(availability.label)),
+    ],
+  );
 }

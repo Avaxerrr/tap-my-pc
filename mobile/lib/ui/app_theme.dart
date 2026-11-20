@@ -10,6 +10,8 @@ abstract final class AppColors {
   static const border = Color(0xff2d323d);
   static const text = Color(0xfff5f5f7);
   static const secondary = Color(0xffa5a8b1);
+  static const online = Color(0xff70b68a);
+  static const offline = Color(0xff7e828d);
   static const error = Color(0xffffb4ab);
 }
 

@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.9 (build 37)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
+Current development versions are Windows desktop/API **0.16.9 (build 37)** and Android **0.18.4 (build 48)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The Android PC picker shows a green dot for connected or available PCs and a gray dot when a PC is unavailable. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -61,7 +61,7 @@ Select a paired device on the PC and revoke it to invalidate its credential imme
 1. Open the desktop app on a trusted network. Resume Start connections if previously paused.
 2. The initial QR appears automatically when no phones are paired. For an additional phone select Add another phone. The QR and browser fallback code expire after five minutes and permit one successful pairing.
 3. On Android select Add PC, then Scan PC QR. Allow camera access when Android asks.
-4. Scan the QR displayed by your PC, review its name/address, and select Pair with this PC. The app verifies the embedded certificate fingerprint before sending its one-time secret.
+4. Scan the QR displayed by your PC. On the review screen, check its name and address, then select **Pair with this PC**. Use **Scan a different QR** to change the PC before pairing. The app verifies the embedded certificate fingerprint before sending its one-time secret.
 5. The QR hides after pairing. Android saves the credential securely, discovers saved PCs, verifies the certificate, and reconnects automatically. Use the PC selector to choose another independently paired PC; the selection is remembered.
 
 Manual setup remains under Enter details manually. If camera access is denied, enable it in Android settings or use manual setup. Regenerate on the PC if a QR expires or was used. Stopping the host closes outstanding invitations. Ordinary saved-address reconnects do not require a new QR.

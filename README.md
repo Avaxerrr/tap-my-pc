@@ -7,7 +7,9 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 | Component | Current development version |
 | --- | --- |
 | Windows desktop and API | **0.16.9 (build 37)** |
-| Android | **0.18.3 (build 47)** |
+| Android | **0.18.4 (build 48)** |
+
+Android 0.18.4 clarifies the QR pairing review and adds availability dots to the PC picker.
 
 Both apps include **About TapMyPC** with app and build information, setup help, third-party notices, and a link to the GitHub repository. Open it from **Settings** on Android or the **Configure** drawer on Windows.
 

@@ -200,7 +200,9 @@ void main() {
               {'id': 'spotify', 'name': 'Spotify', 'kind': 'App'},
               {'id': 'youtube', 'name': 'YouTube', 'kind': 'Website'},
             ],
-            profileStatus: (p) => p == home ? 'Connected' : 'Available',
+            profileStatus: (p) => p == home
+                ? (offline ? PcAvailability.offline : PcAvailability.connected)
+                : PcAvailability.available,
             onSelect: select ?? (_) {},
             onAdd: add ?? () async {},
             onForget: () async {},
@@ -471,9 +473,16 @@ void main() {
     'PC selection preserves target identity and is disabled while busy',
     (tester) async {
       PcProfile? selected;
-      await render(tester, select: (p) => selected = p);
+      await render(tester, offline: true, select: (p) => selected = p);
       await tester.tap(find.text('Home desktop'));
       await tester.pumpAndSettle();
+      final dots = tester.widgetList<Icon>(find.byIcon(Icons.circle));
+      expect(dots.map((dot) => dot.color), [
+        AppColors.offline,
+        AppColors.online,
+      ]);
+      expect(find.text('Offline / searching'), findsOneWidget);
+      expect(find.text('Available'), findsOneWidget);
       await screenshot(tester, 'pc-picker');
       await tester.tap(find.text('Work laptop'));
       await tester.pumpAndSettle();

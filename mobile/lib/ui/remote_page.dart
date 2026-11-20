@@ -833,13 +833,17 @@ class _RemotePageState extends State<RemotePage> with WidgetsBindingObserver {
     }
   }
 
-  String profileStatus(PcProfile profile) {
-    if (pairingRequired.contains(profile.pin)) return 'Pairing required';
-    if (identical(profile, selected) && status != null) return 'Connected';
+  PcAvailability profileStatus(PcProfile profile) {
+    if (pairingRequired.contains(profile.pin)) {
+      return PcAvailability.pairingRequired;
+    }
+    if (profile.pin == selected?.pin) {
+      return status != null ? PcAvailability.connected : PcAvailability.offline;
+    }
     final seen = verifiedAt[normalizePin(profile.pin)];
     return seen != null && DateTime.now().difference(seen).inSeconds < 20
-        ? 'Available'
-        : 'Offline / searching';
+        ? PcAvailability.available
+        : PcAvailability.offline;
   }
 
   Future<void> takeHomeDesktopRequest() async {

@@ -1,6 +1,6 @@
 # TapMyPC Android client
 
-Android **0.18.3 (build 47)** links to the GitHub repository from **About TapMyPC** in Settings, alongside copyable app and PC host versions, setup help, and third-party licenses. The app offers launcher shortcuts and a configurable TapMyPC Controls widget. The app remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone.
+Android **0.18.4 (build 48)** gives QR pairing a dedicated review step and adds green and gray availability dots to the PC picker. **About TapMyPC** in Settings offers copyable app and PC host versions, setup help, third-party licenses, and the GitHub repository link. The app offers launcher shortcuts and a configurable TapMyPC Controls widget. The app remembers the Remote Desktop audio toggle for each PC. PC audio requires Windows **0.16.0 (build 27)** or newer and permission for the paired phone.
 
 Android saves paired PC profiles, reconnects automatically, and controls audio, media, displays, shortcuts, and power. **Power > Wake PC** is available on the PC’s local network when it supports wake. Android learns settings from desktop **0.9.0 (build 13)** and supports per-PC manual overrides. See [Wake-on-LAN setup](../docs/setup.md#android-wake-on-lan).
 
