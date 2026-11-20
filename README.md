@@ -6,7 +6,7 @@ TapMyPC is a personal remote for a Windows PC. Use the Flutter Android app or th
 
 | Component | Current development version |
 | --- | --- |
-| Windows desktop and API | **0.16.7 (build 34)** |
+| Windows desktop and API | **0.16.7 (build 35)** |
 | Android | **0.18.3 (build 47)** |
 
 Both apps include **About TapMyPC** with app and build information, setup help, third-party notices, and a link to the GitHub repository. Open it from **Settings** on Android or the **Configure** drawer on Windows.
@@ -60,7 +60,7 @@ dotnet run --project src/TapMyPC.Desktop -c Release
 
 See the [Android build guide](mobile/README.md#development), the [simulator](docs/setup.md#simulator), and the [documentation index](docs/README.md) for setup, architecture, and the API contract.
 
-To package a build from GitHub, open **Actions → Build TapMyPC → Run workflow** and choose Windows, Android, or both. A test run puts the packages under **Artifacts** on the workflow run. Published downloads appear under **Releases**.
+To package a build from GitHub, open **Actions → Build TapMyPC → Run workflow** and choose Windows, Android, or both. A test run puts the packages under **Artifacts** on the workflow run. Published downloads appear under **Releases**. Extract the Windows ZIP once and open `TapMyPC.exe`. It requires both the .NET 10 Windows Desktop and ASP.NET Core runtimes.
 
 ## License
 

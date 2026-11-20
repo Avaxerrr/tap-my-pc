@@ -2,7 +2,7 @@
 
 ## Versions and QR visibility
 
-Current development versions are Windows desktop/API **0.16.7 (build 34)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
+Current development versions are Windows desktop/API **0.16.7 (build 35)** and Android **0.18.3 (build 47)**. Open **About TapMyPC** in the Windows **Configure** drawer or Android **Settings** to copy version information, read the setup guide, view third-party licenses, or open the GitHub repository. Android includes the connected PC host version when available. The phone learns wake settings from Windows 0.9.0 and newer and supports manual settings with earlier builds.
 
 The desktop starts connections automatically on a Private/Domain network unless previously paused. The first QR appears automatically and hides after pairing. Use Add another phone for a new QR. Browser address and manual-code fallbacks are collapsed under optional details.
 
@@ -203,6 +203,8 @@ The application is now named TapMyPC and launches as `TapMyPC.exe`. It reads leg
 Exit the old PC Remote instance before opening TapMyPC; both versions share an instance lock to prevent conflicting listeners and timers. If sign-in startup was already enabled, launching TapMyPC migrates that existing opt-in to its current executable path. No startup entry is created for users who had not enabled it. The new executable name/path may require updating a program-scoped firewall rule; no rule is changed automatically.
 
 ## Publish
+
+The Windows download from GitHub contains one `TapMyPC.exe` and license documents. Extract the ZIP once. The executable requires both the .NET 10 Windows Desktop and ASP.NET Core runtimes. For a local folder build or a staged update, use the commands below.
 
 ```powershell
 dotnet publish src/TapMyPC.Desktop -c Release -r win-x64 --self-contained false -o artifacts/publish/TapMyPC

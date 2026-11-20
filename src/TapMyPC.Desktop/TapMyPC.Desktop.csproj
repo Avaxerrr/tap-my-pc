@@ -35,8 +35,8 @@
     <Resource Include="Assets/TapMyPC.ico" />
     <EmbeddedResource Include="Assets/Fonts/Inter-OFL.txt" LogicalName="TapMyPC.Licenses.Inter.txt" />
     <EmbeddedResource Include="$(PkgQRCoder)/LICENSE.txt" LogicalName="TapMyPC.Licenses.QRCoder.txt" />
-    <EmbeddedResource Include="../TapMyPC.Windows/ThirdParty/NAudio-LICENSE.txt" LogicalName="TapMyPC.Licenses.NAudio.txt" />
-    <EmbeddedResource Include="../TapMyPC.Windows/ThirdParty/Concentus-LICENSE.txt" LogicalName="TapMyPC.Licenses.Concentus.txt" />
+    <EmbeddedResource Include="../TapMyPC.Windows/ThirdParty/*-LICENSE.txt" LogicalName="TapMyPC.Licenses.%(Filename)%(Extension)" />
+    <None Include="$(PkgQRCoder)/LICENSE.txt" CopyToPublishDirectory="PreserveNewest" TargetPath="ThirdParty/QRCoder-LICENSE.txt" />
     <None Update="Assets/Fonts/Inter-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" TargetPath="Inter-OFL.txt" />
   </ItemGroup>
 </Project>

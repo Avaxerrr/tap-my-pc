@@ -4,10 +4,18 @@ TapMyPC's original code is available under the [MIT License](LICENSE). Third-par
 
 ## Windows
 
+Windows downloads include the license texts in `THIRD-PARTY-LICENSES.txt`.
+
 - [Inter font notice](src/TapMyPC.Desktop/Assets/Fonts/Inter-OFL.txt)
 - [QRCoder license](https://github.com/codebude/QRCoder/blob/v1.8.1/LICENSE.txt)
 - [NAudio license](src/TapMyPC.Windows/ThirdParty/NAudio-LICENSE.txt)
 - [Concentus license](src/TapMyPC.Windows/ThirdParty/Concentus-LICENSE.txt)
+- [Makaretu.Dns and Makaretu.Dns.Multicast license](src/TapMyPC.Windows/ThirdParty/Makaretu.Dns%20and%20Makaretu.Dns.Multicast-LICENSE.txt)
+- [Common.Logging and Common.Logging.Core license](src/TapMyPC.Windows/ThirdParty/Common.Logging-LICENSE.txt)
+- [IPNetwork2 license](src/TapMyPC.Windows/ThirdParty/IPNetwork2-LICENSE.txt)
+- [SimpleBase license](src/TapMyPC.Windows/ThirdParty/SimpleBase-LICENSE.txt)
+- [System.Management and System.Numerics.Tensors licenses and notices](src/TapMyPC.Windows/ThirdParty/Microsoft%20libraries-LICENSE.txt)
+- [Microsoft Windows SDK redistribution terms for the WinRT libraries](https://learn.microsoft.com/en-us/legal/windows-sdk/redist#microsoftwindowssdknetref)
 
 The optional Remote Desktop feature downloads and installs UltraVNC from the publisher at setup. UltraVNC runs as a separate Windows service under its upstream license. [Official installer](https://uvnc.com/downloads/ultravnc.html) · [UltraVNC source and GPLv3 license](https://github.com/ultravnc/UltraVNC/blob/main/LICENSE)
 

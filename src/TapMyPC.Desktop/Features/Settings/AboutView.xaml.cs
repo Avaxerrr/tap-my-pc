@@ -90,7 +90,8 @@ public partial class AboutView : UserControl
         {
             using var stream = assembly.GetManifestResourceStream(name)!;
             using var reader = new StreamReader(stream);
-            var title = Path.GetFileNameWithoutExtension(name[prefix.Length..]);
+            var title = Path.GetFileNameWithoutExtension(name[prefix.Length..])
+                .Replace("-LICENSE", "", StringComparison.Ordinal);
             licenses.Add($"{title}\n\n{reader.ReadToEnd().Trim()}");
         }
 

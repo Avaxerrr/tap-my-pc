@@ -47,32 +47,31 @@ jobs:
           [xml]$settings = Get-Content -Raw Directory.Build.props
           $version = $settings.Project.PropertyGroup.Version
           $build = $settings.Project.PropertyGroup.BuildNumber
-          $publish = Join-Path $env:RUNNER_TEMP 'TapMyPC'
-          dotnet publish src/TapMyPC.Desktop -c Release -r win-x64 --self-contained false -o $publish
+          $publish = Join-Path $env:RUNNER_TEMP 'TapMyPC-Publish'
+          dotnet publish src/TapMyPC.Desktop -c Release -p:PublishProfile=WindowsSingleFile -o $publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $expected = "$version+$build"
-          $exe = (Get-Item -LiteralPath (Join-Path $publish 'TapMyPC.exe')).VersionInfo
-          $api = (Get-Item -LiteralPath (Join-Path $publish 'TapMyPC.Api.dll')).VersionInfo
-          if ($exe.ProductVersion -ne $expected -or $exe.FileVersion -ne "$version.$build" -or $api.ProductVersion -ne $expected) {
-            throw "Expected Windows and API product version $expected."
+          $exe = Get-Item -LiteralPath (Join-Path $publish 'TapMyPC.exe')
+          if ($exe.VersionInfo.ProductVersion -ne $expected -or $exe.VersionInfo.FileVersion -ne "$version.$build") {
+            throw "Expected Windows product version $expected."
           }
-          $manifest = Get-Content -Raw (Join-Path $publish 'TapMyPC.deps.json') | ConvertFrom-Json -AsHashtable
-          foreach ($target in $manifest.targets.Values) {
-            foreach ($package in $target.Values) {
-              foreach ($asset in $package.runtime.Keys) {
-                $name = [IO.Path]::GetFileName($asset)
-                if (!(Test-Path -LiteralPath (Join-Path $publish $name) -PathType Leaf)) {
-                  throw "Missing Windows runtime asset $asset."
-                }
-              }
-            }
+          $sidecars = Get-ChildItem -LiteralPath $publish -File -Recurse |
+            Where-Object { $_.FullName -ne $exe.FullName -and $_.Extension -notin '.txt', '.pdb' }
+          if ($sidecars) {
+            throw "Unexpected files beside the bundled executable: $($sidecars.Name -join ', ')."
           }
 
-          Copy-Item -LiteralPath LICENSE,THIRD_PARTY_NOTICES.md -Destination $publish
-          New-Item -ItemType Directory -Path dist -Force | Out-Null
-          $zip = "dist/TapMyPC-$version-build$build-win-x64.zip"
-          Compress-Archive -LiteralPath $publish -DestinationPath $zip
+          $package = Join-Path $env:RUNNER_TEMP 'TapMyPC-Package'
+          New-Item -ItemType Directory -Path $package | Out-Null
+          Copy-Item -LiteralPath $exe.FullName,LICENSE,THIRD_PARTY_NOTICES.md -Destination $package
+          $licenses = Get-ChildItem -LiteralPath $publish -Filter '*.txt' -File -Recurse | Sort-Object Name
+          $notices = foreach ($license in $licenses) {
+            "===== $($license.BaseName) ====="
+            (Get-Content -LiteralPath $license.FullName -Raw).TrimEnd()
+            ''
+          }
+          Set-Content -LiteralPath (Join-Path $package 'THIRD-PARTY-LICENSES.txt') -Value $notices
           "release_tag=windows-v$expected" >> $env:GITHUB_OUTPUT
           "Packaged Windows $expected"
       - name: Upload the Windows package
@@ -80,7 +79,7 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: tapmypc-windows
-          path: dist/*.zip
+          path: ${{ runner.temp }}/TapMyPC-Package/
           if-no-files-found: error
 
   android:
@@ -185,20 +184,31 @@ jobs:
             echo "::error::Create release drafts from main."
             exit 1
           fi
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      - name: Download the Windows package
+        if: needs.windows.result == 'success'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          pattern: tapmypc-*
-          path: packages
+          name: tapmypc-windows
+          path: packages/windows
+      - name: Download the Android package
+        if: needs.android.result == 'success'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: tapmypc-android
+          path: packages/android
       - name: Draft Windows release
         if: needs.windows.result == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.windows.outputs.release_tag }}
         run: |
+          version="${TAG#windows-v}"
+          package="TapMyPC-${version/+/-build}-win-x64.zip"
+          (cd packages/windows && zip -q "../../$package" TapMyPC.exe LICENSE THIRD_PARTY_NOTICES.md THIRD-PARTY-LICENSES.txt)
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
             --title "TapMyPC Windows ${{ needs.windows.outputs.release_tag }}" \
-            --notes "Extract the complete ZIP before running TapMyPC.exe. See the README for setup." \
-            packages/tapmypc-windows/*.zip
+            --notes "Extract the ZIP and open TapMyPC.exe. Requires the .NET 10 Windows Desktop and ASP.NET Core runtimes. License notices are included." \
+            "$package"
       - name: Draft Android release
         if: needs.android.result == 'success'
         env:
@@ -208,4 +218,4 @@ jobs:
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
             --title "TapMyPC Android ${{ needs.android.outputs.release_tag }}" \
             --notes "Install the signed APK. The matching noVNC source archive and TapMyPC license are attached below." \
-            packages/tapmypc-android/*
+            packages/android/*
