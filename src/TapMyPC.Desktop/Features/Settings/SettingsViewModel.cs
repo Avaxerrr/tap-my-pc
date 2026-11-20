@@ -80,18 +80,35 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private string deviceName = "";
     private IReadOnlyList<PairedClient> connectedClients = Array.Empty<PairedClient>();
 
-    public SettingsViewModel(IDeviceController device, LocalSettings settings, PairingService pairing, PowerScheduler scheduler, IBluetoothController? bluetooth = null, IAudioOutputController? outputs = null, ShortcutCatalog? shortcuts = null, IMonitorController? monitors = null, bool enableBluetoothTransport = true, Func<IReadOnlyList<NetworkAddress>>? readNetworkAddresses = null)
+    public SettingsViewModel(
+        IDeviceController device,
+        LocalSettings settings,
+        PairingService pairing,
+        PowerScheduler scheduler,
+        IBluetoothController? bluetooth = null,
+        IAudioOutputController? outputs = null,
+        ShortcutCatalog? shortcuts = null,
+        IMonitorController? monitors = null,
+        bool enableBluetoothTransport = true,
+        Func<IReadOnlyList<NetworkAddress>>? readNetworkAddresses = null)
     {
         this.device = device;
         this.bluetooth = bluetooth;
-        this.outputs = outputs; this.shortcuts = shortcuts; this.monitors = monitors;
+        this.outputs = outputs;
+        this.shortcuts = shortcuts;
+        this.monitors = monitors;
         ShortcutSettings = shortcuts is null ? null : new ShortcutsViewModel(shortcuts);
         this.settings = settings;
         this.readNetworkAddresses = readNetworkAddresses ?? NetworkAddresses.Read;
         Appearance = new AppearanceViewModel(settings);
         this.pairing = pairing;
         this.scheduler = scheduler;
-        if (enableBluetoothTransport) bluetoothHost = new(settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors, () => NetworkConnection, monitoring);
+        if (enableBluetoothTransport)
+        {
+            bluetoothHost = new(
+                settings, pairing, scheduler, device, bluetooth, outputs, shortcuts, monitors,
+                () => NetworkConnection, monitoring);
+        }
         var saved = settings.ReadHost();
         address = saved.Address;
         tailscaleEnabled = saved.TailscaleEnabled;
@@ -101,28 +118,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         startupEnabled = StartupRegistration.Enabled;
         ToggleHost = new AsyncCommand(ToggleHostAsync);
         ToggleTailscale = new AsyncCommand(ToggleTailscaleAsync);
-        OpenPairing = new RelayCommand(() =>
-        {
-            if ((server is null && tailscaleServer is null) || certificate is null) { Message = bluetoothHost?.Info.Available == true ? "Connect this PC to a trusted Wi-Fi network for first-time pairing. Paired phones can use Bluetooth." : "Select Start connections before adding a phone."; return; }
-            var window = pairing.OpenPairingSession();
-            try
-            {
-                pairingQrImage = Features.Settings.PairingQrImage.Create(PairingInvitation.CreateJson(Environment.MachineName, RemoteUrl, Fingerprint, window));
-            }
-            catch
-            {
-                pairing.ClosePairing();
-                ClearPairingQr();
-                Message = "Could not generate pairing QR. Please try again.";
-                return;
-            }
-            Notify(nameof(PairingQrImage)); Notify(nameof(HasPairingQr)); Notify(nameof(PairingHint)); Notify(nameof(PairingButtonText));
-            pairingCode = window.Code;
-            pairingExpires = window.ExpiresAt;
-            Message = "Scan this QR in the TapMyPC Android app.\nThe code below also works for browser pairing.";
-            Tick();
-            Notify(nameof(PairingCode));
-        });
+        OpenPairing = new RelayCommand(OpenPairingSession);
         CopyUrl = new RelayCommand(() =>
         {
             try
@@ -265,7 +261,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public bool HasPending => scheduler.State.Pending is not null;
     public IReadOnlyList<PairedClient> ConnectedClients => connectedClients;
     public bool HasConnectedClients => connectedClients.Count > 0;
-    public string ConnectionSummary => connectedClients.Count == 0 ? "No active remote" : string.Join(", ", connectedClients.Select(c => $"{c.Name} · {(c.Transport switch { RemoteTransport.Bluetooth => "Bluetooth", RemoteTransport.Tailscale => "Tailscale", _ => "Wi-Fi" })}"));
+    public string ConnectionSummary => connectedClients.Count == 0
+        ? "No active remote"
+        : string.Join(", ", connectedClients.Select(client =>
+        {
+            var transport = client.Transport switch
+            {
+                RemoteTransport.Bluetooth => "Bluetooth",
+                RemoteTransport.Tailscale => "Tailscale",
+                _ => "Wi-Fi"
+            };
+            return $"{client.Name} · {transport}";
+        }));
     public string ConnectionHint => HasConnectedClients
         ? $"Recent authenticated activity from {ConnectionSummary}. Goes idle after 10 seconds without activity; availability checks also count."
         : "A saved pairing does not mean a remote is currently online. Open the phone app to connect.";
@@ -417,13 +424,21 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         // Reconcile independently: losing a local adapter must not interrupt Tailscale, or vice versa.
         if (server is not null && !Equals(localIp, listeningAddress))
         {
-            advertisement?.Dispose(); advertisement = null;
-            await server.StopAsync(); await server.DisposeAsync(); server = null; listeningAddress = null; listeningWakeOnLan = null;
+            advertisement?.Dispose();
+            advertisement = null;
+            await server.StopAsync();
+            await server.DisposeAsync();
+            server = null;
+            listeningAddress = null;
+            listeningWakeOnLan = null;
             pairing.ClearPresence(RemoteTransport.WiFi);
         }
         if (tailscaleServer is not null && !Equals(tailIp, listeningTailscaleAddress))
         {
-            await tailscaleServer.StopAsync(); await tailscaleServer.DisposeAsync(); tailscaleServer = null; listeningTailscaleAddress = null;
+            await tailscaleServer.StopAsync();
+            await tailscaleServer.DisposeAsync();
+            tailscaleServer = null;
+            listeningTailscaleAddress = null;
             pairing.ClearPresence(RemoteTransport.Tailscale);
         }
         if (certificate is null && (localIp ?? tailIp) is { } identityIp)
@@ -479,9 +494,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private Task<WebApplication> StartNetworkApiAsync(IPAddress ip, int number, RemoteTransport transport) =>
         ApiHost.StartAsync(ip, number, certificate!, device, pairing, scheduler,
-            bluetooth: bluetooth, outputs: outputs, shortcuts: shortcuts, monitors: monitors,
-            bluetoothConnection: () => bluetoothHost?.Info, transport: transport, networkConnection: () => NetworkConnection, monitoring: monitoring,
-            remoteDesktopPort: 5900, remoteDesktopRevision: () => Volatile.Read(ref remoteDesktopRevision), remoteDesktopAudio: remoteDesktopAudio);
+            bluetooth: bluetooth,
+            outputs: outputs,
+            shortcuts: shortcuts,
+            monitors: monitors,
+            bluetoothConnection: () => bluetoothHost?.Info,
+            transport: transport,
+            networkConnection: () => NetworkConnection,
+            monitoring: monitoring,
+            remoteDesktopPort: 5900,
+            remoteDesktopRevision: () => Volatile.Read(ref remoteDesktopRevision),
+            remoteDesktopAudio: remoteDesktopAudio);
 
     private void OnDesktopSessionSwitch(object sender, SessionSwitchEventArgs e)
     {
@@ -566,7 +589,17 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void NotifyHost()
     {
-        foreach (var name in new[] { nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText), nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus), nameof(PairingHint), nameof(PairingButtonText), nameof(CanResetIdentity), nameof(NetworkSummary), nameof(TailscaleEnabled), nameof(TailscaleUrl), nameof(HasTailscaleAddress), nameof(TailscaleConnectionSummary) }) Notify(name);
+        foreach (var name in new[]
+        {
+            nameof(RemoteUrl), nameof(Fingerprint), nameof(HostButtonText),
+            nameof(CanEditConnection), nameof(IsHosting), nameof(HostStatus),
+            nameof(PairingHint), nameof(PairingButtonText), nameof(CanResetIdentity),
+            nameof(NetworkSummary), nameof(TailscaleEnabled), nameof(TailscaleUrl),
+            nameof(HasTailscaleAddress), nameof(TailscaleConnectionSummary)
+        })
+        {
+            Notify(name);
+        }
         RefreshPresence();
     }
 
@@ -607,7 +640,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private void RefreshPresence()
     {
-        var active = (server is null && tailscaleServer is null && bluetoothHost?.Info.Available != true) || isChangingHost ? Array.Empty<PairedClient>() : pairing.ActiveClients;
+        var active = IsHosting ? pairing.ActiveClients : Array.Empty<PairedClient>();
         if (connectedClients.SequenceEqual(active)) return;
         connectedClients = active;
         Notify(nameof(ConnectedClients));
@@ -714,12 +747,50 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
+    private void OpenPairingSession()
+    {
+        if ((server is null && tailscaleServer is null) || certificate is null)
+        {
+            Message = bluetoothHost?.Info.Available == true
+                ? "Connect this PC to a trusted Wi-Fi network for first-time pairing. Paired phones can use Bluetooth."
+                : "Select Start connections before adding a phone.";
+            return;
+        }
+        var window = pairing.OpenPairingSession();
+        try
+        {
+            var invitation = PairingInvitation.CreateJson(Environment.MachineName, RemoteUrl, Fingerprint, window);
+            pairingQrImage = Features.Settings.PairingQrImage.Create(invitation);
+        }
+        catch
+        {
+            pairing.ClosePairing();
+            ClearPairingQr();
+            Message = "Could not generate pairing QR. Please try again.";
+            return;
+        }
+        NotifyPairingQr();
+        pairingCode = window.Code;
+        pairingExpires = window.ExpiresAt;
+        Message = "Scan this QR in the TapMyPC Android app.\nThe code below also works for browser pairing.";
+        Tick();
+        Notify(nameof(PairingCode));
+    }
+
     private void ClearPairingQr()
     {
         if (pairingQrImage is null) return;
         pairingQrImage = null;
-        Notify(nameof(PairingQrImage)); Notify(nameof(HasPairingQr)); Notify(nameof(PairingHint)); Notify(nameof(PairingButtonText));
+        NotifyPairingQr();
     }
+    private void NotifyPairingQr()
+    {
+        Notify(nameof(PairingQrImage));
+        Notify(nameof(HasPairingQr));
+        Notify(nameof(PairingHint));
+        Notify(nameof(PairingButtonText));
+    }
+
     private int pairedCount;
 
     public async Task ShutdownAsync()
